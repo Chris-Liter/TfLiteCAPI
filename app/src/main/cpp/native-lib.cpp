@@ -24,7 +24,7 @@ using namespace std;
 using namespace cv;
 
 unique_ptr<tflite::FlatBufferModel> _model;
-unique_ptr<tflite::Interpreter> interprete;
+unique_ptr<tflite::Interpreter> interprete = nullptr;
 unique_ptr<TfLiteDelegate, decltype(&TfLiteGpuDelegateV2Delete)> gpuDelegate(nullptr, &TfLiteGpuDelegateV2Delete);
 
 vector<string> cocoNames;
@@ -41,6 +41,46 @@ Java_com_logic_tflitecapi_MainActivity_stringFromJNI(
 ///////////////////////
 //flatc --cpp schema.fbs
 ////////////////////////
+
+
+
+struct BoundingBox {
+    int x;
+    int y;
+    int width;
+    int height;
+
+    BoundingBox() : x(0), y(0), width(0), height(0) {}
+    BoundingBox(int x_, int y_, int width_, int height_)
+            : x(x_), y(y_), width(width_), height(height_) {}
+
+    float area() const { return static_cast<float>(width * height); }
+
+    BoundingBox intersect(const BoundingBox &other) const {
+        int xStart = std::max(x, other.x);
+        int yStart = std::max(y, other.y);
+        int xEnd = std::min(x + width, other.x + other.width);
+        int yEnd = std::min(y + height, other.y + other.height);
+        int intersectWidth = std::max(0, xEnd - xStart);
+        int intersectHeight = std::max(0, yEnd - yStart);
+        return BoundingBox{xStart, yStart, intersectWidth, intersectHeight};
+    }
+};
+
+class Categoria{
+public:
+    string label;
+    float score;
+};
+
+
+class Resultados{
+public:
+    BoundingBox boundingBox;
+    vector<Categoria> categories;
+};
+
+
 
 void bitmapToMat(JNIEnv * env, jobject bitmap, cv::Mat &dst, jboolean needUnPremultiplyAlpha) {
     AndroidBitmapInfo info;
@@ -114,6 +154,11 @@ extern "C"{
         }
 
         float* outputTensor = interprete->typed_output_tensor<float>(0);
+
+        ////////////////////////
+
+        std::vector<Resultados> resultados;
+
         int topClass = 0;
         float maxProb = outputTensor[0];
         for(int i = 1; i < 1001; ++i){
@@ -130,91 +175,57 @@ extern "C"{
 
 
     JNIEXPORT jboolean Java_com_logic_tflitecapi_MainActivity_CreateSession(JNIEnv* env, jobject /**/, jstring modelo, jstring labels, jboolean gpu){
-        const char* model = env->GetStringUTFChars(modelo, nullptr);
-        const char* etiqueta = env->GetStringUTFChars(labels, nullptr);
-        //const char* gpu = env->GetBoolea(GPU);
-        //Path to class labels
+        if(interprete == nullptr){
+            const char* model = env->GetStringUTFChars(modelo, nullptr);
+            const char* etiqueta = env->GetStringUTFChars(labels, nullptr);
+            //const char* gpu = env->GetBoolea(GPU);
+            //Path to class labels
 
-        string labelsPath = etiqueta;
-        cocoNames = getClassNames(labelsPath);
-        const std::string modelPath = model;          // Path to TFLite model
-        _model = tflite::FlatBufferModel::BuildFromFile(modelPath.c_str());
-        tflite::ops::builtin::BuiltinOpResolver resolver;
+            string labelsPath = etiqueta;
+            cocoNames = getClassNames(labelsPath);
+            const std::string modelPath = model;          // Path to TFLite model
+            _model = tflite::FlatBufferModel::BuildFromFile(modelPath.c_str());
+            tflite::ops::builtin::BuiltinOpResolver resolver;
 
-        tflite::InterpreterBuilder builder(*_model, resolver);
-        builder(&interprete);
+            tflite::InterpreterBuilder builder(*_model, resolver);
+            builder(&interprete);
 
-        if(gpu == true){
-            TfLiteGpuDelegateOptionsV2 options = TfLiteGpuDelegateOptionsV2Default();
+            if(gpu == true){
+                TfLiteGpuDelegateOptionsV2 options = TfLiteGpuDelegateOptionsV2Default();
 
-            gpuDelegate.reset(TfLiteGpuDelegateV2Create(&options));
+                gpuDelegate.reset(TfLiteGpuDelegateV2Create(&options));
 
-            auto* gpu_delegate = TfLiteGpuDelegateV2Create(&options);
-//
-            if (interprete->ModifyGraphWithDelegate(gpuDelegate.get()) != kTfLiteOk){
-                fprintf(stderr, "Error: No se pudo usar el delegado de GPU.\n");
-                TfLiteGpuDelegateV2Delete(gpu_delegate);
-                //return;
-                return false;
+                auto* gpu_delegate = TfLiteGpuDelegateV2Create(&options);
+
+                if (interprete->ModifyGraphWithDelegate(gpuDelegate.get()) != kTfLiteOk){
+                    fprintf(stderr, "Error: No se pudo usar el delegado de GPU.\n");
+                    TfLiteGpuDelegateV2Delete(gpu_delegate);
+                    return false;
+                }
+
+                if(interprete->AllocateTensors() != kTfLiteOk){
+                    fprintf(stderr, "Fallo nuevamente :(");
+                    return false;
+                }
+                return true;
             }
 
             if(interprete->AllocateTensors() != kTfLiteOk){
                 fprintf(stderr, "Fallo nuevamente :(");
-                //exit(-1);
                 return false;
             }
+
             return true;
         }
-
-        if(interprete->AllocateTensors() != kTfLiteOk){
-            fprintf(stderr, "Fallo nuevamente :(");
-            //exit(-1);
-            return false;
-        }
-
         return true;
 
     }
 
 
-
-    JNICALL void Java_com_logic_MainActivity_LiberarRecursos(){
-
+    JNICALL void Java_com_logic_tflitecapi_MainActivity_LiberarRecursos(JNIEnv* env, jobject /**/){
+//        _model = nullptr;
+//        gpuDelegate = nullptr;
+//        interprete = nullptr;
+        //std _model;
     }
 }
-
-struct BoundingBox {
-    int x;
-    int y;
-    int width;
-    int height;
-
-    BoundingBox() : x(0), y(0), width(0), height(0) {}
-    BoundingBox(int x_, int y_, int width_, int height_)
-            : x(x_), y(y_), width(width_), height(height_) {}
-
-    float area() const { return static_cast<float>(width * height); }
-
-    BoundingBox intersect(const BoundingBox &other) const {
-        int xStart = std::max(x, other.x);
-        int yStart = std::max(y, other.y);
-        int xEnd = std::min(x + width, other.x + other.width);
-        int yEnd = std::min(y + height, other.y + other.height);
-        int intersectWidth = std::max(0, xEnd - xStart);
-        int intersectHeight = std::max(0, yEnd - yStart);
-        return BoundingBox{xStart, yStart, intersectWidth, intersectHeight};
-    }
-};
-
-class Categoria{
-public:
-    string label;
-    float score;
-};
-
-
-class Resultados{
-public:
-    BoundingBox boundingBox;
-    vector<Categoria> categories;
-};

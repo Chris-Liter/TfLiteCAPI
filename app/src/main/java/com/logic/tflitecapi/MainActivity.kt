@@ -115,9 +115,10 @@ class MainActivity : AppCompatActivity() , DetectorListener{
             if(cambio) {
                 fragmento.cambio.text = "Api C++"
                 objectDetector = null
-                fragmento.overlay.invalidate()
+                //fragmento.overlay.invalidate()
             }else {
                 fragmento.cambio.text = "Api Java"
+                LiberarRecursos()
             }
         }
         //imagen = findViewById(R.id.imageView)
@@ -397,6 +398,7 @@ class MainActivity : AppCompatActivity() , DetectorListener{
     external fun stringFromJNI(): String
     external fun detector(bitmap: Bitmap): String //MutableList<Results>
     external fun CreateSession(model: String, labels: String, gpu: Boolean): Boolean
+    external fun LiberarRecursos()
 
     companion object {
         // Used to load the 'guagua' library on application startup.
