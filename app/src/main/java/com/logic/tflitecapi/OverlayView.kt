@@ -102,8 +102,32 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
     }
 
     private fun drawResults(canvas: Canvas, result: Results) {
-        // Implementar el dibujo específico para Results si es necesario
-        // Similar al método drawDetection
+        val boundingBox = result.boundingBoxes
+
+        val top = boundingBox.top * scaleFactorY
+        val bottom = boundingBox.bottom * scaleFactorY
+        val left = boundingBox.left * scaleFactorX
+        val right = boundingBox.right * scaleFactorX
+
+        val drawableRect = RectF(left, top, right, bottom)
+        canvas.drawRect(drawableRect, boxPaint)
+
+        val drawableText =
+            result.categories[0].label + " " +
+                    String.format("%.2f", result.categories[0].score)
+
+        textBackgroundPaint.getTextBounds(drawableText, 0, drawableText.length, bounds)
+        val textWidth = bounds.width()
+        val textHeight = bounds.height()
+        canvas.drawRect(
+            left,
+            top,
+            left + textWidth + Companion.BOUNDING_RECT_TEXT_PADDING,
+            top + textHeight + Companion.BOUNDING_RECT_TEXT_PADDING,
+            textBackgroundPaint
+        )
+
+        canvas.drawText(drawableText, left, top + bounds.height(), textPaint)
     }
 
     fun setResults(

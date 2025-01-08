@@ -2,6 +2,7 @@ package com.logic.tflitecapi
 
 
 import android.annotation.SuppressLint
+import android.app.Application
 import android.content.Context
 import android.content.pm.PackageManager
 import android.content.res.Configuration
@@ -31,6 +32,7 @@ import org.tensorflow.lite.support.image.ImageProcessor
 import org.tensorflow.lite.support.image.TensorImage
 import org.tensorflow.lite.support.image.ops.Rot90Op
 import org.tensorflow.lite.task.core.BaseOptions
+import org.tensorflow.lite.task.core.vision.ImageProcessingOptions
 import org.tensorflow.lite.task.vision.detector.Detection
 import org.tensorflow.lite.task.vision.detector.ObjectDetector
 import java.io.File
@@ -248,12 +250,15 @@ class MainActivity : AppCompatActivity() , DetectorListener{
 
     fun setupObjectDetector(){
         val optionsBuilder = ObjectDetector.ObjectDetectorOptions.builder()
-            .setScoreThreshold(0.5f)
             .setMaxResults(5)
+            .setScoreThreshold(0.5f)
+
 
         val baseOptionsBuilder = BaseOptions.builder().setNumThreads(5)
 
         baseOptionsBuilder.useNnapi()
+
+        //val normalizationOPtions = ImageProcessingOptions.No
 
         optionsBuilder.setBaseOptions(baseOptionsBuilder.build())
 
@@ -262,19 +267,21 @@ class MainActivity : AppCompatActivity() , DetectorListener{
             val modelFile = copyModelFromRawToInternalStorage(
                 context = this, // Usa `this` si estás en una actividad
                 rawResId = R.raw.mobilenetv1, // El ID del archivo en `res/raw`
-                outputFileName = "mobilenetv1.tflite" // Nombre del archivo de salida
+                outputFileName = "yolo11ncuantizado.tflite" // Nombre del archivo de salida
             )
 
             if(cambio) {
 
-                modelo = copyRawFileToInternalStorage(this, R.raw.mobilenetv3_model, "mobilenetv3_model.tflite")
-                cocoNamesPath = copyRawFileToInternalStorage(this, R.raw.names, "names.txt")
+                //modelo = copyRawFileToInternalStorage(this, R.raw.mobilenetv3_model, "mobilenetv3_model.tflite")
+                modelo = copyRawFileToInternalStorage(this, R.raw.model, "model.tflite")
+                cocoNamesPath = copyRawFileToInternalStorage(this, R.raw.coco2, "coco.names")
 
                 sesionIniciada = CreateSession(modelo, cocoNamesPath, true)
                 if(sesionIniciada == false) {
                     cambio = sesionIniciada
                     fragmento.cambio.isActivated = false
                 }
+
                 objectDetector =
                     ObjectDetector.createFromFileAndOptions(modelFile, optionsBuilder.build())
             }
@@ -319,13 +326,14 @@ class MainActivity : AppCompatActivity() , DetectorListener{
             val imagenRotada = Bitmap.createBitmap(image, 0, 0, image.width, image.height, matriz, true)
 
             val nombre: String = ""
-            val results: String = detector(imagenRotada)
+            val results = detector(imagenRotada)
+
 
             inferenceTime = SystemClock.uptimeMillis() - inferenceTime
 
             fragmento.latencia.text = "$inferenceTime ms"
-            fragmento.obje.text = results
-
+            //fragmento.obje.text = results
+            objectDetectorListener?.onResultsC(results, inferenceTime, imagenRotada.height, imagenRotada.width)
         }
         else
         {
@@ -396,7 +404,7 @@ class MainActivity : AppCompatActivity() , DetectorListener{
      * which is packaged with this application.
      */
     external fun stringFromJNI(): String
-    external fun detector(bitmap: Bitmap): String //MutableList<Results>
+    external fun detector(bitmap: Bitmap): MutableList<Results> //String
     external fun CreateSession(model: String, labels: String, gpu: Boolean): Boolean
     external fun LiberarRecursos()
 
@@ -441,11 +449,11 @@ class MainActivity : AppCompatActivity() , DetectorListener{
         imageWidth: Int
     ) {
         runOnUiThread{
-//            fragmento.overlay.setResults(
-//                results ?: LinkedList<Results>(),
-//                imageHeight,
-//                imageWidth
-//            )
+            fragmento.overlay.setResultsC(
+                results ?: LinkedList<Results>(),
+                imageHeight,
+                imageWidth
+            )
 
             fragmento.overlay.invalidate()
         }
