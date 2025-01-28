@@ -17,6 +17,8 @@
 #include <tensorflow/lite/builtin_op_data.h>
 #include <tensorflow/lite/version.h>
 
+#include <opencv2/objdetect/objdetect.hpp>
+
 //#include <tensorflow/lite/delegates/gpu/metal_delegate.h>
 
 #define LOG_TAG "TFLite-Error"
@@ -144,7 +146,6 @@ extern "C"{
         cvtColor(inputMat, inputMat, cv::COLOR_BGR2RGB);
 
         inputMat.convertTo(inputMat, CV_8UC3);
-
         uint8_t* input = interprete->typed_input_tensor<uint8_t>(0); // Obtener puntero al tensor
 
         memcpy(input, inputMat.data, 320 * 320 * 3);
@@ -174,8 +175,19 @@ extern "C"{
 
         int maximo = 0;
 
+        string ruta = "";
+        CascadeClassifier cascada = CascadeClassifier(ruta);
+
+        vector<Rect> body;
+
+        cascada.detectMultiScale(inputMat, body);
+
+        for(int i = 0; i < body.size(); i++){
+
+        }
+
         for (int i = 0; i < num_detections; i++) {
-            if (scores[i] >= 0.6) {  // Umbral de confianza
+            if (scores[i] >= 0.5) {  // Umbral de confianza
                 if(maximo >= 5) break;
                 int ymin = static_cast<int>(boxes[i * 4] * 320 * scaleY );
                 int xmin = static_cast<int>(boxes[i * 4 + 1] * 320 * scaleX);

@@ -17,7 +17,10 @@
         android:id="@+id/camara"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        app:scaleType="fillCenter"/>
+        app:scaleType="fillCenter">
+
+
+    </androidx.camera.view.PreviewView>
 
     <com.logic.tflitecapi.OverlayView
         android:id="@+id/overlay"
@@ -35,9 +38,14 @@
         android:layout_height="25dp" android:textSize="20dp"
         android:id="@+id/obje" app:layout_constraintTop_toBottomOf="@+id/latencia"
         tools:ignore="MissingConstraints" />
-    <ToggleButton app:layout_constraintStart_toEndOf="@id/latencia" android:id="@+id/cambio"
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Numeros" android:id="@+id/numeros" android:layout_margin="20dp"/>
+    <ToggleButton android:layout_margin="20dp" app:layout_constraintStart_toEndOf="@id/latencia" android:id="@+id/cambio"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         tools:ignore="MissingConstraints" />
+
 
 </androidx.constraintlayout.widget.ConstraintLayout>

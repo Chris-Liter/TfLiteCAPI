@@ -4,18 +4,22 @@ package com.logic.tflitecapi
 import android.annotation.SuppressLint
 import android.app.Application
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import androidx.camera.core.Camera
 import android.graphics.Matrix
+import android.graphics.RectF
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.SystemClock
+import android.util.Base64
 import android.util.Log
 import android.util.Size
+import android.widget.Button
 import android.widget.ImageView
 import android.widget.Toast
 import androidx.camera.core.AspectRatio
@@ -27,7 +31,15 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import com.logic.tflitecapi.databinding.ActivityMainBinding
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.create
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.ResponseBody
+import org.json.JSONObject
 import org.tensorflow.lite.support.image.ImageProcessor
 import org.tensorflow.lite.support.image.TensorImage
 import org.tensorflow.lite.support.image.ops.Rot90Op
@@ -35,6 +47,14 @@ import org.tensorflow.lite.task.core.BaseOptions
 import org.tensorflow.lite.task.core.vision.ImageProcessingOptions
 import org.tensorflow.lite.task.vision.detector.Detection
 import org.tensorflow.lite.task.vision.detector.ObjectDetector
+import retrofit2.Call
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.create
+import retrofit2.http.Multipart
+import retrofit2.http.POST
+import retrofit2.http.Part
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.util.LinkedList
 import java.util.concurrent.ExecutorService
@@ -56,6 +76,19 @@ interface DetectorListener {
         imageHeight: Int,
         imageWidth: Int
     )
+}
+
+
+
+interface ApiService {
+    @Multipart
+    @POST("process_img")
+    fun uploadFrame(@Part frame: MultipartBody.Part): Call<ResponseBody>
+
+    @Multipart
+    @POST("process_numero")
+    fun process_numero(@Part frame: MultipartBody.Part): Call<ResponseBody>
+
 }
 
 
@@ -84,9 +117,14 @@ class MainActivity : AppCompatActivity() , DetectorListener{
     private var sesionIniciada: Boolean = false
     private var cambio: Boolean = false
 
+    val retrofit = Retrofit.Builder()
+        .baseUrl("http://192.168.0.117:5000/")  // URL de tu servidor Flask
+        .addConverterFactory(GsonConverterFactory.create())
+        .build()
+    val apiService = retrofit.create(ApiService::class.java)
 
 
-
+    private lateinit var numeros: Button;
 
     var cocoNamesPath : String = ""
     var modelo : String = ""
@@ -151,6 +189,14 @@ class MainActivity : AppCompatActivity() , DetectorListener{
                 )
             }
         }
+
+        numeros = findViewById(R.id.numeros)
+
+        numeros.setOnClickListener{
+            var intent: Intent = Intent(this, ClasificarNumeros::class.java)
+            startActivity(intent)
+        }
+
     }
 
     override fun onDestroy() {
@@ -325,15 +371,47 @@ class MainActivity : AppCompatActivity() , DetectorListener{
             matriz.postRotate(90f)
             val imagenRotada = Bitmap.createBitmap(image, 0, 0, image.width, image.height, matriz, true)
 
-            val nombre: String = ""
-            val results = detector(imagenRotada)
+
+            //val results = detector(imagenRotada)
+            //val cadena = processBitmapToBase64(imagenRotada)
+
+            val outputStream = ByteArrayOutputStream()
+            imagenRotada.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
+            val byteArray = outputStream.toByteArray()
+            // Crear el archivo MultipartBody
+            val requestBody = byteArray.toRequestBody("image/jpeg".toMediaTypeOrNull())
+
+            val multipartBody = MultipartBody.Part.createFormData("image", "image.jpeg", requestBody)
+
+            val call = apiService.uploadFrame(multipartBody)
+            val resultsList: MutableList<Results> = mutableListOf()
+            val numero = inferenceTime.milliseconds.toString()
+
+            try {
+                val response = call.execute()  // Llamada sincrónica
+                if (response.isSuccessful) {
+                    val body = response.body()?.string()  // La respuesta ya está en el cuerpo
+                    val gson = Gson()
+                    val api: ApiResponse = gson.fromJson(body, ApiResponse::class.java)
+
+                    resultsList.addAll(api.results)
+                    //results = resultsList
+
+                    Log.d("Retrofit", "Respuesta exitosa: $body")
+                } else {
+                    val error = response.errorBody()?.string()
+                    Log.e("Retrofit", "Error en la respuesta: $error")
+                }
+            } catch (e: Exception) {
+                Log.e("Retrofit", "Error en la solicitud: ${e.message}")
+            }
 
 
             inferenceTime = SystemClock.uptimeMillis() - inferenceTime
 
             fragmento.latencia.text = "$inferenceTime ms"
             //fragmento.obje.text = results
-            objectDetectorListener?.onResultsC(results, inferenceTime, imagenRotada.height, imagenRotada.width)
+            objectDetectorListener?.onResultsC(resultsList, inferenceTime, imagenRotada.height, imagenRotada.width)
         }
         else
         {
@@ -349,6 +427,20 @@ class MainActivity : AppCompatActivity() , DetectorListener{
         }
 
 
+    }
+
+
+    fun processBitmapToBase64(bitmap: Bitmap): String{
+        val byteArrayOutputStream = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream)
+        val byteArray = byteArrayOutputStream.toByteArray()
+
+        if (byteArray.isEmpty()) {
+            Log.e("Error", "La imagen no se convirtió correctamente a bytes.")
+        } else {
+            Log.e("Si", "Tamaño de la imagen en bytes: ${byteArray.size}")
+        }
+        return Base64.encodeToString(byteArray, Base64.NO_WRAP)
     }
 
     override fun onRequestPermissionsResult(
@@ -460,3 +552,7 @@ class MainActivity : AppCompatActivity() , DetectorListener{
     }
 
 }
+
+data class ApiResponse(
+    val results: List<Results>
+)
