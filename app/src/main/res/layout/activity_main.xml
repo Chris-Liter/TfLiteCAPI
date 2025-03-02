@@ -34,10 +34,10 @@
         android:id="@+id/latencia"
         tools:ignore="MissingConstraints" />
     <TextView
-        android:layout_width="100dp" android:textColor="@color/white" android:text=""
+        android:layout_width="300dp" android:textColor="@color/white" android:text=""
         android:layout_height="25dp" android:textSize="20dp"
         android:id="@+id/obje" app:layout_constraintTop_toBottomOf="@+id/latencia"
-        tools:ignore="MissingConstraints" />
+        tools:ignore="MissingConstraints" android:translationY="30dp"/>
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

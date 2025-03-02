@@ -50,6 +50,7 @@ class ClasificarNumeros : AppCompatActivity() {
             insets
         }
 
+
         limpiar = findViewById(R.id.limpiar)
         limpiar.setOnClickListener { area.clean() }
 

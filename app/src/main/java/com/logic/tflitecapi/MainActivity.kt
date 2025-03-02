@@ -384,17 +384,21 @@ class MainActivity : AppCompatActivity() , DetectorListener{
             val multipartBody = MultipartBody.Part.createFormData("image", "image.jpeg", requestBody)
 
             val call = apiService.uploadFrame(multipartBody)
-            val resultsList: MutableList<Results> = mutableListOf()
+            //val resultsList: MutableList<Results> = mutableListOf()
             val numero = inferenceTime.milliseconds.toString()
-
+            val categoria : List<String> = mutableListOf()
             try {
                 val response = call.execute()  // Llamada sincrónica
                 if (response.isSuccessful) {
                     val body = response.body()?.string()  // La respuesta ya está en el cuerpo
                     val gson = Gson()
-                    val api: ApiResponse = gson.fromJson(body, ApiResponse::class.java)
+                    //val api: ApiResponse = gson.fromJson(body, ApiResponse::class.java)
 
-                    resultsList.addAll(api.results)
+                    //val dec = api.categoria
+                    //resultsList.addAll(api.categoria)
+                    //runOnUiThread{
+                        fragmento.obje.text = body ?: "Nada"
+                    //}
                     //results = resultsList
 
                     Log.d("Retrofit", "Respuesta exitosa: $body")
@@ -411,7 +415,7 @@ class MainActivity : AppCompatActivity() , DetectorListener{
 
             fragmento.latencia.text = "$inferenceTime ms"
             //fragmento.obje.text = results
-            objectDetectorListener?.onResultsC(resultsList, inferenceTime, imagenRotada.height, imagenRotada.width)
+            //objectDetectorListener?.onResultsC(resultsList, inferenceTime, imagenRotada.height, imagenRotada.width)
         }
         else
         {
@@ -554,5 +558,6 @@ class MainActivity : AppCompatActivity() , DetectorListener{
 }
 
 data class ApiResponse(
+    val categoria: List<String>,
     val results: List<Results>
 )
