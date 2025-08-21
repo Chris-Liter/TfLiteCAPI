@@ -30,7 +30,7 @@ namespace tensorflow {
 namespace {
 
 // TODO(cais): Switch to safe_strtob when available.
-absl::Status ParseBoolString(const string& bool_str, bool* bool_val) {
+Status ParseBoolString(const string& bool_str, bool* bool_val) {
   const string lower_bool_str = absl::AsciiStrToLower(bool_str);
   if (lower_bool_str == "false" || lower_bool_str == "f" ||
       lower_bool_str == "0") {
@@ -42,13 +42,13 @@ absl::Status ParseBoolString(const string& bool_str, bool* bool_val) {
     return absl::InvalidArgumentError(
         absl::StrCat("Invalid string for bool value: ", bool_str));
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace
 
 // static
-absl::Status DebugNodeInserter::InsertNodes(
+Status DebugNodeInserter::InsertNodes(
     const protobuf::RepeatedPtrField<DebugTensorWatch>& watches, Graph* graph,
     Device* device) {
   // TODO(cais): This method is getting too large in size.
@@ -56,7 +56,7 @@ absl::Status DebugNodeInserter::InsertNodes(
 
   if (watches.empty()) {
     // Nothing to do: Return OK right away.
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   // Debug ops and URLs for wildcard node names (if any).
@@ -89,16 +89,15 @@ absl::Status DebugNodeInserter::InsertNodes(
                                   watch.debug_urls().begin(),
                                   watch.debug_urls().end());
       } else {
-        return absl::Status(
-            absl::StatusCode::kFailedPrecondition,
-            strings::StrCat("output_slot is expected to be -1 for wildcard ",
-                            "node name (\"*\"), but got ",
-                            watch.output_slot()));
+        return Status(absl::StatusCode::kFailedPrecondition,
+                      strings::StrCat(
+                          "output_slot is expected to be -1 for wildcard ",
+                          "node name (\"*\"), but got ", watch.output_slot()));
       }
       continue;
     } else {
       if (watch.output_slot() < 0) {
-        return absl::Status(
+        return Status(
             absl::StatusCode::kFailedPrecondition,
             strings::StrCat("A negative output_slot in DebugTensorWatch is ",
                             "valid only for the wildcard node name (\"*\"), ",
@@ -126,7 +125,7 @@ absl::Status DebugNodeInserter::InsertNodes(
   }
 
   if (tensor_watches.empty()) {
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   DeviceType device_type = DeviceType{device->device_type()};
@@ -184,12 +183,12 @@ absl::Status DebugNodeInserter::InsertNodes(
           explicit_tensor_match ? tensor_watch_urls[tensor_name]
                                 : default_debug_urls;
       Node* copy_node;
-      absl::Status copy_s =
+      Status copy_s =
           CreateCopyNode(graph, device_type, memory_type == HOST_MEMORY,
                          src_node->name(), src_output_slot, src_dt, tensor_name,
                          debug_ops, debug_urls, &copy_node);
       if (!copy_s.ok()) {
-        return absl::Status(
+        return Status(
             absl::StatusCode::kFailedPrecondition,
             strings::StrCat("Failed to create Copy/CopyHost node for tensor ",
                             tensor_name, ", due to: ", copy_s.message()));
@@ -204,9 +203,9 @@ absl::Status DebugNodeInserter::InsertNodes(
         const string& debug_op_name = debug_ops[i];
 
         Node* debug_node;
-        absl::Status debug_s = CreateDebugNode(
-            graph, *device, copy_node->name(), src_dt, tensor_name, debug_urls,
-            i, debug_op_name, &debug_node);
+        Status debug_s = CreateDebugNode(graph, *device, copy_node->name(),
+                                         src_dt, tensor_name, debug_urls, i,
+                                         debug_op_name, &debug_node);
         if (debug_s.ok()) {
           graph->AddEdge(copy_node, 0, debug_node, 0);
           debug_nodes.push_back(debug_node);
@@ -216,7 +215,7 @@ absl::Status DebugNodeInserter::InsertNodes(
                       << "tensor name = " << tensor_name << "; "
                       << "debug op name = " << debug_op_name;
           } else {
-            return absl::Status(
+            return Status(
                 absl::StatusCode::kFailedPrecondition,
                 strings::StrCat("Failed to create debug node ", debug_op_name,
                                 " for tensor ", tensor_name,
@@ -254,7 +253,7 @@ absl::Status DebugNodeInserter::InsertNodes(
     graph->RemoveEdge(edge);
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 void DebugNodeInserter::DeparallelizeWhileLoops(Graph* graph, Device* device) {
@@ -300,7 +299,7 @@ const string DebugNodeInserter::GetDebugNodeName(const string& tensor_name,
 }
 
 // static
-absl::Status DebugNodeInserter::CreateCopyNode(
+Status DebugNodeInserter::CreateCopyNode(
     Graph* graph, const DeviceType device_type, const bool is_host_memory,
     const string& src_node_name, const int src_output, const DataType src_dt,
     const string& tensor_name, const std::vector<string>& debug_ops,
@@ -339,31 +338,30 @@ absl::Status DebugNodeInserter::CreateCopyNode(
                      .Attr("debug_ops_spec", debug_ops_spec);
 
   if (!builder.Finalize(&node_def).ok()) {
-    return absl::Status(
+    return Status(
         absl::StatusCode::kFailedPrecondition,
         strings::StrCat("Failed to create node definition ", "for copy op ",
                         copy_node_name, " on watched tensor ", tensor_name));
   }
-  absl::Status s = FindKernelDef(device_type, node_def, &kdef, nullptr);
+  Status s = FindKernelDef(device_type, node_def, &kdef, nullptr);
 
   if (!s.ok()) {
-    return absl::Status(
+    return Status(
         absl::StatusCode::kFailedPrecondition,
         strings::StrCat("Failed to find kernel definition ", "for copy op ",
                         copy_node_name, " on watched tensor ", tensor_name));
   }
   if (!NodeBuilder(builder).Finalize(graph, copy_node).ok()) {
-    return absl::Status(
-        absl::StatusCode::kFailedPrecondition,
-        strings::StrCat("Failed to create copy node ", copy_node_name,
-                        " on watched tensor ", tensor_name));
+    return Status(absl::StatusCode::kFailedPrecondition,
+                  strings::StrCat("Failed to create copy node ", copy_node_name,
+                                  " on watched tensor ", tensor_name));
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // static
-absl::Status DebugNodeInserter::ParseDebugOpName(
+Status DebugNodeInserter::ParseDebugOpName(
     const string& debug_op_name, string* debug_op_name_proper,
     std::unordered_map<string, string>* attributes) {
   const size_t l_index = debug_op_name.find('(');
@@ -411,11 +409,11 @@ absl::Status DebugNodeInserter::ParseDebugOpName(
       }
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // static
-absl::Status DebugNodeInserter::SetDebugNodeAttributes(
+Status DebugNodeInserter::SetDebugNodeAttributes(
     Node* debug_node, const std::unordered_map<string, string>& attributes) {
   std::unordered_set<string> unfulfilled_keys;
   for (const auto& item : attributes) {
@@ -429,7 +427,8 @@ absl::Status DebugNodeInserter::SetDebugNodeAttributes(
         debug_node->AddAttr<string>(attr.name(), attr_value);
       } else if (attr.type() == "float") {
         float float_value = 0.0;
-        if (!::tensorflow::strings::safe_strtof(attr_value, &float_value)) {
+        if (!::tensorflow::strings::safe_strtof(attr_value.c_str(),
+                                                &float_value)) {
           return absl::InvalidArgumentError(absl::StrCat(
               "Invalid value string for float-type attribute ", attr.name(),
               "of debug node ", debug_node->name(), ": \"", attr_value, "\""));
@@ -462,7 +461,7 @@ absl::Status DebugNodeInserter::SetDebugNodeAttributes(
   }
 
   if (unfulfilled_keys.empty()) {
-    return absl::OkStatus();
+    return OkStatus();
   } else {
     return absl::InvalidArgumentError(absl::StrCat(
         unfulfilled_keys.size(),
@@ -472,7 +471,7 @@ absl::Status DebugNodeInserter::SetDebugNodeAttributes(
 }
 
 // static
-absl::Status DebugNodeInserter::CreateDebugNode(
+Status DebugNodeInserter::CreateDebugNode(
     Graph* graph, const Device& device, const string& src_copy_node_name,
     const DataType src_dt, const string& tensor_name,
     const std::vector<string>& debug_urls, const int debug_op_num,
@@ -515,7 +514,7 @@ absl::Status DebugNodeInserter::CreateDebugNode(
     TF_RETURN_IF_ERROR(SetDebugNodeAttributes(*debug_node, custom_attributes));
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace tensorflow

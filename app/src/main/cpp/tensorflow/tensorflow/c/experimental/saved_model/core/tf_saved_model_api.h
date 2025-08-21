@@ -55,18 +55,17 @@ namespace tensorflow {
 // (https://github.com/tensorflow/tensorflow/blob/2b96f3662bd776e277f86997659e61046b56c315/tensorflow/python/eager/def_function.py#L1167-L1171),
 class TFSavedModelAPI : public SavedModelAPI {
  public:
-  absl::Status GetFunction(const std::string& function_path,
-                           ConcreteFunction** function) override;
+  Status GetFunction(const std::string& function_path,
+                     ConcreteFunction** function) override;
 
-  absl::Status GetFunctions(
+  Status GetFunctions(
       int node_id,
       absl::flat_hash_map<std::string, ConcreteFunction*>* functions) override;
 
-  absl::Status GetSignatureDefFunction(
-      const std::string& signature_def_key,
-      SignatureDefFunction** function) override;
+  Status GetSignatureDefFunction(const std::string& signature_def_key,
+                                 SignatureDefFunction** function) override;
 
-  static absl::Status Load(
+  static Status Load(
       const std::string& directory,
       const absl::optional<std::unordered_set<std::string>>& tags,
       ImmediateExecutionContext* context,
@@ -74,8 +73,7 @@ class TFSavedModelAPI : public SavedModelAPI {
 
   ~TFSavedModelAPI() override = default;
 
-  absl::Status GetVariable(const std::string& variable_path,
-                           Variable** variable);
+  Status GetVariable(const std::string& variable_path, Variable** variable);
 
   SavedModelV2Bundle* GetBundle() override;
 

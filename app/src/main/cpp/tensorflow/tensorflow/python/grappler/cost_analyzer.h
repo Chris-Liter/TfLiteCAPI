@@ -51,8 +51,7 @@ class CostAnalyzer {
  public:
   explicit CostAnalyzer(const GrapplerItem& item, Cluster* cluster,
                         const string& suffix);
-  absl::Status GenerateReport(std::ostream& os, bool per_node_report,
-                              bool verbose);
+  Status GenerateReport(std::ostream& os, bool per_node_report, bool verbose);
 
  private:
   void PredictCosts(CostEstimator* cost_estimator, CostGraphDef* cost_graph,

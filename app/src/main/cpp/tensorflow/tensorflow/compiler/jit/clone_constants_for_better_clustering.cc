@@ -19,7 +19,7 @@ limitations under the License.
 
 #include "absl/algorithm/container.h"
 #include "tensorflow/compiler/jit/xla_cluster_util.h"
-#include "xla/status_macros.h"
+#include "tensorflow/compiler/xla/status_macros.h"
 #include "tensorflow/core/framework/node_def.pb.h"
 #include "tensorflow/core/framework/tensor.pb.h"
 #include "tensorflow/core/util/dump_graph.h"
@@ -32,15 +32,15 @@ class CloneConstantsForBetterClusteringPassImpl {
  public:
   explicit CloneConstantsForBetterClusteringPassImpl(Graph* graph)
       : graph_(graph), unique_name_counter_(0) {}
-  absl::Status Run();
+  Status Run();
 
  private:
-  absl::Status CloneSmallConstantInputs(
-      const absl::flat_hash_set<string>& name_set, Node* n);
+  Status CloneSmallConstantInputs(const absl::flat_hash_set<string>& name_set,
+                                  Node* n);
   string GenerateUniqueName(const absl::flat_hash_set<string>& name_set,
                             absl::string_view prefix);
-  absl::StatusOr<Node*> CloneNode(const absl::flat_hash_set<string>& name_set,
-                                  Node* n);
+  tsl::StatusOr<Node*> CloneNode(const absl::flat_hash_set<string>& name_set,
+                                 Node* n);
 
   Graph* graph_;
   int unique_name_counter_;
@@ -55,7 +55,7 @@ string CloneConstantsForBetterClusteringPassImpl::GenerateUniqueName(
   return candidate;
 }
 
-absl::StatusOr<Node*> CloneConstantsForBetterClusteringPassImpl::CloneNode(
+StatusOr<Node*> CloneConstantsForBetterClusteringPassImpl::CloneNode(
     const absl::flat_hash_set<string>& name_set, Node* n) {
   NodeDef new_in_def = n->def();
   new_in_def.clear_input();
@@ -75,7 +75,7 @@ absl::StatusOr<Node*> CloneConstantsForBetterClusteringPassImpl::CloneNode(
 }
 
 namespace {
-absl::StatusOr<bool> IsConstantSmall(Node* n) {
+StatusOr<bool> IsConstantSmall(Node* n) {
   const TensorProto* proto = nullptr;
   TF_RETURN_IF_ERROR(GetNodeAttr(n->def(), "value", &proto));
 
@@ -96,7 +96,7 @@ absl::StatusOr<bool> IsConstantSmall(Node* n) {
 
 // We only clone small constants since we want to avoid increasing memory
 // pressure on GPUs.
-absl::StatusOr<bool> IsSmallConstant(Node* n) {
+StatusOr<bool> IsSmallConstant(Node* n) {
   if (!n->IsConstant()) {
     return false;
   }
@@ -110,8 +110,7 @@ bool IsInPlaceOp(absl::string_view op_name) {
 }
 }  // namespace
 
-absl::Status
-CloneConstantsForBetterClusteringPassImpl::CloneSmallConstantInputs(
+Status CloneConstantsForBetterClusteringPassImpl::CloneSmallConstantInputs(
     const absl::flat_hash_set<string>& name_set, Node* n) {
   std::vector<const Edge*> in_edges;
   // Get the edges and sort them so we clone in a deterministic order.
@@ -138,10 +137,10 @@ CloneConstantsForBetterClusteringPassImpl::CloneSmallConstantInputs(
       }
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status CloneConstantsForBetterClusteringPassImpl::Run() {
+Status CloneConstantsForBetterClusteringPassImpl::Run() {
   absl::flat_hash_set<string> name_set;
   absl::c_transform(graph_->nodes(), std::inserter(name_set, name_set.begin()),
                     [](Node* n) { return n->name(); });
@@ -186,7 +185,7 @@ absl::Status CloneConstantsForBetterClusteringPassImpl::Run() {
     // operation only modifies Const/clone_2 in place.
 
     if (IsInPlaceOp(n->type_string())) {
-      return absl::OkStatus();
+      return OkStatus();
     }
     nodes.push_back(n);
   }
@@ -196,13 +195,13 @@ absl::Status CloneConstantsForBetterClusteringPassImpl::Run() {
   for (Node* n : nodes) {
     TF_RETURN_IF_ERROR(CloneSmallConstantInputs(name_set, n));
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status CloneConstantsForBetterClusteringPass::Run(
+Status CloneConstantsForBetterClusteringPass::Run(
     const GraphOptimizationPassOptions& options) {
   if (GetGlobalJitLevelForGraph(options) == OptimizerOptions::OFF) {
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   Graph* g = options.graph->get();
@@ -217,7 +216,7 @@ absl::Status CloneConstantsForBetterClusteringPass::Run(
     DumpGraphToFile("after_clone_constants_for_better_clustering", *g);
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace tensorflow

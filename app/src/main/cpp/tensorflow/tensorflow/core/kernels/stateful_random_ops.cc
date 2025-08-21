@@ -55,7 +55,7 @@ struct UpdateVariableAndFill_Philox<CPUDevice, Distribution> {
 
 }  // end namespace functor
 
-absl::Status CheckState(const Tensor& state) {
+Status CheckState(const Tensor& state) {
   if (state.dtype() != STATE_ELEMENT_DTYPE) {
     return errors::InvalidArgument("dtype of RNG state variable must be ",
                                    DataTypeString(STATE_ELEMENT_DTYPE),
@@ -65,10 +65,10 @@ absl::Status CheckState(const Tensor& state) {
     return errors::InvalidArgument(
         "RNG state must have one and only one dimension, not ", state.dims());
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status CheckPhiloxState(const Tensor& state, int64_t alg_tag_skip = 0) {
+Status CheckPhiloxState(const Tensor& state, int64_t alg_tag_skip = 0) {
   static_assert(std::is_same<StateElementType, int64_t>::value,
                 "StateElementType must be int64");
   static_assert(std::is_same<PhiloxRandom::ResultElementType, uint32>::value,
@@ -80,7 +80,7 @@ absl::Status CheckPhiloxState(const Tensor& state, int64_t alg_tag_skip = 0) {
         " must be at least ",
         min_size, "; got ", state.NumElements());
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 template <typename AlgEnumType>
@@ -91,7 +91,7 @@ StatusOr<AlgEnumType> GetAlgId(OpKernelContext* ctx, int input_idx) {
 }
 
 template <typename AlgEnumType>
-absl::StatusOr<ConcreteRngAlgorithm> ResolveAlg(AlgEnumType alg_id) {
+StatusOr<ConcreteRngAlgorithm> ResolveAlg(AlgEnumType alg_id) {
   switch (alg_id) {
     case RNG_ALG_PHILOX:
       return ConcreteRngAlgorithm::RNG_ALG_PHILOX;
@@ -106,14 +106,13 @@ absl::StatusOr<ConcreteRngAlgorithm> ResolveAlg(AlgEnumType alg_id) {
 }
 
 template <typename AlgEnumType>
-absl::StatusOr<ConcreteRngAlgorithm> GetAlg(OpKernelContext* ctx,
-                                            int input_idx) {
+StatusOr<ConcreteRngAlgorithm> GetAlg(OpKernelContext* ctx, int input_idx) {
   TF_ASSIGN_OR_RETURN(auto alg_id, GetAlgId<AlgEnumType>(ctx, input_idx));
   return ResolveAlg(alg_id);
 }
 
 template <typename Device, typename Distribution>
-absl::Status UpdateVariableAndFill(
+Status UpdateVariableAndFill(
     OpKernelContext* ctx, Distribution dist, int state_input_idx,
     bool read_alg_from_state, ConcreteRngAlgorithm alg, int64_t output_size,
     typename Distribution::ResultElementType* output_data) {
@@ -150,7 +149,7 @@ absl::Status UpdateVariableAndFill(
       arg.state_tensor = var_tensor;
       functor::UpdateVariableAndFill_Philox<Device, Distribution>()(
           ctx, ctx->eigen_device<Device>(), dist, &arg, output_data);
-      return absl::OkStatus();
+      return OkStatus();
     case ConcreteRngAlgorithm::RNG_ALG_THREEFRY:
       return errors::Unimplemented(
           "Non-XLA devices don't support the ThreeFry algorithm.");
@@ -190,7 +189,7 @@ class StatefulRandomOp : public OpKernel {
 };
 
 template <typename T>
-absl::Status GetScalar(const Tensor& tensor, int input_idx, T* result) {
+Status GetScalar(const Tensor& tensor, int input_idx, T* result) {
   auto dtype = DataTypeToEnum<T>::v();
   if (tensor.dims() != 0) {
     return errors::InvalidArgument("input ", std::to_string(input_idx),
@@ -203,7 +202,7 @@ absl::Status GetScalar(const Tensor& tensor, int input_idx, T* result) {
                                    ", not ", DataTypeString(tensor.dtype()));
   }
   *result = tensor.flat<T>()(0);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 template <typename Device, class Distribution>

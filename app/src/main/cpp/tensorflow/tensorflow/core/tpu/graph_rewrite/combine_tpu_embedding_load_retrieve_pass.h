@@ -16,11 +16,9 @@ limitations under the License.
 #ifndef TENSORFLOW_CORE_TPU_GRAPH_REWRITE_COMBINE_TPU_EMBEDDING_LOAD_RETRIEVE_PASS_H_
 #define TENSORFLOW_CORE_TPU_GRAPH_REWRITE_COMBINE_TPU_EMBEDDING_LOAD_RETRIEVE_PASS_H_
 
-#include "absl/status/status.h"
 #include "tensorflow/core/common_runtime/optimization_registry.h"
 #include "tensorflow/core/graph/graph.h"
 #include "tensorflow/core/platform/env.h"
-#include "tensorflow/core/platform/status.h"
 
 namespace tensorflow {
 
@@ -28,7 +26,7 @@ namespace tensorflow {
 // operators.
 class CombineTPUEmbeddingLoadRetrievePass : public GraphOptimizationPass {
  public:
-  absl::Status Run(const GraphOptimizationPassOptions& options) override;
+  Status Run(const GraphOptimizationPassOptions& options) override;
 };
 
 }  // namespace tensorflow

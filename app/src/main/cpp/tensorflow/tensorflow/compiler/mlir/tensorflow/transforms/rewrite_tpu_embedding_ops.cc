@@ -37,13 +37,12 @@ struct RewriteTPUEmbeddingOps
 
 // Rewrites the given op to `OpT` op after adding the given operand at the end.
 template <typename OpT>
-OpT AddOperandAndRewriteAs(Operation* op, Value operand, NamedAttrList attr,
-                           OpBuilder* builder) {
+OpT AddOperandAndRewriteAs(Operation* op, Value operand, OpBuilder* builder) {
   builder->setInsertionPoint(op);
   auto operands = llvm::to_vector<4>(op->getOperands());
   operands.push_back(operand);
   auto new_op = builder->create<OpT>(op->getLoc(), op->getResultTypes(),
-                                     operands, attr.getAttrs());
+                                     operands, op->getAttrs());
   op->replaceAllUsesWith(new_op.getOperation()->getResults());
   op->erase();
   return new_op;
@@ -84,8 +83,8 @@ LogicalResult RunOnRegion(Region* region) {
 
   // Rewrite RecvTPUEmbeddingActivations op to the corresponding internal op.
   if (recv_op)
-    AddOperandAndRewriteAs<XlaRecvTPUEmbeddingActivationsOp>(
-        recv_op, dedup_op, recv_op->getAttrs(), &builder);
+    AddOperandAndRewriteAs<XlaRecvTPUEmbeddingActivationsOp>(recv_op, dedup_op,
+                                                             &builder);
 
   // Rewrite SendTPUEmbeddingGradients op to the corresponding internal op and
   // then update the OperandSegmentSize attribute.
@@ -93,11 +92,11 @@ LogicalResult RunOnRegion(Region* region) {
     int32_t operand_sizes[] = {static_cast<int32_t>(send_op.getN()),
                                static_cast<int32_t>(send_op.getNN()), 1};
     auto operand_size_attr = builder.getDenseI32ArrayAttr(operand_sizes);
-    NamedAttrList attrs(send_op->getAttrs());
-    attrs.set(send_op.getOperandSegmentSizeAttr(), operand_size_attr);
 
-    AddOperandAndRewriteAs<XlaSendTPUEmbeddingGradientsOp>(send_op, dedup_op,
-                                                           attrs, &builder);
+    auto new_send_op = AddOperandAndRewriteAs<XlaSendTPUEmbeddingGradientsOp>(
+        send_op, dedup_op, &builder);
+    new_send_op->setAttr(new_send_op.getOperandSegmentSizeAttr(),
+                         operand_size_attr);
   }
   return success();
 }

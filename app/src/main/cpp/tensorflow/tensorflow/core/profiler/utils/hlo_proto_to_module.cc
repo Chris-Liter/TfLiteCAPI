@@ -18,19 +18,19 @@ limitations under the License.
 #include <memory>
 #include <utility>
 
-#include "xla/hlo/ir/hlo_module.h"
-#include "xla/service/hlo.pb.h"
-#include "xla/service/hlo_module_config.h"
-#include "xla/util.h"
+#include "tensorflow/compiler/xla/hlo/ir/hlo_module.h"
+#include "tensorflow/compiler/xla/service/hlo.pb.h"
+#include "tensorflow/compiler/xla/service/hlo_module_config.h"
+#include "tensorflow/compiler/xla/util.h"
 #include "tensorflow/core/platform/statusor.h"
 
 namespace tensorflow {
 namespace profiler {
 
-absl::StatusOr<std::unique_ptr<xla::HloModule>> ConvertHloProtoToModule(
+xla::StatusOr<std::unique_ptr<xla::HloModule>> ConvertHloProtoToModule(
     const xla::HloProto& hlo_proto) {
   if (!hlo_proto.has_hlo_module()) {
-    return xla::Internal("No HLO module found in the HLO proto");
+    return xla::InternalError("No HLO module found in the HLO proto");
   }
   const xla::HloModuleProto& module_proto = hlo_proto.hlo_module();
   TF_ASSIGN_OR_RETURN(auto config, xla::HloModule::CreateModuleConfigFromProto(

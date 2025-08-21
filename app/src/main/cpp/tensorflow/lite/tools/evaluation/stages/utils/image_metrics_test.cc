@@ -19,9 +19,8 @@ limitations under the License.
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
-#include <iterator>
-#include <vector>
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 namespace tflite {

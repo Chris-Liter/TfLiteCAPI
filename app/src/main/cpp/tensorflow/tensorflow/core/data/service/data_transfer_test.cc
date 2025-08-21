@@ -35,9 +35,9 @@ namespace {
 class TestDataTransferServer : public DataTransferServer {
  public:
   explicit TestDataTransferServer(bool* called) : called_(called) {}
-  absl::Status Start(const experimental::WorkerConfig& unused_config) override {
+  Status Start() override {
     *called_ = true;
-    return absl::OkStatus();
+    return OkStatus();
   }
   int Port() const override { return 0; }
 
@@ -58,14 +58,14 @@ TEST(DataTransferTest, RegisterDataTransferServerBuilder) {
   bool called = false;
   DataTransferServer::Register("test", [&called](auto ignore, auto* server) {
     *server = std::make_shared<TestDataTransferServer>(&called);
-    return absl::OkStatus();
+    return OkStatus();
   });
 
   std::shared_ptr<DataTransferServer> server;
   TF_ASSERT_OK(DataTransferServer::Build("test", {}, &server));
   EXPECT_FALSE(called);
 
-  TF_ASSERT_OK(server->Start(/*config=*/{}));
+  TF_ASSERT_OK(server->Start());
   EXPECT_TRUE(called);
 }
 
@@ -85,7 +85,7 @@ TEST(DataTransferTest, EstimateVariantMemoryUsageBytes) {
   const size_t data_size = 1000;
 
   std::unique_ptr<CompressedElement> compressed{
-      protobuf::Arena::Create<CompressedElement>(nullptr)};
+      protobuf::Arena::CreateMessage<CompressedElement>(nullptr)};
   compressed->set_data(std::string(data_size, 'a'));
 
   Tensor tensor(DT_VARIANT, TensorShape({}));

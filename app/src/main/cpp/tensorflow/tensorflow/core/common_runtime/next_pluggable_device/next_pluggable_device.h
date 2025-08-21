@@ -20,7 +20,6 @@ limitations under the License.
 #include <string>
 #include <vector>
 
-#include "absl/status/status.h"
 #include "tensorflow/compiler/jit/pjrt_base_device.h"
 #include "tensorflow/compiler/tf2xla/layout_util.h"
 #include "tensorflow/core/common_runtime/local_device.h"
@@ -69,15 +68,15 @@ class NextPluggableDevice : public PjRtBaseDevice {
   void ComputeAsync(AsyncOpKernel* op_kernel, OpKernelContext* context,
                     AsyncOpKernel::DoneCallback done) override;
 
-  absl::Status Sync() override;
+  Status Sync() override;
 
   void Sync(const DoneCallback& done) override;
 
-  absl::Status TryGetDeviceContext(DeviceContext** out_context) override;
+  Status TryGetDeviceContext(DeviceContext** out_context) override;
 
-  absl::Status MakeTensorFromProto(const TensorProto& tensor_proto,
-                                   AllocatorAttributes alloc_attrs,
-                                   Tensor* tensor) override;
+  Status MakeTensorFromProto(const TensorProto& tensor_proto,
+                             AllocatorAttributes alloc_attrs,
+                             Tensor* tensor) override;
 
   int GetDeviceOrdinal() const { return device_ordinal_; }
 

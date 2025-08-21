@@ -18,10 +18,11 @@ limitations under the License.
 #include <cmath>
 #include <limits>
 
-#include "xla/hlo/builder/lib/constants.h"
-#include "xla/hlo/builder/lib/math.h"
-#include "xla/hlo/builder/xla_builder.h"
-#include "xla/xla_data.pb.h"
+#include "tensorflow/compiler/tf2xla/xla_helpers.h"
+#include "tensorflow/compiler/xla/client/lib/constants.h"
+#include "tensorflow/compiler/xla/client/lib/math.h"
+#include "tensorflow/compiler/xla/client/xla_builder.h"
+#include "tensorflow/compiler/xla/status_macros.h"
 
 namespace tensorflow {
 

@@ -28,10 +28,9 @@ namespace wav {
 
 // These are defined in wav_io.cc, and the signatures are here so we don't have
 // to expose them in the public header.
-absl::Status ExpectText(const string& data, const string& expected_text,
-                        int* offset);
-absl::Status ReadString(const string& data, int expected_length, string* value,
-                        int* offset);
+Status ExpectText(const string& data, const string& expected_text, int* offset);
+Status ReadString(const string& data, int expected_length, string* value,
+                  int* offset);
 
 TEST(WavIO, BadArguments) {
   float audio[] = {0.0f, 0.1f, 0.2f, 0.3f, 0.4f, 0.5f};
@@ -202,7 +201,7 @@ TEST(WavIO, ChunkSizeOverflow) {
   uint32 decoded_sample_count;
   uint16 decoded_channel_count;
   uint32 decoded_sample_rate;
-  absl::Status decode_status = DecodeLin16WaveAsFloatVector(
+  Status decode_status = DecodeLin16WaveAsFloatVector(
       wav_data_string, &decoded_audio, &decoded_sample_count,
       &decoded_channel_count, &decoded_sample_rate);
   EXPECT_FALSE(decode_status.ok());
@@ -249,7 +248,7 @@ TEST(WavIO, ExpectText) {
   EXPECT_EQ(8, offset);
 
   offset = 0;
-  absl::Status expect_status = ExpectText(test_string, "Unexpected", &offset);
+  Status expect_status = ExpectText(test_string, "Unexpected", &offset);
   EXPECT_FALSE(expect_status.ok());
 
   offset = 0;
@@ -277,7 +276,7 @@ TEST(WavIO, ReadString) {
   EXPECT_EQ("pected", read_value);
   EXPECT_EQ(8, offset);
 
-  absl::Status read_status = ReadString(test_string, 3, &read_value, &offset);
+  Status read_status = ReadString(test_string, 3, &read_value, &offset);
   EXPECT_FALSE(read_status.ok());
 }
 
@@ -303,7 +302,7 @@ TEST(WavIO, ReadValueInt8) {
   EXPECT_EQ(-128, read_value);
   EXPECT_EQ(4, offset);
 
-  absl::Status read_status = ReadValue(test_string, &read_value, &offset);
+  Status read_status = ReadValue(test_string, &read_value, &offset);
   EXPECT_FALSE(read_status.ok());
 }
 
@@ -329,7 +328,7 @@ TEST(WavIO, ReadValueUInt8) {
   EXPECT_EQ(128, read_value);
   EXPECT_EQ(4, offset);
 
-  absl::Status read_status = ReadValue(test_string, &read_value, &offset);
+  Status read_status = ReadValue(test_string, &read_value, &offset);
   EXPECT_FALSE(read_status.ok());
 }
 
@@ -365,7 +364,7 @@ TEST(WavIO, ReadValueInt16) {
   EXPECT_EQ(-32768, read_value);
   EXPECT_EQ(10, offset);
 
-  absl::Status read_status = ReadValue(test_string, &read_value, &offset);
+  Status read_status = ReadValue(test_string, &read_value, &offset);
   EXPECT_FALSE(read_status.ok());
 }
 
@@ -401,7 +400,7 @@ TEST(WavIO, ReadValueUInt16) {
   EXPECT_EQ(32768, read_value);
   EXPECT_EQ(10, offset);
 
-  absl::Status read_status = ReadValue(test_string, &read_value, &offset);
+  Status read_status = ReadValue(test_string, &read_value, &offset);
   EXPECT_FALSE(read_status.ok());
 }
 
@@ -437,7 +436,7 @@ TEST(WavIO, ReadValueInt32) {
   EXPECT_EQ(-1, read_value);
   EXPECT_EQ(20, offset);
 
-  absl::Status read_status = ReadValue(test_string, &read_value, &offset);
+  Status read_status = ReadValue(test_string, &read_value, &offset);
   EXPECT_FALSE(read_status.ok());
 }
 
@@ -473,7 +472,7 @@ TEST(WavIO, ReadValueUInt32) {
   EXPECT_EQ(4294967295, read_value);
   EXPECT_EQ(20, offset);
 
-  absl::Status read_status = ReadValue(test_string, &read_value, &offset);
+  Status read_status = ReadValue(test_string, &read_value, &offset);
   EXPECT_FALSE(read_status.ok());
 }
 

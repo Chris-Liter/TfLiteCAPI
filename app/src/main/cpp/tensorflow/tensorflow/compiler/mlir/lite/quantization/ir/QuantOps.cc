@@ -15,20 +15,16 @@ limitations under the License.
 
 #include "tensorflow/compiler/mlir/lite/quantization/ir/QuantOps.h"
 
-#include <cstdint>
-#include <functional>
-#include <iterator>
 #include <numeric>
 
-#include "llvm/ADT/STLExtras.h"
-#include "mlir/Dialect/Quant/IR/QuantTypes.h"  // from @llvm-project
-#include "mlir/IR/Attributes.h"  // from @llvm-project
-#include "mlir/IR/BuiltinAttributes.h"  // from @llvm-project
+#include "llvm/ADT/StringRef.h"
+#include "llvm/ADT/Twine.h"
+#include "llvm/Support/MathExtras.h"
+#include "mlir/Dialect/Quant/QuantTypes.h"  // from @llvm-project
 #include "mlir/IR/BuiltinTypes.h"  // from @llvm-project
 #include "mlir/IR/MLIRContext.h"  // from @llvm-project
-#include "mlir/IR/OpDefinition.h"  // from @llvm-project
-#include "mlir/IR/Types.h"  // from @llvm-project
-#include "mlir/Support/LLVM.h"  // from @llvm-project
+#include "mlir/IR/Matchers.h"  // from @llvm-project
+#include "mlir/IR/PatternMatch.h"  // from @llvm-project
 
 using namespace mlir;
 using namespace mlir::quantfork;
@@ -55,20 +51,20 @@ OpFoldResult StorageCastOp::fold(FoldAdaptor) {
 
 /// The quantization specification should match the expressed type.
 static bool isValidQuantizationSpec(Attribute quantSpec, Type expressed) {
-  if (auto typeAttr = mlir::dyn_cast<TypeAttr>(quantSpec)) {
+  if (auto typeAttr = quantSpec.dyn_cast<TypeAttr>()) {
     Type spec = typeAttr.getValue();
-    if (mlir::isa<TensorType, VectorType>(spec)) return false;
+    if (spec.isa<TensorType, VectorType>()) return false;
 
     // The spec should be either a quantized type which is compatible to the
     // expressed type, or a primitive type which is as same as the
     // (element type of) the expressed type.
-    if (auto quantizedType = mlir::dyn_cast<QuantizedType>(spec))
+    if (auto quantizedType = spec.dyn_cast<QuantizedType>())
       return quantizedType.isCompatibleExpressedType(expressed);
 
-    if (auto tensorType = mlir::dyn_cast<TensorType>(expressed))
+    if (auto tensorType = expressed.dyn_cast<TensorType>())
       return spec == tensorType.getElementType();
 
-    if (auto vectorType = mlir::dyn_cast<VectorType>(expressed))
+    if (auto vectorType = expressed.dyn_cast<VectorType>())
       return spec == vectorType.getElementType();
   }
   return false;
@@ -103,13 +99,13 @@ LogicalResult QuantizeRegionOp::verify() {
 }
 
 LogicalResult StatisticsOp::verify() {
-  auto tensorArg = mlir::dyn_cast<TensorType>(getArg().getType());
+  auto tensorArg = getArg().getType().dyn_cast<TensorType>();
   if (!tensorArg) return emitOpError("arg needs to be tensor type.");
 
   // Verify layerStats attribute.
   {
     auto layerStatsType = getLayerStats().getShapedType();
-    if (!mlir::isa<FloatType>(layerStatsType.getElementType())) {
+    if (!layerStatsType.getElementType().isa<FloatType>()) {
       return emitOpError("layerStats must have a floating point element type");
     }
     if (layerStatsType.getRank() != 1 || layerStatsType.getDimSize(0) != 2) {
@@ -126,7 +122,7 @@ LogicalResult StatisticsOp::verify() {
                         std::multiplies<int64_t>());
 
     auto axisStatsType = getAxisStats()->getShapedType();
-    if (!mlir::isa<FloatType>(axisStatsType.getElementType())) {
+    if (!axisStatsType.getElementType().isa<FloatType>()) {
       return emitOpError("axisStats must have a floating point element type");
     }
     if (axisStatsType.getRank() != 2 || axisStatsType.getDimSize(1) != 2 ||

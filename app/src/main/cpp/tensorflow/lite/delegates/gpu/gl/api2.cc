@@ -394,20 +394,8 @@ class TensorTieFactory {
 class InferenceRunnerImpl : public InferenceRunner {
  public:
   InferenceRunnerImpl(std::unique_ptr<Runtime> runtime,
-                      std::unique_ptr<ObjectManager> objects
-#ifdef TFLITE_GPU_ENABLE_INVOKE_LOOP
-                      ,
-                      int gpu_invoke_loop_times
-#endif
-                      )
-      : runtime_(std::move(runtime)),
-        external_objects_(std::move(objects))
-#ifdef TFLITE_GPU_ENABLE_INVOKE_LOOP
-        ,
-        gpu_invoke_loop_times_(gpu_invoke_loop_times)
-#endif
-  {
-  }
+                      std::unique_ptr<ObjectManager> objects)
+      : runtime_(std::move(runtime)), external_objects_(std::move(objects)) {}
 
   absl::Status Initialize(const std::vector<TensorTieDef>& input_defs,
                           const std::vector<TensorTieDef>& output_defs,
@@ -464,15 +452,7 @@ class InferenceRunnerImpl : public InferenceRunner {
     for (auto& obj : input_tensor_ties_) {
       RETURN_IF_ERROR(obj->CopyFromExternalObject());
     }
-#ifdef TFLITE_GPU_ENABLE_INVOKE_LOOP
-    // TODO(b/328511338): Remove code enabled by TFLITE_GPU_ENABLE_INVOKE_LOOP
-    // when Async API solution is ready to replace it.
-    for (int i = 0; i < gpu_invoke_loop_times_; i++) {
-      RETURN_IF_ERROR(runtime_->Execute());
-    }
-#else
     RETURN_IF_ERROR(runtime_->Execute());
-#endif  // TFLITE_GPU_ENABLE_INVOKE_LOOP
     for (auto& obj : output_tensor_ties_) {
       RETURN_IF_ERROR(obj->CopyToExternalObject());
     }
@@ -512,9 +492,6 @@ class InferenceRunnerImpl : public InferenceRunner {
   std::vector<std::unique_ptr<TensorTie>> input_tensor_ties_;
   std::vector<std::unique_ptr<TensorTie>> output_tensor_ties_;
   bool output_to_cpu_ = false;
-#ifdef TFLITE_GPU_ENABLE_INVOKE_LOOP
-  int gpu_invoke_loop_times_;
-#endif
 };
 
 class InferenceBuilderImpl : public InferenceBuilder {
@@ -526,13 +503,7 @@ class InferenceBuilderImpl : public InferenceBuilder {
         options_(options),
         graph_(std::move(graph)),
         gpu_info_(gpu_info),
-        tie_factory_(env_options_)
-#ifdef TFLITE_GPU_ENABLE_INVOKE_LOOP
-        ,
-        gpu_invoke_loop_times_(options.gpu_invoke_loop_times)
-#endif
-  {
-  }
+        tie_factory_(env_options_) {}
 
   absl::Status Initialize() {
     inputs_ = LinkTensors(graph_.inputs());
@@ -610,12 +581,7 @@ class InferenceBuilderImpl : public InferenceBuilder {
                                   env_options_.queue, external_objects.get());
     Runtime* runtime_ptr = runtime.get();
     auto runner_impl = std::make_unique<InferenceRunnerImpl>(
-        std::move(runtime), std::move(external_objects)
-#ifdef TFLITE_GPU_ENABLE_INVOKE_LOOP
-                                ,
-        gpu_invoke_loop_times_
-#endif
-    );
+        std::move(runtime), std::move(external_objects));
     RETURN_IF_ERROR(runner_impl->Initialize(inputs_, outputs_, &tie_factory_));
     RETURN_IF_ERROR(
         compiler->Compile(graph_, {}, [&](ShaderCode code) -> absl::Status {
@@ -691,9 +657,6 @@ class InferenceBuilderImpl : public InferenceBuilder {
   std::vector<TensorTieDef> inputs_;
   std::vector<TensorTieDef> outputs_;
   TensorTieFactory tie_factory_;
-#ifdef TFLITE_GPU_ENABLE_INVOKE_LOOP
-  int gpu_invoke_loop_times_;
-#endif
 };
 
 class InferenceEnvironmentImpl : public InferenceEnvironment {

@@ -20,10 +20,11 @@ limitations under the License.
 #include "tensorflow/core/lib/core/errors.h"
 
 namespace tensorflow {
-absl::Status GetWindowedOutputSizeVerbose(
-    int64_t input_size, int64_t filter_size, int64_t dilation_rate,
-    int64_t stride, Padding padding_type, int64_t* output_size,
-    int64_t* padding_before, int64_t* padding_after) {
+Status GetWindowedOutputSizeVerbose(int64_t input_size, int64_t filter_size,
+                                    int64_t dilation_rate, int64_t stride,
+                                    Padding padding_type, int64_t* output_size,
+                                    int64_t* padding_before,
+                                    int64_t* padding_after) {
   if (stride <= 0) {
     return errors::InvalidArgument("Stride must be > 0, but got ", stride);
   }
@@ -62,13 +63,13 @@ absl::Status GetWindowedOutputSizeVerbose(
         ", effective_filter_size: ", effective_filter_size,
         ", stride: ", stride, "]");
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status GetWindowedOutputSize(int64_t input_size, int64_t filter_size,
-                                   int dilation_rate, int64_t stride,
-                                   Padding padding_type, int64_t* output_size,
-                                   int64_t* padding_size) {
+Status GetWindowedOutputSize(int64_t input_size, int64_t filter_size,
+                             int dilation_rate, int64_t stride,
+                             Padding padding_type, int64_t* output_size,
+                             int64_t* padding_size) {
   if (padding_type == Padding::EXPLICIT) {
     return errors::Internal(
         "GetWindowedOutputSize does not handle EXPLICIT padding; call "
@@ -80,18 +81,18 @@ absl::Status GetWindowedOutputSize(int64_t input_size, int64_t filter_size,
                                       padding_size, &padding_after_unused);
 }
 
-absl::Status Get3dOutputSizeV2(const std::array<int64_t, 3>& input,
-                               const std::array<int64_t, 3>& window,
-                               const std::array<int64_t, 3>& dilations,
-                               const std::array<int64_t, 3>& strides,
-                               Padding padding_type,
-                               std::array<int64_t, 3>* output_ptr,
-                               std::array<int64_t, 3>* padding_ptr) {
+Status Get3dOutputSizeV2(const std::array<int64_t, 3>& input,
+                         const std::array<int64_t, 3>& window,
+                         const std::array<int64_t, 3>& dilations,
+                         const std::array<int64_t, 3>& strides,
+                         Padding padding_type,
+                         std::array<int64_t, 3>* output_ptr,
+                         std::array<int64_t, 3>* padding_ptr) {
   for (size_t i = 0; i < input.size(); ++i) {
     TF_RETURN_IF_ERROR(GetWindowedOutputSize(
         input[i], window[i], dilations[i], strides[i], padding_type,
         &(*output_ptr)[i], &(*padding_ptr)[i]));
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 }  // namespace tensorflow

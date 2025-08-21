@@ -25,25 +25,29 @@ limitations under the License.
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include "absl/status/status.h"
 #include "flatbuffers/flatbuffer_builder.h"  // from @flatbuffers
-#include "tensorflow/compiler/mlir/lite/core/absl_error_model_builder.h"
-#include "tensorflow/compiler/mlir/lite/schema/schema_generated.h"
-#include "tensorflow/compiler/mlir/lite/tools/optimize/reduced_precision_metadata.h"
+#include "tensorflow/lite/core/api/error_reporter.h"
+#include "tensorflow/lite/core/c/c_api_types.h"
+#include "tensorflow/lite/core/model_builder.h"
+#include "tensorflow/lite/schema/schema_generated.h"
+#include "tensorflow/lite/tools/optimize/reduced_precision_support.h"
 
 namespace mlir {
 namespace lite {
 namespace {
 
+class NoopErrorReporter : public ::tflite::ErrorReporter {
+ public:
+  int Report(const char* format, std::va_list args) override { return 0; }
+};
 
 TEST(SparsifyModelTest, MetadataIsAddedToOutputModel) {
   std::string expected_key = tflite::optimize::kTfLiteReducedPrecisionKey;
   std::string expected_value = "test_data";
 
   // Load input model
-  auto input_fbm = mlir::TFL::FlatBufferModelAbslError::BuildFromFile(
-      "tensorflow/compiler/mlir/lite/sparsity/testdata/"
-      "sparse_tensor.bin");
+  auto input_fbm = tflite::FlatBufferModel::BuildFromFile(
+      "tensorflow/lite/testdata/sparse_tensor.bin");
   tflite::ModelT input_model;
   input_fbm->GetModel()->UnPackTo(&input_model);
 
@@ -59,8 +63,9 @@ TEST(SparsifyModelTest, MetadataIsAddedToOutputModel) {
 
   // Sparsify and create output model
   flatbuffers::FlatBufferBuilder output_builder;
-  ASSERT_TRUE(SparsifyModel(input_model, &output_builder).ok());
-  auto output_fbm = mlir::TFL::FlatBufferModelAbslError::BuildFromBuffer(
+  NoopErrorReporter reporter;
+  ASSERT_EQ(SparsifyModel(input_model, &output_builder, &reporter), kTfLiteOk);
+  auto output_fbm = tflite::FlatBufferModel::BuildFromBuffer(
       reinterpret_cast<const char*>(output_builder.GetCurrentBufferPointer()),
       output_builder.GetSize());
   tflite::ModelT output_model;

@@ -13,29 +13,26 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
+#include <cmath>
 #include <tuple>
 
-#include "absl/status/status.h"
-#include "absl/strings/str_cat.h"
-#include "absl/strings/string_view.h"
 #include "tensorflow/compiler/tf2xla/kernels/random_ops_util.h"
 #include "tensorflow/compiler/tf2xla/lib/broadcast.h"
 #include "tensorflow/compiler/tf2xla/lib/random.h"
 #include "tensorflow/compiler/tf2xla/shape_util.h"
+#include "tensorflow/compiler/tf2xla/type_util.h"
+#include "tensorflow/compiler/tf2xla/xla_helpers.h"
 #include "tensorflow/compiler/tf2xla/xla_op_kernel.h"
 #include "tensorflow/compiler/tf2xla/xla_op_registry.h"
-#include "xla/hlo/builder/lib/constants.h"
-#include "xla/hlo/builder/lib/prng.h"
-#include "xla/hlo/builder/xla_builder.h"
-#include "xla/primitive_util.h"
-#include "xla/shape.h"
-#include "xla/util.h"
-#include "xla/xla_data.pb.h"
+#include "tensorflow/compiler/xla/client/lib/constants.h"
+#include "tensorflow/compiler/xla/client/lib/math.h"
+#include "tensorflow/compiler/xla/client/lib/prng.h"
+#include "tensorflow/compiler/xla/client/xla_builder.h"
+#include "tensorflow/compiler/xla/xla_data.pb.h"
 #include "tensorflow/core/framework/op_kernel.h"
-#include "tensorflow/core/framework/op_requires.h"
+#include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor_shape.h"
-#include "tensorflow/core/framework/types.pb.h"
-#include "tensorflow/core/platform/types.h"
+#include "tensorflow/core/lib/math/math_util.h"
 
 namespace tensorflow {
 
@@ -186,8 +183,7 @@ class StatelessRandomUniformOp : public XlaOpKernel {
   DataType dtype_;
   string device_type_string_;
 
-  StatelessRandomUniformOp(const StatelessRandomUniformOp&) = delete;
-  void operator=(const StatelessRandomUniformOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(StatelessRandomUniformOp);
 };
 
 // TODO(phawkins): generalize to non-float, non-int32 seed types.
@@ -242,8 +238,7 @@ class StatelessRandomUniformIntOp : public XlaOpKernel {
   DataType dtype_;
   string device_type_string_;
 
-  StatelessRandomUniformIntOp(const StatelessRandomUniformIntOp&) = delete;
-  void operator=(const StatelessRandomUniformIntOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(StatelessRandomUniformIntOp);
 };
 
 // TODO(phawkins): generalize to non-int32 seed types.
@@ -285,9 +280,7 @@ class StatelessRandomUniformFullIntOp : public XlaOpKernel {
   DataType dtype_;
   string device_type_string_;
 
-  StatelessRandomUniformFullIntOp(const StatelessRandomUniformFullIntOp&) =
-      delete;
-  void operator=(const StatelessRandomUniformFullIntOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(StatelessRandomUniformFullIntOp);
 };
 
 // TODO(phawkins): generalize to non-int32 seed types.
@@ -338,8 +331,7 @@ class StatelessRandomNormalOp : public XlaOpKernel {
   DataType dtype_;
   string device_type_string_;
 
-  StatelessRandomNormalOp(const StatelessRandomNormalOp&) = delete;
-  void operator=(const StatelessRandomNormalOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(StatelessRandomNormalOp);
 };
 
 // TODO(phawkins): generalize to non-float, non-int32 seed types.
@@ -386,8 +378,7 @@ class StatelessTruncatedNormalOp : public XlaOpKernel {
   DataType dtype_;
   string device_type_string_;
 
-  StatelessTruncatedNormalOp(const StatelessTruncatedNormalOp&) = delete;
-  void operator=(const StatelessTruncatedNormalOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(StatelessTruncatedNormalOp);
 };
 
 REGISTER_XLA_OP(Name("StatelessTruncatedNormal")
@@ -451,9 +442,7 @@ class StatelessParameterizedTruncatedNormalOp : public XlaOpKernel {
   DataType dtype_;
   string device_type_string_;
 
-  StatelessParameterizedTruncatedNormalOp(
-      const StatelessParameterizedTruncatedNormalOp&) = delete;
-  void operator=(const StatelessParameterizedTruncatedNormalOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(StatelessParameterizedTruncatedNormalOp);
 };
 
 REGISTER_XLA_OP(Name("StatelessParameterizedTruncatedNormal")

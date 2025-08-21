@@ -1,7 +1,4 @@
-load(
-    "//tensorflow/tools/test:performance.bzl",
-    "cuda_py_benchmark_test",
-)
+load("//tensorflow:tensorflow.default.bzl", "cuda_py_strict_test")
 
 package(
     # copybara:uncomment default_applicable_licenses = ["//tensorflow:license"],
@@ -9,7 +6,7 @@ package(
     licenses = ["notice"],
 )
 
-cuda_py_benchmark_test(
+cuda_py_strict_test(
     name = "kpi_benchmark_test",
     size = "medium",
     srcs = ["kpi_benchmark_test.py"],

@@ -18,8 +18,8 @@ limitations under the License.
 
 namespace tensorflow {
 
-absl::Status MemmappedFileSystemWriter::InitializeToFile(
-    Env* env, const string& filename) {
+Status MemmappedFileSystemWriter::InitializeToFile(Env* env,
+                                                   const string& filename) {
   auto status = env->NewWritableFile(filename, &output_file_);
   if (status.ok()) {
     output_file_offset_ = 0;
@@ -27,8 +27,8 @@ absl::Status MemmappedFileSystemWriter::InitializeToFile(
   return status;
 }
 
-absl::Status MemmappedFileSystemWriter::SaveTensor(const Tensor& tensor,
-                                                   const string& element_name) {
+Status MemmappedFileSystemWriter::SaveTensor(const Tensor& tensor,
+                                             const string& element_name) {
   if (!output_file_) {
     return errors::FailedPrecondition(
         "MemmappedEnvWritter: saving tensor into not opened file");
@@ -55,7 +55,7 @@ absl::Status MemmappedFileSystemWriter::SaveTensor(const Tensor& tensor,
   return result;
 }
 
-absl::Status MemmappedFileSystemWriter::SaveProtobuf(
+Status MemmappedFileSystemWriter::SaveProtobuf(
     const protobuf::MessageLite& message, const string& element_name) {
   if (!output_file_) {
     return errors::FailedPrecondition(
@@ -89,7 +89,7 @@ StringPiece EncodeUint64LittleEndian(uint64 val, char* output_buffer) {
 
 }  // namespace
 
-absl::Status MemmappedFileSystemWriter::FlushAndClose() {
+Status MemmappedFileSystemWriter::FlushAndClose() {
   if (!output_file_) {
     return errors::FailedPrecondition(
         "MemmappedEnvWritter: flushing into not opened file");
@@ -106,10 +106,10 @@ absl::Status MemmappedFileSystemWriter::FlushAndClose() {
   TF_RETURN_IF_ERROR(output_file_->Flush());
   TF_RETURN_IF_ERROR(output_file_->Close());
   output_file_.reset();
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status MemmappedFileSystemWriter::AdjustAlignment(uint64 alignment) {
+Status MemmappedFileSystemWriter::AdjustAlignment(uint64 alignment) {
   const uint64 alignment_rest = output_file_offset_ % alignment;
   const uint64 to_write_for_alignment =
       (alignment_rest == 0) ? 0 : alignment - (output_file_offset_ % alignment);
@@ -121,7 +121,7 @@ absl::Status MemmappedFileSystemWriter::AdjustAlignment(uint64 alignment) {
     rest -= sp.size();
     output_file_offset_ += sp.size();
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 void MemmappedFileSystemWriter::AddToDirectoryElement(const string& name,

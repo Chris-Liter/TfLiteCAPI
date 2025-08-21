@@ -15,6 +15,7 @@ limitations under the License.
 
 #include "tensorflow/core/transforms/cf_sink/pass.h"
 
+#include <functional>
 #include <memory>
 
 #include "llvm/ADT/ScopeExit.h"

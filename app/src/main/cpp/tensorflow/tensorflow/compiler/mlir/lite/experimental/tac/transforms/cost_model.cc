@@ -59,14 +59,13 @@ int64_t GetTransferredTensorBytes(func::CallOp from_graph,
   for (auto input : to_graph.getOperands()) {
     Operation* input_op = input.getDefiningOp();
     if (input_op && input_op == from_graph.getOperation()) {
-      auto input_type =
-          mlir::dyn_cast_or_null<RankedTensorType>(input.getType());
+      auto input_type = input.getType().dyn_cast_or_null<RankedTensorType>();
       if (input_type == nullptr || !input_type.hasStaticShape()) continue;
       // Quantized type does not support getSizeInBits.
       if (IsQUI8Type(input_type) || IsQI8Type(input_type)) {
         total_size_transferred += input_type.getNumElements() * 8;
       } else {
-        auto s_type = mlir::cast<ShapedType>(input_type);
+        auto s_type = input_type.cast<ShapedType>();
         total_size_transferred +=
             s_type.getNumElements() * s_type.getElementTypeBitWidth();
       }
@@ -82,8 +81,7 @@ int64_t GetTransferredElementCount(func::CallOp from_graph,
   for (auto input : to_graph.getOperands()) {
     Operation* input_op = input.getDefiningOp();
     if (input_op && input_op == from_graph.getOperation()) {
-      auto input_type =
-          mlir::dyn_cast_or_null<RankedTensorType>(input.getType());
+      auto input_type = input.getType().dyn_cast_or_null<RankedTensorType>();
       if (input_type == nullptr || !input_type.hasStaticShape()) continue;
       total_element_count += input_type.getNumElements();
     }

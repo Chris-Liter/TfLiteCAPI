@@ -13,31 +13,22 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include <cstdint>
 #include <optional>
 #include <vector>
 
-#include "absl/status/status.h"
 #include "tensorflow/compiler/tf2xla/shape_util.h"
+#include "tensorflow/compiler/tf2xla/sharding_util.h"
+#include "tensorflow/compiler/tf2xla/type_util.h"
 #include "tensorflow/compiler/tf2xla/xla_op_kernel.h"
 #include "tensorflow/compiler/tf2xla/xla_op_registry.h"
-#include "xla/hlo/builder/xla_builder.h"
-#include "xla/hlo/ir/hlo_sharding.h"
-#include "xla/layout_util.h"
-#include "xla/shape.h"
-#include "xla/shape_util.h"
-#include "xla/stream_executor/tpu/c_api_conversions.h"
-#include "xla/stream_executor/tpu/c_api_decl.h"
-#include "xla/stream_executor/tpu/tpu_executor_api.h"
-#include "xla/util.h"
-#include "xla/xla_data.pb.h"
+#include "tensorflow/compiler/xla/client/xla_builder.h"
+#include "tensorflow/compiler/xla/stream_executor/tpu/c_api_conversions.h"
+#include "tensorflow/compiler/xla/stream_executor/tpu/c_api_decl.h"
+#include "tensorflow/compiler/xla/stream_executor/tpu/tpu_api.h"
+#include "tensorflow/compiler/xla/util.h"
+#include "tensorflow/core/framework/kernel_def_builder.h"
 #include "tensorflow/core/framework/op_kernel.h"
-#include "tensorflow/core/framework/op_requires.h"
-#include "tensorflow/core/framework/tensor_shape.h"
-#include "tensorflow/core/framework/types.h"
-#include "tensorflow/core/framework/types.pb.h"
-#include "tensorflow/core/platform/status.h"
-#include "tsl/platform/statusor.h"
+#include "tensorflow/core/tpu/tpu_defs.h"
 
 namespace tensorflow {
 
@@ -60,8 +51,8 @@ xla::Shape GetTPUInfeedLayout(const xla::Shape& shape) {
 // Updates the layout of the given infeed shape, optionally considering the
 // sharding of the op. If the op has tile sharding, assign the layout based on
 // the shard shape.
-absl::Status UpdateInfeedLayout(xla::Shape* shape,
-                                std::optional<xla::OpSharding> sharding) {
+Status UpdateInfeedLayout(xla::Shape* shape,
+                          std::optional<xla::OpSharding> sharding) {
   if (sharding && sharding->type() == xla::OpSharding::OTHER) {
     TF_ASSIGN_OR_RETURN(auto hlo_sharding,
                         xla::HloSharding::FromProto(*sharding));
@@ -84,10 +75,10 @@ absl::Status UpdateInfeedLayout(xla::Shape* shape,
             "(--transpose_tpu_infeed=false) and report to XLA team.");
       }
     }
-    return absl::OkStatus();
+    return OkStatus();
   }
   *shape = GetTPUInfeedLayout(*shape);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // TODO(pbar) Work out if we need to Infeed Tuples - if so then
@@ -116,8 +107,7 @@ class InfeedDequeueOp : public XlaOpKernel {
   DataType dtype_;
   xla::Shape xla_shape_;
 
-  InfeedDequeueOp(const InfeedDequeueOp&) = delete;
-  void operator=(const InfeedDequeueOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(InfeedDequeueOp);
 };
 
 REGISTER_XLA_OP(Name("InfeedDequeue"), InfeedDequeueOp);
@@ -166,8 +156,7 @@ class InfeedDequeueTupleOp : public XlaOpKernel {
   std::vector<xla::Shape> xla_shapes_;
   xla::Shape tuple_shape_;
 
-  InfeedDequeueTupleOp(const InfeedDequeueTupleOp&) = delete;
-  void operator=(const InfeedDequeueTupleOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(InfeedDequeueTupleOp);
 };
 
 REGISTER_XLA_OP(Name("InfeedDequeueTuple"), InfeedDequeueTupleOp);

@@ -15,19 +15,14 @@ limitations under the License.
 
 #include "tensorflow/core/common_runtime/function_body.h"
 
-#include <utility>
-
-#include "tensorflow/core/framework/function.h"
 #include "tensorflow/core/framework/node_def_util.h"
-#include "tensorflow/core/framework/types.h"
 #include "tensorflow/core/graph/graph.h"
-#include "tensorflow/core/platform/refcount.h"
 
 namespace tensorflow {
 
-FunctionBody::FunctionBody(core::RefCountPtr<FunctionRecord>&& record,
-                           DataTypeSlice arg_t, DataTypeSlice ret_t, Graph* g)
-    : record(std::move(record)),
+FunctionBody::FunctionBody(const FunctionDef& f, DataTypeSlice arg_t,
+                           DataTypeSlice ret_t, Graph* g)
+    : fdef(f),
       graph(g),
       arg_types(arg_t.begin(), arg_t.end()),
       ret_types(ret_t.begin(), ret_t.end()) {
@@ -35,7 +30,7 @@ FunctionBody::FunctionBody(core::RefCountPtr<FunctionRecord>&& record,
   this->arg_nodes.resize(arg_types.size());
   this->ret_nodes.resize(ret_types.size());
   for (Node* n : this->graph->op_nodes()) {
-    absl::InlinedVector<Node*, 4UL>* node_vec;
+    gtl::InlinedVector<Node*, 4>* node_vec;
     if (n->type_string() == FunctionLibraryDefinition::kRetOp ||
         n->type_string() == FunctionLibraryDefinition::kDeviceRetOp) {
       node_vec = &this->ret_nodes;
@@ -52,9 +47,8 @@ FunctionBody::FunctionBody(core::RefCountPtr<FunctionRecord>&& record,
     (*node_vec)[index] = n;
   }
   // 2. Find ControlRet nodes that must be always executed.
-  std::unordered_set<absl::string_view, StringPieceHasher>
-      control_ret_node_names;
-  for (const auto& control_ret : this->record->fdef().control_ret()) {
+  std::unordered_set<StringPiece, StringPieceHasher> control_ret_node_names;
+  for (const auto& control_ret : fdef.control_ret()) {
     control_ret_node_names.insert(control_ret.second);
   }
   this->control_ret_nodes.reserve(control_ret_node_names.size());

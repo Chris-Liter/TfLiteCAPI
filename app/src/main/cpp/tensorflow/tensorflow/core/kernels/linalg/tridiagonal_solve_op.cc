@@ -16,10 +16,7 @@ limitations under the License.
 // See docs in ../ops/linalg_ops.cc.
 
 #include <cmath>
-#include <cstdint>
-#include <limits>
 
-#include "absl/log/log.h"
 #include "tensorflow/core/framework/kernel_def_builder.h"
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/framework/register_types.h"
@@ -155,8 +152,7 @@ class TridiagonalSolveOp : public LinearAlgebraOp<Scalar> {
   }
 
  private:
-  TridiagonalSolveOp(const TridiagonalSolveOp&) = delete;
-  void operator=(const TridiagonalSolveOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(TridiagonalSolveOp);
 
   // Adjust pivot such that neither 'rhs[i,:] / pivot' nor '1 / pivot' cause
   // overflow, where i numerates the multiple right-hand-sides. During the

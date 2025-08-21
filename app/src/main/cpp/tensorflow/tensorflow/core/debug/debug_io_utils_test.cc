@@ -13,11 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "tensorflow/core/debug/debug_io_utils.h"
-
 #include <cstdlib>
-#include <memory>
 #include <unordered_set>
+
+#include "tensorflow/core/debug/debug_io_utils.h"
 
 #include "tensorflow/core/debug/debug_callback_registry.h"
 #include "tensorflow/core/debug/debug_node_key.h"
@@ -41,7 +40,7 @@ class DebugIOUtilsTest : public ::testing::Test {
   void Initialize() {
     env_ = Env::Default();
 
-    tensor_a_ = std::make_unique<Tensor>(DT_FLOAT, TensorShape({2, 2}));
+    tensor_a_.reset(new Tensor(DT_FLOAT, TensorShape({2, 2})));
     tensor_a_->flat<float>()(0) = 5.0;
     tensor_a_->flat<float>()(1) = 3.0;
     tensor_a_->flat<float>()(2) = -1.0;
@@ -163,8 +162,8 @@ TEST_F(DebugIOUtilsTest, DumpStringTensorToFileSunnyDay) {
   const uint64 wall_time = env_->NowMicros();
 
   string dump_file_name;
-  absl::Status s = DebugFileIO::DumpTensorToDir(
-      kDebugNodeKey, *tensor_b_, wall_time, test_dir, &dump_file_name);
+  Status s = DebugFileIO::DumpTensorToDir(kDebugNodeKey, *tensor_b_, wall_time,
+                                          test_dir, &dump_file_name);
   ASSERT_TRUE(s.ok());
 
   // Read the file into a Event proto.
@@ -240,8 +239,8 @@ TEST_F(DebugIOUtilsTest, DumpTensorToFileCannotCreateDirectory) {
   const uint64 wall_time = env_->NowMicros();
 
   string dump_file_name;
-  absl::Status s = DebugFileIO::DumpTensorToDir(
-      kDebugNodeKey, *tensor_a_, wall_time, test_dir, &dump_file_name);
+  Status s = DebugFileIO::DumpTensorToDir(kDebugNodeKey, *tensor_a_, wall_time,
+                                          test_dir, &dump_file_name);
   ASSERT_FALSE(s.ok());
 
   // Tear down temporary file and directories.
@@ -279,7 +278,7 @@ TEST_F(DebugIOUtilsTest, PublishTensorToMultipleFileURLs) {
     ASSERT_NE(dump_roots[0], dump_roots[i]);
   }
 
-  absl::Status s =
+  Status s =
       DebugIO::PublishDebugTensor(kDebugNodeKey, *tensor_a_, wall_time, urls);
   ASSERT_TRUE(s.ok());
 
@@ -349,7 +348,7 @@ TEST_F(DebugIOUtilsTest, PublishTensorToMemoryCallback) {
         }
       });
 
-  absl::Status s =
+  Status s =
       DebugIO::PublishDebugTensor(kDebugNodeKey, *tensor_a_, wall_time, urls);
   ASSERT_TRUE(s.ok());
   ASSERT_TRUE(called);
@@ -403,7 +402,7 @@ TEST_F(DebugIOUtilsTest, PublishTensorConcurrentlyToPartiallyOverlappingPaths) {
     std::vector<string> urls;
     urls.push_back(debug_url);
 
-    absl::Status s =
+    Status s =
         DebugIO::PublishDebugTensor(kDebugNodeKey, *tensor_a_, wall_time, urls);
     ASSERT_TRUE(s.ok());
 

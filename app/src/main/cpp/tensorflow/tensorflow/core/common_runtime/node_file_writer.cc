@@ -66,7 +66,7 @@ const int kMaxInt32Elems = 10;
 
 namespace tensorflow {
 
-/*static*/ absl::StatusOr<NodeFileWriter*>
+/*static*/ StatusOr<NodeFileWriter*>
 tensorflow::NodeFileWriter::GetNodeFileWriterIfEnabled(
     const std::string& device_name, Env* env) {
   // First get the directory from TF_NODE_FILE_WRITER_DIRECTORY.
@@ -102,7 +102,7 @@ tensorflow::NodeFileWriter::GetNodeFileWriterIfEnabled(
   mutex_lock l(mu);
   auto it = device_name_to_writer->find(device_name);
   if (it == device_name_to_writer->end()) {
-    absl::Status s = env->CreateDir(*node_dir);
+    Status s = env->CreateDir(*node_dir);
     if (!s.ok() && s.code() != error::ALREADY_EXISTS) {
       return s;
     }
@@ -124,10 +124,10 @@ tensorflow::NodeFileWriter::GetNodeFileWriterIfEnabled(
   return it->second;
 }
 
-absl::Status NodeFileWriter::RecordNodeExecution(OpKernel* op_kernel,
-                                                 OpKernelContext* context) {
+Status NodeFileWriter::RecordNodeExecution(OpKernel* op_kernel,
+                                           OpKernelContext* context) {
   if (kOpsToSkipWriting->count(op_kernel->type_string())) {
-    return absl::OkStatus();
+    return OkStatus();
   }
   NodeDef def;
   def.set_name("NodeFileWriter");
@@ -140,7 +140,7 @@ absl::Status NodeFileWriter::RecordNodeExecution(OpKernel* op_kernel,
     if (!context->has_input(i) || context->input_is_ref(i)) {
       // Calling context->input(i) requires the input to exist and not be a ref,
       // so return immediately if that is not the case.
-      return absl::OkStatus();
+      return OkStatus();
     }
     TensorShapeProto* shape_proto = input_shapes.mutable_list()->add_shape();
     const Tensor& input = context->input(i);
@@ -155,13 +155,13 @@ absl::Status NodeFileWriter::RecordNodeExecution(OpKernel* op_kernel,
     } else if (!DataTypeIsFloating(input.dtype())) {
       // Skip ops with non-floating-point inputs, since these are not useful
       // when testing determinism.
-      return absl::OkStatus();
+      return OkStatus();
     }
   }
   return MaybeWriteNodeDefToFile(def);
 }
 
-absl::Status NodeFileWriter::MaybeWriteNodeDefToFile(const NodeDef& def) {
+Status NodeFileWriter::MaybeWriteNodeDefToFile(const NodeDef& def) {
   std::string def_str = def.SerializeAsString();
   uint64 size = def_str.size();
   std::string size_as_str;
@@ -185,7 +185,7 @@ absl::Status NodeFileWriter::MaybeWriteNodeDefToFile(const NodeDef& def) {
     // file is never closed.
     TF_RETURN_IF_ERROR(node_def_file_->Flush());
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace tensorflow

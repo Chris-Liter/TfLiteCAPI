@@ -68,20 +68,20 @@ class IgnoreErrorsDatasetOp : public UnaryDatasetOpKernel {
       return kUnknownCardinality;
     }
 
-    absl::Status InputDatasets(
+    Status InputDatasets(
         std::vector<const DatasetBase*>* inputs) const override {
       inputs->push_back(input_);
-      return absl::OkStatus();
+      return OkStatus();
     }
 
-    absl::Status CheckExternalState() const override {
+    Status CheckExternalState() const override {
       return input_->CheckExternalState();
     }
 
    protected:
-    absl::Status AsGraphDefInternal(SerializationContext* ctx,
-                                    DatasetGraphDefBuilder* b,
-                                    Node** output) const override {
+    Status AsGraphDefInternal(SerializationContext* ctx,
+                              DatasetGraphDefBuilder* b,
+                              Node** output) const override {
       Node* input_graph_node = nullptr;
       TF_RETURN_IF_ERROR(b->AddInputDataset(ctx, input_, &input_graph_node));
       AttrValue log_warning_attr;
@@ -89,7 +89,7 @@ class IgnoreErrorsDatasetOp : public UnaryDatasetOpKernel {
       TF_RETURN_IF_ERROR(
           b->AddDataset(this, {std::make_pair(0, input_graph_node)}, {},
                         {{"log_warning", log_warning_attr}}, output));
-      return absl::OkStatus();
+      return OkStatus();
     }
 
    private:
@@ -98,20 +98,20 @@ class IgnoreErrorsDatasetOp : public UnaryDatasetOpKernel {
       explicit Iterator(const Params& params)
           : DatasetIterator<Dataset>(params) {}
 
-      absl::Status Initialize(IteratorContext* ctx) override {
+      Status Initialize(IteratorContext* ctx) override {
         return dataset()->input_->MakeIterator(ctx, this, prefix(),
                                                &input_impl_);
       }
 
-      absl::Status GetNextInternal(IteratorContext* ctx,
-                                   std::vector<Tensor>* out_tensors,
-                                   bool* end_of_sequence) override {
-        absl::Status s;
+      Status GetNextInternal(IteratorContext* ctx,
+                             std::vector<Tensor>* out_tensors,
+                             bool* end_of_sequence) override {
+        Status s;
         {
           tf_shared_lock l(mu_);
           if (!input_impl_) {
             *end_of_sequence = true;
-            return absl::OkStatus();
+            return OkStatus();
           }
           s = input_impl_->GetNext(ctx, out_tensors, end_of_sequence);
           while (!s.ok() && !errors::IsCancelled(s)) {
@@ -136,25 +136,25 @@ class IgnoreErrorsDatasetOp : public UnaryDatasetOpKernel {
                                          /*ratio=*/1);
       }
 
-      absl::Status SaveInternal(SerializationContext* ctx,
-                                IteratorStateWriter* writer) override {
+      Status SaveInternal(SerializationContext* ctx,
+                          IteratorStateWriter* writer) override {
         mutex_lock l(mu_);
         if (input_impl_)
           TF_RETURN_IF_ERROR(SaveInput(ctx, writer, input_impl_));
         else
           TF_RETURN_IF_ERROR(
               writer->WriteScalar(full_name("input_impls_empty"), ""));
-        return absl::OkStatus();
+        return OkStatus();
       }
 
-      absl::Status RestoreInternal(IteratorContext* ctx,
-                                   IteratorStateReader* reader) override {
+      Status RestoreInternal(IteratorContext* ctx,
+                             IteratorStateReader* reader) override {
         mutex_lock l(mu_);
         if (reader->Contains(full_name("input_impls_empty")))
           input_impl_.reset();
         else
           TF_RETURN_IF_ERROR(RestoreInput(ctx, reader, input_impl_));
-        return absl::OkStatus();
+        return OkStatus();
       }
 
      private:

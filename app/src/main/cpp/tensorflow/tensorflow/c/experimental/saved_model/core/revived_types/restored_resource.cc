@@ -15,24 +15,21 @@ limitations under the License.
 
 #include "tensorflow/c/experimental/saved_model/core/revived_types/restored_resource.h"
 
-#include <string>
-#include <utility>
-
 #include "absl/types/span.h"
 #include "tensorflow/c/eager/abstract_tensor_handle.h"
+#include "tensorflow/c/eager/immediate_execution_context.h"
 #include "tensorflow/c/eager/immediate_execution_operation.h"
 #include "tensorflow/c/eager/immediate_execution_tensor_handle.h"
 #include "tensorflow/c/experimental/saved_model/core/revived_types/tensorhandle_convertible.h"
 #include "tensorflow/c/experimental/saved_model/core/revived_types/tf_concrete_function.h"
+#include "tensorflow/core/platform/errors.h"
 #include "tensorflow/core/platform/logging.h"
-#include "tensorflow/core/platform/status.h"
-#include "tsl/platform/errors.h"
 
 namespace tensorflow {
 
 namespace {
 
-absl::Status ExecuteNoArgDummyReturnFunction(TFConcreteFunction* func) {
+Status ExecuteNoArgDummyReturnFunction(TFConcreteFunction* func) {
   ImmediateOpPtr function_op;
   TF_RETURN_IF_ERROR(func->MakeCallOp({}, &function_op));
 
@@ -41,7 +38,7 @@ absl::Status ExecuteNoArgDummyReturnFunction(TFConcreteFunction* func) {
   TF_RETURN_IF_ERROR(function_op->Execute(
       absl::MakeSpan(&dummy_output, num_retvals), &num_retvals));
   AbstractTensorHandlePtr owned_dummy_output(dummy_output);
-  return absl::Status();
+  return Status();
 }
 
 }  // namespace
@@ -57,7 +54,7 @@ RestoredResource::RestoredResource(const std::string& device,
       initialize_(initialize),
       destroy_resource_(destroy_resource) {}
 
-absl::Status RestoredResource::Initialize() const {
+Status RestoredResource::Initialize() const {
   return ExecuteNoArgDummyReturnFunction(initialize_);
 }
 
@@ -70,7 +67,7 @@ RestoredResource::~RestoredResource() {
   // Check that handle is null before calling destroy_resource function in case
   // destructor is invoked unintentionally.
   if (destroy_resource_ != nullptr && handle() != nullptr) {
-    absl::Status status = ExecuteNoArgDummyReturnFunction(destroy_resource_);
+    Status status = ExecuteNoArgDummyReturnFunction(destroy_resource_);
     if (!status.ok()) {
       LOG(WARNING)
           << "Failed executing destroy_resource function for RestoredResource: "

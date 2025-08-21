@@ -26,7 +26,6 @@ limitations under the License.
 #include "mlir/IR/Operation.h"  // from @llvm-project
 #include "mlir/IR/PatternMatch.h"  // from @llvm-project
 #include "mlir/Pass/Pass.h"  // from @llvm-project
-#include "mlir/Support/LLVM.h"  // from @llvm-project
 #include "mlir/Support/LogicalResult.h"  // from @llvm-project
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_ops.h"
@@ -145,7 +144,7 @@ LogicalResult ConvertResultsBroadcastableShapeOp::RewriteOp(
 
   // Check that the result shape is fully defined.
   auto result_type =
-      mlir::dyn_cast_or_null<RankedTensorType>(op->getResultTypes().front());
+      op->getResultTypes().front().dyn_cast_or_null<RankedTensorType>();
   if (!result_type || !result_type.hasStaticShape()) return failure();
 
   bool changed = false;
@@ -156,13 +155,15 @@ LogicalResult ConvertResultsBroadcastableShapeOp::RewriteOp(
     if (!broadcast) continue;
 
     // Check that the operand of the broadcast has fully defined shape.
-    auto broadcast_arg_type = mlir::dyn_cast_or_null<RankedTensorType>(
-        broadcast.getInput().getType());
+    auto broadcast_arg_type =
+        broadcast.getInput().getType().dyn_cast_or_null<RankedTensorType>();
     if (!broadcast_arg_type || !broadcast_arg_type.hasStaticShape()) continue;
 
     // Check that the other argument has fully defined shape.
-    auto argument_type = mlir::dyn_cast_or_null<RankedTensorType>(
-        op->getOpOperand(1 - i).get().getType());
+    auto argument_type = op->getOpOperand(1 - i)
+                             .get()
+                             .getType()
+                             .dyn_cast_or_null<RankedTensorType>();
     if (!argument_type || !argument_type.hasStaticShape()) continue;
 
     // Get the unbroadcasted shapes in the operand order.
@@ -182,7 +183,7 @@ LogicalResult ConvertResultsBroadcastableShapeOp::RewriteOp(
     if (broadcasted_shape != result_type.getShape()) continue;
 
     // Update the operand of the op to be the operand of the broadcast.
-    rewriter.modifyOpInPlace(
+    rewriter.updateRootInPlace(
         op, [&]() { op->getOpOperand(i).set(broadcast.getInput()); });
     changed = true;
   }

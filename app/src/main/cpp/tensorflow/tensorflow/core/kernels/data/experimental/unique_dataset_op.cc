@@ -14,18 +14,8 @@ limitations under the License.
 ==============================================================================*/
 #include "tensorflow/core/kernels/data/experimental/unique_dataset_op.h"
 
-#include <cstddef>
-#include <cstdint>
-#include <memory>
-#include <unordered_set>
-#include <utility>
-#include <vector>
-
-#include "absl/log/check.h"
-#include "absl/status/status.h"
 #include "tensorflow/core/framework/partial_tensor_shape.h"
 #include "tensorflow/core/framework/tensor.h"
-#include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/lib/hash/hash.h"
 
 namespace tensorflow {
@@ -64,24 +54,23 @@ class UniqueDatasetOp::Dataset : public DatasetBase {
     return strings::StrCat("UniqueDatasetOp::Dataset");
   }
 
-  absl::Status InputDatasets(
-      std::vector<const DatasetBase*>* inputs) const override {
+  Status InputDatasets(std::vector<const DatasetBase*>* inputs) const override {
     inputs->push_back(input_);
-    return absl::OkStatus();
+    return OkStatus();
   }
 
-  absl::Status CheckExternalState() const override {
+  Status CheckExternalState() const override {
     return input_->CheckExternalState();
   }
 
  protected:
-  absl::Status AsGraphDefInternal(SerializationContext* ctx,
-                                  DatasetGraphDefBuilder* b,
-                                  Node** output) const override {
+  Status AsGraphDefInternal(SerializationContext* ctx,
+                            DatasetGraphDefBuilder* b,
+                            Node** output) const override {
     Node* input_graph_node = nullptr;
     TF_RETURN_IF_ERROR(b->AddInputDataset(ctx, input_, &input_graph_node));
     TF_RETURN_IF_ERROR(b->AddDataset(this, {input_graph_node}, output));
-    return absl::OkStatus();
+    return OkStatus();
   }
 
  private:
@@ -90,13 +79,13 @@ class UniqueDatasetOp::Dataset : public DatasetBase {
     explicit Iterator(const typename Iterator::Params& params)
         : DatasetIterator<Dataset>(params) {}
 
-    absl::Status Initialize(IteratorContext* ctx) override {
+    Status Initialize(IteratorContext* ctx) override {
       return dataset()->input_->MakeIterator(ctx, this, prefix(), &input_impl_);
     }
 
-    absl::Status GetNextInternal(IteratorContext* ctx,
-                                 std::vector<Tensor>* out_tensors,
-                                 bool* end_of_sequence) override {
+    Status GetNextInternal(IteratorContext* ctx,
+                           std::vector<Tensor>* out_tensors,
+                           bool* end_of_sequence) override {
       mutex_lock l(mu_);
       bool saw_new_value;
       do {
@@ -110,7 +99,7 @@ class UniqueDatasetOp::Dataset : public DatasetBase {
         DCHECK_EQ(1, out_tensors->size());
         saw_new_value = unique_elements_.insert((*out_tensors)[0]).second;
       } while (!saw_new_value);
-      return absl::OkStatus();
+      return OkStatus();
     }
 
    protected:
@@ -119,8 +108,8 @@ class UniqueDatasetOp::Dataset : public DatasetBase {
       return model::MakeUnknownRatioNode(std::move(args));
     }
 
-    absl::Status SaveInternal(SerializationContext* ctx,
-                              IteratorStateWriter* writer) override {
+    Status SaveInternal(SerializationContext* ctx,
+                        IteratorStateWriter* writer) override {
       mutex_lock l(mu_);
       if (input_impl_) {
         TF_RETURN_IF_ERROR(SaveInput(ctx, writer, input_impl_));
@@ -135,11 +124,11 @@ class UniqueDatasetOp::Dataset : public DatasetBase {
         TF_RETURN_IF_ERROR(writer->WriteTensor(
             full_name(strings::StrCat("unique_elements[", i++, "]")), t));
       }
-      return absl::OkStatus();
+      return OkStatus();
     }
 
-    absl::Status RestoreInternal(IteratorContext* ctx,
-                                 IteratorStateReader* reader) override {
+    Status RestoreInternal(IteratorContext* ctx,
+                           IteratorStateReader* reader) override {
       mutex_lock l(mu_);
       if (!reader->Contains(full_name("input_impl_empty"))) {
         TF_RETURN_IF_ERROR(RestoreInput(ctx, reader, input_impl_));
@@ -162,7 +151,7 @@ class UniqueDatasetOp::Dataset : public DatasetBase {
               "value.");
         }
       }
-      return absl::OkStatus();
+      return OkStatus();
     }
 
    private:

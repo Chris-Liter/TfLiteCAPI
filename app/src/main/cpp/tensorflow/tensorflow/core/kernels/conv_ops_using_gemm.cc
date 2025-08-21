@@ -308,10 +308,10 @@ class Im2ColConvFunctor {
     // use TensorFlow's resource management to ensure that the memory will be
     // released when the session is over.
     Im2ColBufferResource<T1, chunk_value_count>* im2col_buffer_resource;
-    std::function<absl::Status(Im2ColBufferResource<T1, chunk_value_count>**)>
+    std::function<Status(Im2ColBufferResource<T1, chunk_value_count>**)>
         creator = [](Im2ColBufferResource<T1, chunk_value_count>** resource) {
           *resource = new Im2ColBufferResource<T1, chunk_value_count>();
-          return absl::OkStatus();
+          return OkStatus();
         };
     OP_REQUIRES_OK(context, context->resource_manager()->LookupOrCreate(
                                 "Conv2d", "im2col_buffer",
@@ -561,8 +561,7 @@ class Conv2DUsingGemmOp : public BinaryOp<T> {
   Padding padding_;
   TensorFormat data_format_;
 
-  Conv2DUsingGemmOp(const Conv2DUsingGemmOp&) = delete;
-  void operator=(const Conv2DUsingGemmOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(Conv2DUsingGemmOp);
 };
 
 #define REGISTER_CPU(T)                                         \

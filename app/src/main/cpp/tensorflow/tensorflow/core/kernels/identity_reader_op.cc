@@ -33,32 +33,32 @@ class IdentityReader : public ReaderBase {
   explicit IdentityReader(const string& node_name)
       : ReaderBase(strings::StrCat("IdentityReader '", node_name, "'")) {}
 
-  absl::Status ReadLocked(tstring* key, tstring* value, bool* produced,
-                          bool* at_end) override {
+  Status ReadLocked(tstring* key, tstring* value, bool* produced,
+                    bool* at_end) override {
     *key = current_work();
     *value = current_work();
     *produced = true;
     *at_end = true;
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   // Stores state in a ReaderBaseState proto, since IdentityReader has
   // no additional state beyond ReaderBase.
-  absl::Status SerializeStateLocked(tstring* state) override {
+  Status SerializeStateLocked(tstring* state) override {
     ReaderBaseState base_state;
     SaveBaseState(&base_state);
     SerializeToTString(base_state, state);
-    return absl::OkStatus();
+    return OkStatus();
   }
 
-  absl::Status RestoreStateLocked(const tstring& state) override {
+  Status RestoreStateLocked(const tstring& state) override {
     ReaderBaseState base_state;
     if (!ParseProtoUnlimited(&base_state, state)) {
       return errors::InvalidArgument("Could not parse state for ", name(), ": ",
                                      absl::CEscape(state));
     }
     TF_RETURN_IF_ERROR(RestoreBaseState(base_state));
-    return absl::OkStatus();
+    return OkStatus();
   }
 };
 

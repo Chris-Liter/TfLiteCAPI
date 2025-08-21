@@ -29,10 +29,7 @@ final class NativeSignatureRunnerWrapper {
     }
   }
 
-  /**
-   * Attempts to get the subgraph index associated with this Signature. Returns the subgraph index,
-   * or -1 on error.
-   */
+  /** Gets the subgraph index associated with this Signature. */
   public int getSubgraphIndex() {
     return nativeGetSubgraphIndex(signatureRunnerHandle);
   }

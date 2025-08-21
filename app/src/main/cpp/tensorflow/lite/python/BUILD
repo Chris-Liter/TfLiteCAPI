@@ -1,16 +1,14 @@
 load("@flatbuffers//:build_defs.bzl", "flatbuffer_py_library")
-load("//tensorflow:pytype.default.bzl", "pytype_strict_contrib_test", "pytype_strict_library")
-load("//tensorflow:strict.default.bzl", "py_strict_binary", "py_strict_library", "py_strict_test")
 load("//tensorflow:tensorflow.default.bzl", "get_compatible_with_portable")
 load("//tensorflow/lite:special_rules.bzl", "internal_visibility_allowlist")
+load("//tensorflow:pytype.default.bzl", "pytype_strict_contrib_test", "pytype_strict_library")
 
 package(
     # copybara:uncomment default_applicable_licenses = ["//tensorflow:license"],
     default_visibility = [
         "//tensorflow:__subpackages__",
         "//tensorflow:internal",
-        "//third_party/odml/model_customization/quantization:__subpackages__",
-        "//third_party/py/ai_edge_torch:__subpackages__",
+        "//tensorflow_estimator:__subpackages__",
         "//third_party/py/tensorflow_federated:__subpackages__",
         "//third_party/tflite_micro:__subpackages__",
     ],
@@ -21,16 +19,15 @@ exports_files(["tflite_convert.py"])
 
 flatbuffer_py_library(
     name = "schema_py",
-    srcs = ["//tensorflow/compiler/mlir/lite/schema:schema.fbs"],
-    visibility = ["//visibility:public"],
+    srcs = ["//tensorflow/lite/schema:schema.fbs"],
 )
 
 flatbuffer_py_library(
     name = "conversion_metadata_schema_py",
-    srcs = ["//tensorflow/compiler/mlir/lite/schema:conversion_metadata.fbs"],
+    srcs = ["//tensorflow/lite/schema:conversion_metadata.fbs"],
 )
 
-py_strict_library(
+py_library(
     name = "interpreter",
     srcs = [
         "interpreter.py",
@@ -46,7 +43,7 @@ py_strict_library(
     ],
 )
 
-py_strict_test(
+py_test(
     name = "interpreter_test",
     srcs = ["interpreter_test.py"],
     data = [
@@ -54,9 +51,6 @@ py_strict_test(
         "//tensorflow/lite/python/testdata:interpreter_test_data",
         "//tensorflow/lite/python/testdata:test_delegate.so",
     ],
-    # Static linking is required because this loads a cc_binary as a shared
-    # library, which would otherwise create ODR violations.
-    # copybara:uncomment linking_mode = "static",
     python_version = "PY3",
     srcs_version = "PY3",
     tags = [
@@ -64,18 +58,17 @@ py_strict_test(
     ],
     deps = [
         ":interpreter",
-        #internal proto upb dep
-        "//third_party/py/numpy",
         "//tensorflow:tensorflow_py",
         "//tensorflow/lite/python/metrics",
         "//tensorflow/lite/python/testdata:_pywrap_test_registerer",
         "//tensorflow/python/framework:test_lib",
         "//tensorflow/python/platform:client_testlib",
         "//tensorflow/python/platform:resource_loader",
+        "//third_party/py/numpy",
     ],
 )
 
-py_strict_binary(
+py_binary(
     name = "tflite_convert",
     srcs = ["tflite_convert.py"],
     python_version = "PY3",
@@ -88,37 +81,48 @@ py_strict_binary(
     ],
 )
 
-py_strict_library(
+py_library(
     name = "tflite_convert_main_lib",
     srcs = ["tflite_convert.py"],
     srcs_version = "PY3",
     visibility = ["//visibility:public"],
     deps = [
-        ":convert",
+        ":tflite_convert_lib",
         "//tensorflow:tensorflow_py",
-        "//tensorflow/lite/toco:toco_flags_proto_py",
-        "//tensorflow/lite/toco/logging:gen_html",
-        "//tensorflow/python:tf2",
-        "//tensorflow/python/framework:dtypes",
         "//tensorflow/python/platform:gfile",
         "//tensorflow/python/util:keras_deps",
         "@absl_py//absl:app",
     ],
 )
 
-py_strict_library(
+py_library(
+    name = "tflite_convert_lib",
+    srcs = ["tflite_convert.py"],
+    srcs_version = "PY3",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":lite",
+        "//tensorflow/lite/toco/logging:gen_html",
+        "//tensorflow/lite/toco/logging:toco_conversion_log_proto_py",
+        "//tensorflow/python/platform:gfile",
+        "//tensorflow/python/util:keras_deps",
+        "@absl_py//absl:app",
+    ],
+)
+
+py_library(
     name = "test_util",
     srcs = ["test_util.py"],
     srcs_version = "PY3",
     deps = [
         ":lite",
-        ":schema_py",
         ":schema_util",
-        "//tensorflow/lite/tools:visualize_lib",
+        "//tensorflow/lite/tools:visualize",
+        "//tensorflow/python/framework",
     ],
 )
 
-py_strict_test(
+py_test(
     name = "test_util_test",
     srcs = ["test_util_test.py"],
     data = [
@@ -128,20 +132,17 @@ py_strict_test(
     python_version = "PY3",
     deps = [
         ":test_util",
-        #internal proto upb dep
-        "//tensorflow/python/framework:test_lib",
         "//tensorflow/python/platform:client_testlib",
         "//tensorflow/python/platform:gfile",
         "//tensorflow/python/platform:resource_loader",
     ],
 )
 
-py_strict_test(
+py_test(
     name = "tflite_convert_test",
     srcs = ["tflite_convert_test.py"],
     data = [
         ":tflite_convert.par",
-        "//tensorflow/lite/python:tflite_convert",  # Necessary because the test runs the binary from the command line
         "@tflite_mobilenet_ssd_quant_protobuf//:tflite_graph.pb",
     ],
     python_version = "PY3",
@@ -155,17 +156,14 @@ py_strict_test(
     deps = [
         ":convert",
         ":test_util",
-        ":tflite_convert_main_lib",
-        #internal proto upb dep
-        "//third_party/py/numpy",
+        ":tflite_convert",
         "//tensorflow:tensorflow_py",
-        "//tensorflow/core:protos_all_py",
         "//tensorflow/python:tf2",
         "//tensorflow/python/client:session",
         "//tensorflow/python/eager:def_function",
+        "//tensorflow/python/framework",
         "//tensorflow/python/framework:constant_op",
         "//tensorflow/python/framework:dtypes",
-        "//tensorflow/python/framework:importer",
         "//tensorflow/python/framework:ops",
         "//tensorflow/python/framework:test_lib",
         "//tensorflow/python/ops:array_ops",
@@ -177,17 +175,14 @@ py_strict_test(
         "//tensorflow/python/saved_model:save",
         "//tensorflow/python/trackable:autotrackable",
         "//tensorflow/python/training:training_util",
-        "@absl_py//absl/testing:parameterized",
+        "//third_party/py/numpy",
     ],
 )
 
-py_strict_library(
+py_library(
     name = "lite",
     srcs = ["lite.py"],
     srcs_version = "PY3",
-    tags = [
-        "ignore_for_dep=third_party.py.keras",
-    ],
     visibility = ["//visibility:public"],
     deps = [
         ":conversion_metadata_schema_py",
@@ -198,12 +193,7 @@ py_strict_library(
         ":lite_constants",
         ":op_hint",
         ":util",
-        "//tensorflow/compiler/mlir/quantization/stablehlo:quantization_config_proto_py",
-        "//tensorflow/compiler/mlir/quantization/tensorflow/python:representative_dataset",
-        "//tensorflow/core:protos_all_py",
         "//tensorflow/lite/experimental/microfrontend:audio_microfrontend_py",
-        "//tensorflow/lite/profiling/proto:model_runtime_info_py",
-        "//tensorflow/lite/profiling/proto:profiling_info_py",
         "//tensorflow/lite/python/metrics",
         "//tensorflow/lite/python/optimize:calibrator",
         "//tensorflow/lite/tools:flatbuffer_utils",
@@ -212,30 +202,24 @@ py_strict_library(
         "//tensorflow/python/eager:context",
         "//tensorflow/python/eager:def_function",
         "//tensorflow/python/eager:function",
-        "//tensorflow/python/framework:byte_swap_tensor",
+        "//tensorflow/python/framework",
         "//tensorflow/python/framework:convert_to_constants",
         "//tensorflow/python/framework:dtypes",
         "//tensorflow/python/framework:errors",
-        "//tensorflow/python/framework:importer",
         "//tensorflow/python/framework:ops",
-        "//tensorflow/python/framework:tensor_spec",
-        "//tensorflow/python/framework:versions",
         "//tensorflow/python/platform:gfile",
         "//tensorflow/python/saved_model:load",
         "//tensorflow/python/saved_model:loader",
-        "//tensorflow/python/saved_model:save",
-        "//tensorflow/python/saved_model:save_options",
         "//tensorflow/python/saved_model:signature_constants",
         "//tensorflow/python/saved_model:tag_constants",
         "//tensorflow/python/util:deprecation",
         "//tensorflow/python/util:keras_deps",
-        "//tensorflow/python/util:nest",
         "//tensorflow/python/util:tf_export",
         "@absl_py//absl/logging",
     ],
 )
 
-py_strict_test(
+py_test(
     name = "lite_test",
     srcs = ["lite_test.py"],
     data = [
@@ -249,42 +233,16 @@ py_strict_test(
         "no_windows",
     ],
     deps = [
-        ":conversion_metadata_schema_py",
-        ":convert",
-        ":interpreter",
         ":lite",
-        ":lite_constants",
-        ":schema_py",
-        ":util",
-        #internal proto upb dep
-        "//third_party/py/numpy",
         "//tensorflow:tensorflow_py",
-        "//tensorflow/python/client:session",
-        "//tensorflow/python/eager:context",
-        "//tensorflow/python/eager:def_function",
-        "//tensorflow/python/framework:constant_op",
-        "//tensorflow/python/framework:convert_to_constants",
-        "//tensorflow/python/framework:dtypes",
-        "//tensorflow/python/framework:ops",
         "//tensorflow/python/framework:test_lib",
-        "//tensorflow/python/framework:versions",
-        "//tensorflow/python/ops:array_ops",
-        "//tensorflow/python/ops:logging_ops",
-        "//tensorflow/python/ops:math_ops",
-        "//tensorflow/python/ops:nn_ops",
-        "//tensorflow/python/ops:random_ops",
-        "//tensorflow/python/ops:variable_scope",
-        "//tensorflow/python/ops:variables",
         "//tensorflow/python/platform:client_testlib",
         "//tensorflow/python/platform:gfile",
         "//tensorflow/python/platform:resource_loader",
-        "//tensorflow/python/saved_model",
-        "//tensorflow/python/training:training_util",
-        "@absl_py//absl/testing:parameterized",
     ],
 )
 
-py_strict_test(
+py_test(
     name = "lite_v2_test",
     srcs = ["lite_v2_test.py"],
     data = [
@@ -298,41 +256,21 @@ py_strict_test(
         "no_windows",
     ],
     deps = [
-        ":conversion_metadata_schema_py",
-        ":convert",
-        ":interpreter",
         ":lite",
         ":lite_v2_test_util",
-        ":schema_py",
         ":test_util",
-        ":util",
-        #internal proto upb dep
-        "//third_party/py/numpy",
         "//tensorflow:tensorflow_py",
         "//tensorflow/compiler/mlir/quantization/stablehlo:quantization_options_proto_py",
         "//tensorflow/lite/python/testdata:_pywrap_test_registerer",
         "//tensorflow/lite/python/testdata:double_op",
-        "//tensorflow/lite/tools:flatbuffer_utils",
-        "//tensorflow/python/framework:dtypes",
-        "//tensorflow/python/framework:ops",
         "//tensorflow/python/framework:test_lib",
-        "//tensorflow/python/framework:versions",
-        "//tensorflow/python/lib/io:file_io",
-        "//tensorflow/python/ops:map_ops",
-        "//tensorflow/python/ops:rnn",
         "//tensorflow/python/platform:client_testlib",
         "//tensorflow/python/platform:resource_loader",
-        "//tensorflow/python/saved_model",
-        "//tensorflow/python/saved_model:loader",
-        "//tensorflow/python/saved_model:save",
-        "//tensorflow/python/saved_model:save_options",
-        "//tensorflow/python/trackable:autotrackable",
-        "@absl_py//absl/testing:parameterized",
         "@pypi_jax//:pkg",
     ],
 )
 
-py_strict_library(
+py_library(
     name = "lite_v2_test_util",
     testonly = 1,
     srcs = ["lite_v2_test_util.py"],
@@ -341,58 +279,28 @@ py_strict_library(
         "no_windows",
     ],
     deps = [
-        ":interpreter",
         ":lite",
-        "//tensorflow:tensorflow_py_no_contrib",
-        "//tensorflow/python/eager:def_function",
-        "//tensorflow/python/framework:constant_op",
-        "//tensorflow/python/framework:dtypes",
-        "//tensorflow/python/framework:tensor_spec",
         "//tensorflow/python/framework:test_lib",
-        "//tensorflow/python/ops:array_ops",
-        "//tensorflow/python/ops:math_ops",
-        "//tensorflow/python/ops:variables",
         "//tensorflow/python/platform:client_testlib",
-        "//tensorflow/python/trackable:autotrackable",
-        "//third_party/py/numpy",
-        "@absl_py//absl/testing:parameterized",
     ],
 )
 
-py_strict_test(
+py_test(
     name = "lite_flex_test",
     srcs = ["lite_flex_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":convert",
-        ":interpreter",
         ":lite",
         ":test_util",
-        #internal proto upb dep
-        "//third_party/py/numpy",
         "//tensorflow:tensorflow_py",
-        "//tensorflow/core:protos_all_py",
         "//tensorflow/lite/python/testdata:double_op",
-        "//tensorflow/python/client:session",
-        "//tensorflow/python/eager:def_function",
-        "//tensorflow/python/framework:constant_op",
-        "//tensorflow/python/framework:dtypes",
-        "//tensorflow/python/framework:importer",
-        "//tensorflow/python/framework:ops",
         "//tensorflow/python/framework:test_lib",
-        "//tensorflow/python/ops:array_ops",
-        "//tensorflow/python/ops:list_ops",
-        "//tensorflow/python/ops:nn_ops",
-        "//tensorflow/python/ops:variables",
         "//tensorflow/python/platform:client_testlib",
-        "//tensorflow/python/saved_model",
-        "//tensorflow/python/trackable:autotrackable",
-        "@absl_py//absl/testing:parameterized",
     ],
 )
 
-py_strict_library(
+py_library(
     name = "util",
     srcs = ["util.py"],
     srcs_version = "PY3",
@@ -402,22 +310,22 @@ py_strict_library(
         ":op_hint",
         ":schema_py",
         ":schema_util",
-        ":tflite_keras_util",
-        "//tensorflow/core:protos_all_py",
+        "//tensorflow/lite/python:tflite_keras_util",
+        "//tensorflow/lite/toco:toco_flags_proto_py",
         "//tensorflow/lite/tools:flatbuffer_utils",
         "//tensorflow/python/eager:function",
         "//tensorflow/python/framework:convert_to_constants",
         "//tensorflow/python/framework:dtypes",
         "//tensorflow/python/framework:error_interpolation",
+        "//tensorflow/python/framework:graph_util",
         "//tensorflow/python/grappler:tf_optimizer",
         "//tensorflow/python/training:saver",
-        "//third_party/py/numpy",
         "@absl_py//absl/logging",
         "@flatbuffers//:runtime_py",
     ],
 )
 
-py_strict_test(
+py_test(
     name = "util_test",
     srcs = ["util_test.py"],
     python_version = "PY3",
@@ -427,10 +335,7 @@ py_strict_test(
     ],
     deps = [
         ":util",
-        #internal proto upb dep
-        "//third_party/py/numpy",
         "//tensorflow:tensorflow_py",
-        "//tensorflow/lite/tools:flatbuffer_utils",
         "//tensorflow/python/client:session",
         "//tensorflow/python/framework:convert_to_constants",
         "//tensorflow/python/framework:dtypes",
@@ -440,11 +345,12 @@ py_strict_test(
         "//tensorflow/python/ops:math_ops",
         "//tensorflow/python/ops:while_loop",
         "//tensorflow/python/platform:client_testlib",
+        "//third_party/py/numpy",
         "@absl_py//absl/testing:parameterized",
     ],
 )
 
-py_strict_library(
+py_library(
     name = "tflite_keras_util",
     srcs = [
         "tflite_keras_util.py",
@@ -452,19 +358,30 @@ py_strict_library(
     srcs_version = "PY3",
     deps = [
         "//tensorflow/python/eager:def_function",
-        "//tensorflow/python/framework:tensor_spec",
         "//tensorflow/python/util:compat",
         "//tensorflow/python/util:keras_deps",
         "//tensorflow/python/util:nest",
     ],
 )
 
-py_strict_library(
+py_library(
+    name = "wrap_toco",
+    srcs = [
+        "wrap_toco.py",
+    ],
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow/python:_pywrap_toco_api",
+        "//tensorflow/python:pywrap_tensorflow",
+    ],
+)
+
+py_library(
     name = "lite_constants",
     srcs = ["lite_constants.py"],
     srcs_version = "PY3",
     deps = [
-        "//tensorflow/compiler/mlir/lite:converter_flags_proto_py",
+        "//tensorflow/lite/toco:toco_flags_proto_py",
         "//tensorflow/python/framework:dtypes",
         "//tensorflow/python/util:all_util",
         "//tensorflow/python/util:tf_export",
@@ -480,33 +397,28 @@ pytype_strict_library(
         ":convert_phase",
         ":lite_constants",
         ":util",
-        "//tensorflow/compiler/mlir/lite:converter_flags_proto_py",
-        "//tensorflow/compiler/mlir/lite:model_flags_proto_py",
-        "//tensorflow/compiler/mlir/lite:types_proto_py",
-        "//tensorflow/compiler/mlir/lite/metrics:converter_error_data_proto_py",
-        "//tensorflow/compiler/mlir/lite/python:wrap_converter",
-        "//tensorflow/compiler/mlir/quantization/stablehlo:quantization_config_proto_py",
-        "//tensorflow/compiler/mlir/quantization/stablehlo:quantization_options_proto_py",
+        ":wrap_toco",
+        "//tensorflow/lite/python/metrics:converter_error_data_proto_py",
         "//tensorflow/lite/python/metrics:metrics_wrapper",
+        "//tensorflow/lite/toco:model_flags_proto_py",
+        "//tensorflow/lite/toco:toco_flags_proto_py",
+        "//tensorflow/lite/toco/python:toco_from_protos",
         "//tensorflow/lite/tools:flatbuffer_utils",
         "//tensorflow/python/framework:dtypes",
         "//tensorflow/python/framework:tensor_shape",
+        "//tensorflow/python/platform:resource_loader",
         "//tensorflow/python/util:deprecation",
         "//tensorflow/python/util:tf_export",
     ],
 )
 
-py_strict_library(
+py_library(
     name = "op_hint",
     srcs = ["op_hint.py"],
     visibility = ["//visibility:public"],
     deps = [
         "//tensorflow/core:protos_all_py",
-        "//tensorflow/python/framework:dtypes",
         "//tensorflow/python/framework:graph_util",
-        "//tensorflow/python/framework:ops",
-        "//tensorflow/python/framework:tensor_util",
-        "//tensorflow/python/ops:array_ops",
         "//tensorflow/python/util:all_util",
         "//tensorflow/python/util:compat",
         "//tensorflow/python/util:deprecation",
@@ -521,9 +433,9 @@ pytype_strict_contrib_test(
         ":convert",
         ":interpreter",
         ":op_hint",
-        "//tensorflow/compiler/mlir/lite:converter_flags_proto_py",
-        "//tensorflow/compiler/mlir/lite/metrics:converter_error_data_proto_py",
+        "//tensorflow/lite/python/metrics:converter_error_data_proto_py",
         "//tensorflow/lite/python/metrics:metrics_wrapper",
+        "//tensorflow/lite/toco:toco_flags_proto_py",
         "//tensorflow/python/client:session",
         "//tensorflow/python/framework:dtypes",
         "//tensorflow/python/framework:graph_util",
@@ -537,7 +449,7 @@ pytype_strict_contrib_test(
     ],
 )
 
-py_strict_library(
+py_library(
     name = "convert_saved_model",
     srcs = ["convert_saved_model.py"],
     srcs_version = "PY3",
@@ -547,17 +459,13 @@ py_strict_library(
     deps = [
         ":convert_phase",
         ":util",
-        "//tensorflow/python/client:session",
         "//tensorflow/python/framework:graph_util",
-        "//tensorflow/python/framework:ops",
         "//tensorflow/python/platform:tf_logging",
         "//tensorflow/python/saved_model",
-        "//tensorflow/python/saved_model:constants",
-        "//tensorflow/python/saved_model:loader",
     ],
 )
 
-py_strict_test(
+py_test(
     name = "convert_saved_model_test",
     srcs = ["convert_saved_model_test.py"],
     python_version = "PY3",
@@ -568,24 +476,16 @@ py_strict_test(
     visibility = ["//visibility:public"],
     deps = [
         ":convert_saved_model",
-        #internal proto upb dep
         "//tensorflow/python/client:session",
-        "//tensorflow/python/framework:dtypes",
-        "//tensorflow/python/framework:ops",
-        "//tensorflow/python/framework:tensor_shape",
-        "//tensorflow/python/framework:test_lib",
         "//tensorflow/python/layers",
-        "//tensorflow/python/ops:array_ops",
         "//tensorflow/python/ops/losses",
         "//tensorflow/python/platform:client_testlib",
         "//tensorflow/python/platform:test",
         "//tensorflow/python/saved_model",
-        "//tensorflow/python/saved_model:signature_constants",
-        "//tensorflow/python/saved_model:tag_constants",
     ],
 )
 
-py_strict_binary(
+py_binary(
     name = "convert_file_to_c_source",
     srcs = ["convert_file_to_c_source.py"],
     python_version = "PY3",
@@ -604,7 +504,7 @@ sh_test(
     data = [":convert_file_to_c_source"],
 )
 
-py_strict_library(
+py_library(
     name = "schema_util",
     srcs = ["schema_util.py"],
     srcs_version = "PY3",
@@ -616,18 +516,18 @@ py_strict_library(
 
 # Use py_library since the metrics module is imported in a try-except block,
 # which doesn't work with the pytype_strict_library.
-py_strict_library(
+py_library(
     name = "convert_phase",
     srcs = ["convert_phase.py"],
     srcs_version = "PY3",
     visibility = ["//tensorflow/lite:__subpackages__"],
     deps = [
-        "//tensorflow/compiler/mlir/lite/metrics:converter_error_data_proto_py",
         "//tensorflow/lite/python/metrics",
+        "//tensorflow/lite/python/metrics:converter_error_data_proto_py",
     ],
 )
 
-py_strict_library(
+py_library(
     name = "analyzer",
     srcs = [
         "analyzer.py",
@@ -635,13 +535,13 @@ py_strict_library(
     srcs_version = "PY3",
     visibility = ["//visibility:public"],
     deps = [
-        "//tensorflow/compiler/mlir/lite/python:wrap_converter",
+        "//tensorflow/lite/python:wrap_toco",
         "//tensorflow/lite/python/analyzer_wrapper:_pywrap_analyzer_wrapper",
         "//tensorflow/python/util:tf_export",
     ],
 )
 
-py_strict_test(
+py_test(
     name = "analyzer_test",
     srcs = ["analyzer_test.py"],
     data = [
@@ -652,11 +552,9 @@ py_strict_test(
     python_version = "PY3",
     deps = [
         ":analyzer",
-        #internal proto upb dep
         "//tensorflow:tensorflow_py",
         "//tensorflow/python/framework:test_lib",
         "//tensorflow/python/platform:client_testlib",
         "//tensorflow/python/platform:resource_loader",
-        "//tensorflow/python/trackable:autotrackable",
     ],
 )

@@ -1,6 +1,6 @@
-load("//tensorflow:tensorflow.bzl", "tf_cc_test", "tf_cuda_library")
 load("//tensorflow:tensorflow.default.bzl", "filegroup")
 load("//tensorflow/core/platform:rules_cc.bzl", "cc_library")
+load("//tensorflow:tensorflow.bzl", "tf_cc_test", "tf_cuda_library")
 
 package(
     # copybara:uncomment default_applicable_licenses = ["//tensorflow:license"],
@@ -43,14 +43,11 @@ cc_library(
         "//tensorflow/core:lib",
         "//tensorflow/core:lib_internal",
         "//tensorflow/core:protos_all_cc",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/container:node_hash_map",
-        "@com_google_absl//absl/log",
-        "@com_google_absl//absl/log:check",
-        "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
-        "@eigen_archive//:eigen3",
     ],
 )
 
@@ -77,14 +74,13 @@ tf_cuda_library(
     srcs = ["devices.cc"],
     hdrs = ["devices.h"],
     cuda_deps = [
-        "@local_xla//xla/stream_executor/gpu:gpu_init",
+        "//tensorflow/compiler/xla/stream_executor/gpu:gpu_init",
         "//tensorflow/core/platform:stream_executor",
     ],
     visibility = ["//visibility:public"],
     deps = [
         "//tensorflow/core:lib",
         "//tensorflow/core:lib_internal",
-        "@com_google_absl//absl/log",
     ],
 )
 
@@ -167,9 +163,9 @@ cc_library(
         "//tensorflow/core:framework",
         "//tensorflow/core:protos_all_cc",
         "//tensorflow/core/grappler/utils:transitive_fanin",
+        "//tensorflow/tsl/platform:platform_port",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/strings",
-        "@local_tsl//tsl/platform:platform_port",
     ],
 )
 

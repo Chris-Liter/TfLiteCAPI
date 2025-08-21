@@ -15,21 +15,11 @@ limitations under the License.
 
 #include "tensorflow/core/grappler/clusters/virtual_cluster.h"
 
-#include <cstdint>
-#include <memory>
-#include <unordered_map>
-#include <utility>
-#include <vector>
-
-#include "absl/status/status.h"
 #include "tensorflow/core/framework/cost_graph.pb.h"
-#include "tensorflow/core/framework/graph.pb.h"
 #include "tensorflow/core/framework/tensor_shape.pb.h"
 #include "tensorflow/core/framework/types.h"
 #include "tensorflow/core/grappler/clusters/utils.h"
 #include "tensorflow/core/grappler/costs/op_level_cost_estimator.h"
-#include "tensorflow/core/protobuf/config.pb.h"
-#include "tensorflow/core/protobuf/device_properties.pb.h"
 
 namespace tensorflow {
 namespace grappler {
@@ -67,15 +57,16 @@ VirtualCluster::VirtualCluster(const DeviceSet* device_set)
 
 VirtualCluster::~VirtualCluster() {}
 
-absl::Status VirtualCluster::Provision() { return absl::OkStatus(); }
+Status VirtualCluster::Provision() { return OkStatus(); }
 
-absl::Status VirtualCluster::Initialize(const GrapplerItem& item) {
-  return absl::OkStatus();
+Status VirtualCluster::Initialize(const GrapplerItem& item) {
+  return OkStatus();
 }
 
-absl::Status VirtualCluster::Run(
-    const GraphDef& graph, const std::vector<std::pair<string, Tensor>>& feed,
-    const std::vector<string>& fetch, RunMetadata* metadata) {
+Status VirtualCluster::Run(const GraphDef& graph,
+                           const std::vector<std::pair<string, Tensor>>& feed,
+                           const std::vector<string>& fetch,
+                           RunMetadata* metadata) {
   GrapplerItem item;
   item.graph = graph;
   item.feed = feed;
@@ -83,8 +74,7 @@ absl::Status VirtualCluster::Run(
   return Run(item, metadata);
 }
 
-absl::Status VirtualCluster::Run(const GrapplerItem& item,
-                                 RunMetadata* metadata) {
+Status VirtualCluster::Run(const GrapplerItem& item, RunMetadata* metadata) {
   // Initializes an analytical cost estimator to estimate the graph cost. Makes
   // sure to use static shape inference to prevent the virtual scheduler from
   // calling the Run method on the cluster and creating an infinite loop.
@@ -124,7 +114,7 @@ absl::Status VirtualCluster::Run(const GrapplerItem& item,
     }
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace grappler

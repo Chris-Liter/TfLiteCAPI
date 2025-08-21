@@ -82,7 +82,8 @@ class DecodeRawOp : public OpKernel {
     // output type is a single byte, we can copy the memory directly.
     if (!convert_data_endianness_ || sizeof(T) == 1) {
       for (int64_t i = 0; i < flat_in.size(); ++i) {
-        memcpy(out_data, flat_in(i).data(), str_size);
+        const T* in_data = reinterpret_cast<const T*>(flat_in(i).data());
+        memcpy(out_data, in_data, str_size);
         out_data += added_dim;
       }
     } else {

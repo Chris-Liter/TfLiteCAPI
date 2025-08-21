@@ -24,9 +24,9 @@ limitations under the License.
 
 #if GOOGLE_CUDA
 #include "third_party/gpus/cudnn/cudnn.h"
-#include "xla/stream_executor/gpu/gpu_asm_opts.h"
-#include "xla/stream_executor/gpu/redzone_allocator.h"
-#include "xla/stream_executor/integrations/tf_allocator_adapter.h"
+#include "tensorflow/compiler/xla/stream_executor/gpu/gpu_asm_opts.h"
+#include "tensorflow/compiler/xla/stream_executor/gpu/redzone_allocator.h"
+#include "tensorflow/compiler/xla/stream_executor/tf_allocator_adapter.h"
 #include "tensorflow/core/kernels/autotune_conv_impl.h"
 #include "tensorflow/core/kernels/numeric_options_utils.h"
 #include "tensorflow/core/platform/tensor_float_32_utils.h"
@@ -89,22 +89,19 @@ StatusOr<AutotuneEntry<se::dnn::FusedConvOp>> AutotuneFusedConv(
 
     se::TfAllocatorAdapter tf_allocator_adapter(ctx->device()->GetAllocator({}),
                                                 stream);
-    se::RedzoneAllocator rz_allocator(stream, &tf_allocator_adapter);
+    se::RedzoneAllocator rz_allocator(stream, &tf_allocator_adapter,
+                                      se::GpuAsmOpts());
     se::DeviceMemory<T> output_ptr_rz(
         WrapRedzoneBestEffort(&rz_allocator, output_ptr));
 
     std::vector<std::unique_ptr<const se::dnn::FusedConvRunner>> runners;
     auto element_type = se::dnn::ToDataType<T>::value;
-    auto dnn = stream->parent()->AsDnn();
-    if (dnn == nullptr) {
-      return absl::InvalidArgumentError("No DNN in stream executor.");
-    }
-    TF_RETURN_IF_ERROR(dnn->GetFusedConvolveRunners(
+    TF_RETURN_IF_ERROR(stream->parent()->GetFusedConvolveRunners(
         CudnnUseFrontend(), se::dnn::ConvolutionKind::FORWARD, element_type,
         element_type, element_type, conv_scale, side_input_scale,
         leakyrelu_alpha, stream, input_desc, filter_desc, bias_desc,
         output_desc, conv_desc, /*use_fallback=*/false, activation_mode,
-        GetNumericOptionsForCuDnn(), &runners));
+        GetNumericOptions(), &runners));
 
     auto launch_func =
         [&](se::ScratchAllocator* allocator_used,
@@ -150,12 +147,12 @@ StatusOr<AutotuneEntry<se::dnn::FusedConvOp>> AutotuneFusedConv(
           << params.ToString();
       std::vector<std::unique_ptr<const se::dnn::FusedConvRunner>>
           fallback_runners;
-      TF_RETURN_IF_ERROR(dnn->GetFusedConvolveRunners(
+      TF_RETURN_IF_ERROR(stream->parent()->GetFusedConvolveRunners(
           CudnnUseFrontend(), se::dnn::ConvolutionKind::FORWARD, element_type,
           element_type, element_type, conv_scale, side_input_scale,
           leakyrelu_alpha, stream, input_desc, filter_desc, bias_desc,
           output_desc, conv_desc, /*use_fallback=*/true, activation_mode,
-          GetNumericOptionsForCuDnn(), &fallback_runners));
+          GetNumericOptions(), &fallback_runners));
 
       TF_ASSIGN_OR_RETURN(auto fallback_results,
                           internal::AutotuneConvImpl(
@@ -255,7 +252,8 @@ StatusOr<AutotuneEntry<se::dnn::ConvOp>> AutotuneUnfusedConv(
 #if GOOGLE_CUDA
     se::TfAllocatorAdapter tf_allocator_adapter(ctx->device()->GetAllocator({}),
                                                 stream);
-    se::RedzoneAllocator rz_allocator(stream, &tf_allocator_adapter);
+    se::RedzoneAllocator rz_allocator(stream, &tf_allocator_adapter,
+                                      se::GpuAsmOpts());
 
     // TODO(awpr): second-guess whether it's okay that this profiles
     // convolutions on uninitialized memory.
@@ -281,15 +279,11 @@ StatusOr<AutotuneEntry<se::dnn::ConvOp>> AutotuneUnfusedConv(
 
     const auto element_type = se::dnn::ToDataType<T>::value;
     std::vector<std::unique_ptr<const se::dnn::ConvRunner>> runners;
-    auto dnn = stream->parent()->AsDnn();
-    if (dnn == nullptr) {
-      return absl::InvalidArgumentError("No DNN in stream executor.");
-    }
-    TF_RETURN_IF_ERROR(dnn->GetConvolveRunners(
+    TF_RETURN_IF_ERROR(stream->parent()->GetConvolveRunners(
         CudnnUseFrontend(), kind, element_type, element_type, stream,
         input_desc, input_ptr, filter_desc, filter_ptr, output_desc, output_ptr,
-        conv_desc, /*use_fallback=*/false, &rz_allocator,
-        GetNumericOptionsForCuDnn(), &runners));
+        conv_desc, /*use_fallback=*/false, &rz_allocator, GetNumericOptions(),
+        &runners));
     auto launch_func =
         [&](se::ScratchAllocator* allocator_used,
             const std::unique_ptr<const se::dnn::ConvRunner>& runner,
@@ -330,11 +324,11 @@ StatusOr<AutotuneEntry<se::dnn::ConvOp>> AutotuneUnfusedConv(
              "worked; trying fallback algorithms.  Conv: "
           << conv_parameters.ToString();
       std::vector<std::unique_ptr<const se::dnn::ConvRunner>> fallback_runners;
-      TF_RETURN_IF_ERROR(dnn->GetConvolveRunners(
+      TF_RETURN_IF_ERROR(stream->parent()->GetConvolveRunners(
           CudnnUseFrontend(), kind, element_type, element_type, stream,
           input_desc, input_ptr, filter_desc, filter_ptr, output_desc,
           output_ptr, conv_desc, /*use_fallback=*/true, &rz_allocator,
-          GetNumericOptionsForCuDnn(), &fallback_runners));
+          GetNumericOptions(), &fallback_runners));
 
       TF_ASSIGN_OR_RETURN(auto fallback_results,
                           internal::AutotuneConvImpl(
@@ -355,11 +349,7 @@ StatusOr<AutotuneEntry<se::dnn::ConvOp>> AutotuneUnfusedConv(
     DnnScratchAllocator scratch_allocator(scratch_size_limit, ctx);
 
     std::vector<se::dnn::ProfileResult> algorithms;
-    auto dnn = stream->parent()->AsDnn();
-    if (dnn == nullptr) {
-      return absl::InvalidArgumentError("No DNN in stream executor.");
-    }
-    if (!dnn->GetMIOpenConvolveAlgorithms(
+    if (!stream->parent()->GetMIOpenConvolveAlgorithms(
             kind, se::dnn::ToDataType<T>::value, stream, input_desc, input_ptr,
             filter_desc, filter_ptr, output_desc, output_ptr, conv_desc,
             &scratch_allocator, &algorithms)) {
@@ -383,9 +373,9 @@ StatusOr<AutotuneEntry<se::dnn::ConvOp>> AutotuneUnfusedConv(
       for (auto miopen_algorithm : algorithms) {
         auto profile_algorithm = miopen_algorithm.algorithm();
         se::dnn::ProfileResult profile_result;
-        auto miopen_launch_status = dnn->ConvolveWithAlgorithm(
-            stream, kind, input_desc, input_ptr, filter_desc, filter_ptr,
-            output_desc, output_ptr, conv_desc, &scratch_allocator,
+        auto miopen_launch_status = stream->ConvolveWithAlgorithm(
+            kind, input_desc, input_ptr, filter_desc, filter_ptr, output_desc,
+            output_ptr, conv_desc, &scratch_allocator,
             se::dnn::AlgorithmConfig(profile_algorithm,
                                      miopen_algorithm.scratch_size()),
             &profile_result);

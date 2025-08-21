@@ -30,7 +30,7 @@ TEST(SessionTest, InvalidTargetReturnsNull) {
   EXPECT_EQ(nullptr, tensorflow::NewSession(options));
 
   Session* session;
-  absl::Status s = tensorflow::NewSession(options, &session);
+  Status s = tensorflow::NewSession(options, &session);
   EXPECT_EQ(s.code(), error::NOT_FOUND);
   EXPECT_TRUE(absl::StrContains(
       s.message(),
@@ -47,10 +47,10 @@ class FakeSessionFactory : public SessionFactory {
     return absl::StartsWith(options.target, "fake");
   }
 
-  absl::Status NewSession(const SessionOptions& options,
-                          Session** out_session) override {
+  Status NewSession(const SessionOptions& options,
+                    Session** out_session) override {
     *out_session = nullptr;
-    return absl::OkStatus();
+    return OkStatus();
   }
 };
 class FakeSessionRegistrar {
@@ -67,7 +67,7 @@ TEST(SessionTest, MultipleFactoriesForTarget) {
   options.target = "fakesession";
 
   Session* session;
-  absl::Status s = tensorflow::NewSession(options, &session);
+  Status s = tensorflow::NewSession(options, &session);
   EXPECT_EQ(s.code(), error::INTERNAL);
   EXPECT_TRUE(absl::StrContains(s.message(), "Multiple session factories"));
   EXPECT_TRUE(absl::StrContains(s.message(), "FAKE_SESSION_1"));

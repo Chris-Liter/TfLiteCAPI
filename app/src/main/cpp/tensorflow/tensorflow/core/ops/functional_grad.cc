@@ -21,7 +21,7 @@ namespace tensorflow {
 
 typedef FunctionDefHelper FDH;
 
-absl::Status MapAccumulateGrad(const AttrSlice& attrs, FunctionDef* ret) {
+Status MapAccumulateGrad(const AttrSlice& attrs, FunctionDef* ret) {
   const NameAttrList* func;
   TF_RETURN_IF_ERROR(GetNodeAttr(attrs, "f", &func));
   DataType T;
@@ -51,7 +51,7 @@ absl::Status MapAccumulateGrad(const AttrSlice& attrs, FunctionDef* ret) {
         "MapAccumulateGrad",
         {"theta", "x", "u", "y", "dy"},
         {{"g", grad}, {"T", "$T"}, {"K", k}}}});
-  return absl::OkStatus();
+  return OkStatus();
 }
 REGISTER_OP_GRADIENT("MapAccumulate", MapAccumulateGrad);
 

@@ -18,11 +18,8 @@ limitations under the License.
 #include <memory>
 #include <string>
 
-#include "absl/status/status.h"
-#include "tensorflow/core/framework/op.h"
-#include "tensorflow/core/framework/op_def_builder.h"
+#include "tensorflow/core/lib/core/status_test_util.h"
 #include "tensorflow/core/platform/test.h"
-#include "tsl/platform/status.h"
 
 namespace mlir {
 namespace TFL {
@@ -36,7 +33,7 @@ namespace {
 void Register(const std::string& op_name, OpRegistry* registry) {
   registry->Register([op_name](OpRegistrationData* op_reg_data) -> Status {
     op_reg_data->op_def.set_name(op_name);
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   });
 }
 

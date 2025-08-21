@@ -56,11 +56,11 @@ class CTCDecodeHelper {
   inline int GetTopPaths() const { return top_paths_; }
   void SetTopPaths(int tp) { top_paths_ = tp; }
 
-  absl::Status ValidateInputsGenerateOutputs(
+  Status ValidateInputsGenerateOutputs(
       OpKernelContext* ctx, const Tensor** inputs, const Tensor** seq_len,
       Tensor** log_prob, OpOutputList* decoded_indices,
       OpOutputList* decoded_values, OpOutputList* decoded_shape) const {
-    absl::Status status = ctx->input("inputs", inputs);
+    Status status = ctx->input("inputs", inputs);
     if (!status.ok()) return status;
     status = ctx->input("sequence_length", seq_len);
     if (!status.ok()) return status;
@@ -100,7 +100,7 @@ class CTCDecodeHelper {
       }
     }
 
-    absl::Status s = ctx->allocate_output(
+    Status s = ctx->allocate_output(
         "log_probability", TensorShape({batch_size, top_paths_}), log_prob);
     if (!s.ok()) return s;
 
@@ -111,12 +111,12 @@ class CTCDecodeHelper {
     s = ctx->output_list("decoded_shape", decoded_shape);
     if (!s.ok()) return s;
 
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   // sequences[b][p][ix] stores decoded value "ix" of path "p" for batch "b".
-  absl::Status StoreAllDecodedSequences(
-      const std::vector<std::vector<std::vector<int>>>& sequences,
+  Status StoreAllDecodedSequences(
+      const std::vector<std::vector<std::vector<int> > >& sequences,
       OpOutputList* decoded_indices, OpOutputList* decoded_values,
       OpOutputList* decoded_shape) const {
     // Calculate the total number of entries for each path
@@ -138,7 +138,7 @@ class CTCDecodeHelper {
 
       const int64_t p_num = num_entries[p];
 
-      absl::Status s =
+      Status s =
           decoded_indices->allocate(p, TensorShape({p_num, 2}), &p_indices);
       if (!s.ok()) return s;
       s = decoded_values->allocate(p, TensorShape({p_num}), &p_values);
@@ -174,13 +174,12 @@ class CTCDecodeHelper {
       shape_t(0) = batch_size;
       shape_t(1) = max_decoded;
     }
-    return absl::OkStatus();
+    return OkStatus();
   }
 
  private:
   int top_paths_;
-  CTCDecodeHelper(const CTCDecodeHelper&) = delete;
-  void operator=(const CTCDecodeHelper&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(CTCDecodeHelper);
 };
 
 template <typename T>
@@ -271,8 +270,7 @@ class CTCGreedyDecoderOp : public OpKernel {
   bool merge_repeated_;
   int blank_index_;
 
-  CTCGreedyDecoderOp(const CTCGreedyDecoderOp&) = delete;
-  void operator=(const CTCGreedyDecoderOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(CTCGreedyDecoderOp);
 };
 
 #define REGISTER_CPU(T)                                                   \
@@ -372,8 +370,7 @@ class CTCBeamSearchDecoderOp : public OpKernel {
   typename ctc::CTCBeamSearchDecoder<T>::DefaultBeamScorer beam_scorer_;
   bool merge_repeated_;
   int beam_width_;
-  CTCBeamSearchDecoderOp<T>(const CTCBeamSearchDecoderOp<T>&) = delete;
-  void operator=(const CTCBeamSearchDecoderOp<T>&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(CTCBeamSearchDecoderOp<T>);
 };
 
 #define REGISTER_CPU(T)                                                       \

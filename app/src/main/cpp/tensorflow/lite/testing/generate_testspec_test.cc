@@ -16,6 +16,7 @@ limitations under the License.
 
 #include <random>
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 namespace tflite {

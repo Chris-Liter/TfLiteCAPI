@@ -1254,9 +1254,6 @@ class CustomGradientTest(test_util.TensorFlowTestCase, parameterized.TestCase):
 
   @test_util.enable_quantized_dtypes_training
   def testCustomGradientQuantizedDtypeTraining(self):
-    # TODO(b/309175067): Remove below skipTest() when fixed.
-    if sys.platform == "darwin":
-      self.skipTest("This test fails in TF MacOS nightly and continuous builds")
     with context.eager_mode():
       @custom_gradient.custom_gradient
       def F(x):

@@ -18,7 +18,8 @@ limitations under the License.
 
 #include <Python.h>
 
-#include <cstddef>
+#include "tensorflow/lite/context.h"
+#include "tensorflow/lite/string_util.h"
 
 namespace tflite {
 namespace python_utils {

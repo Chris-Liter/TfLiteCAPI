@@ -15,10 +15,8 @@ limitations under the License.
 #ifndef TENSORFLOW_COMPILER_MLIR_TFRT_TRANSFORMS_TFRT_PIPELINE_OPTIONS_H_
 #define TENSORFLOW_COMPILER_MLIR_TFRT_TRANSFORMS_TFRT_PIPELINE_OPTIONS_H_
 
-#include <cstdint>
 #include <string>
 
-#include "llvm/Support/CommandLine.h"
 #include "mlir/Pass/Pass.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/tfrt/translate/tfrt_compile_options.h"
 
@@ -102,10 +100,11 @@ struct TfrtPipelineOptions
       llvm::cl::desc("If true, target GPU compiler passes."),
       llvm::cl::init(false)};
 
-  // TODO(b/294895431): Remove the flag and default to the fused op.
-  Option<bool> use_gpu_compile_and_execute_op{
-      *this, "use-gpu-compile-and-execute-op",
-      llvm::cl::desc("If true, gpurt.compile_and_execute is used for GPU"),
+  Option<bool> func_use_fallback_tensor{
+      *this, "func-use-fallback-tensor",
+      llvm::cl::desc(
+          "If true, use TF tensor as input/output types in func (and other "
+          "control flow) ops."),
       llvm::cl::init(false)};
 
   Option<bool> enable_while_parallel_iterations{
@@ -138,46 +137,11 @@ struct TfrtPipelineOptions
           "cheap, and then whether it can be executed inline."),
       llvm::cl::init(1)};
 
-  Option<int64_t> min_num_batch_threads{
-      *this, "tfrt-min-num-batch-threads",
-      llvm::cl::desc("The minimum number of batch threads"), llvm::cl::init(1)};
-
-  Option<int64_t> min_max_enqueued_batches{
-      *this, "tfrt-min-max-enqueued-batches",
+  Option<int64_t> upper_cost_threshold{
+      *this, "tfrt-upper-cost-threshold",
       llvm::cl::desc(
-          "The minimum of the maximum number of outstanding enqueued batches"),
-      llvm::cl::init(1)};
-
-  Option<std::string> batch_padding_policy{
-      *this, "tfrt-batch-padding-policy",
-      llvm::cl::desc("The policy used when padding (or splitting) batches."),
-      llvm::cl::init("")};
-
-  Option<int64_t> num_batch_threads{
-      *this, "tfrt-num-batch-threads",
-      llvm::cl::desc(
-          "The number of threads for processing batches in parallel"),
-      llvm::cl::init(0)};
-
-  Option<int64_t> max_batch_size{
-      *this, "tfrt-max-batch-size",
-      llvm::cl::desc("The maximum allowed batch size"), llvm::cl::init(0)};
-
-  Option<int64_t> batch_timeout_micros{
-      *this, "tfrt-batch-timeout-micros",
-      llvm::cl::desc("The maximum number of microseconds before outputting an "
-                     "incomplete batch"),
-      llvm::cl::init(0)};
-
-  ListOption<int64_t> allowed_batch_sizes{
-      *this, "tfrt-allowed-batch-sizes",
-      llvm::cl::desc("Allowed sizes for padding (or splitting) batches")};
-
-  Option<int64_t> max_enqueued_batches{
-      *this, "tfrt-max-enqueued-batches",
-      llvm::cl::desc("The maximum number of batches enqueued for processing "
-                     "before requests are failed fast"),
-      llvm::cl::init(0)};
+          "The threshold to limit the merging of dependent sequence."),
+      llvm::cl::init(-1)};
 
   Option<bool> merge_inter_dependent_streams{
       *this, "tfrt-merge-inter-dependent-streams",

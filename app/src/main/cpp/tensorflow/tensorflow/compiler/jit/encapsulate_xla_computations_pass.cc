@@ -26,7 +26,7 @@ limitations under the License.
 #include "tensorflow/compiler/jit/defs.h"
 #include "tensorflow/compiler/jit/encapsulate_subgraphs_pass.h"
 #include "tensorflow/compiler/jit/xla_cluster_util.h"
-#include "xla/status_macros.h"
+#include "tensorflow/compiler/xla/status_macros.h"
 #include "tensorflow/core/framework/node_def.pb.h"
 #include "tensorflow/core/framework/types.h"
 #include "tensorflow/core/graph/graph_node_util.h"
@@ -71,13 +71,13 @@ bool is_guaranteed_constant(const Node& n) {
 }
 
 // Finds the `index` of an _Arg or _Retval node.
-absl::Status GetIndexAttr(const Node& n, int num_args, int* index) {
+Status GetIndexAttr(const Node& n, int num_args, int* index) {
   TF_RETURN_IF_ERROR(GetNodeAttr(n.attrs(), "index", index));
   if (*index < 0 || *index >= num_args) {
     return errors::InvalidArgument("Invalid ", n.type_string(), " number ",
                                    *index);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Returns the data type of the destination of an edge.
@@ -111,10 +111,11 @@ void AddControlOutputs(const Node& node, absl::flat_hash_set<Node*>* deps) {
 // of the arguments.
 //
 // TODO(b/113166435): Ordering constraints on XlaLaunch op can be relaxed.
-absl::Status RewriteSubgraph(
-    const std::vector<OutputTensor>& arg_source_tensors,
-    std::unique_ptr<Graph>* graph_ptr, std::vector<int>* input_permutation,
-    std::vector<int>* output_permutation, NodeDef* call_def) {
+Status RewriteSubgraph(const std::vector<OutputTensor>& arg_source_tensors,
+                       std::unique_ptr<Graph>* graph_ptr,
+                       std::vector<int>* input_permutation,
+                       std::vector<int>* output_permutation,
+                       NodeDef* call_def) {
   Graph* graph = graph_ptr->get();
   const int num_args = input_permutation->size();
   const int num_retvals = output_permutation->size();
@@ -188,12 +189,12 @@ absl::Status RewriteSubgraph(
   TF_ASSIGN_OR_RETURN(uint64 fingerprint, FingerprintGraph(*graph));
   VLOG(1) << "Subgraph fingerprint:" << fingerprint;
   call_def->set_op(absl::StrCat(call_def->op(), "_", fingerprint));
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace
 
-/*static*/ absl::Status EncapsulateXlaComputationsPass::Encapsulate(
+/*static*/ Status EncapsulateXlaComputationsPass::Encapsulate(
     std::unique_ptr<Graph>* graph, FunctionLibraryDefinition* flib_def) {
   // Check for undeclared outputs before Encapsulation, so we can give a better
   // error message.
@@ -222,13 +223,13 @@ absl::Status RewriteSubgraph(
           /*reuse_existing_functions=*/true, &output, flib_def),
       "EncapsulateXlaComputationsPass failed");
   graph->swap(output);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-/*static*/ absl::Status EncapsulateXlaComputationsPass::BuildXlaLaunchOps(
+/*static*/ Status EncapsulateXlaComputationsPass::BuildXlaLaunchOps(
     Graph* graph,
-    const std::function<absl::StatusOr<bool>(const Node&)>& is_xla_launch_node,
-    const std::function<absl::StatusOr<XlaFunctionInfo>(const Node&)>&
+    const std::function<StatusOr<bool>(const Node&)>& is_xla_launch_node,
+    const std::function<StatusOr<XlaFunctionInfo>(const Node&)>&
         get_xla_function_info,
     const bool add_edges_to_output_of_downstream_nodes) {
   // Finds all of the XlaLaunch function calls, to avoid mutating the graph
@@ -354,18 +355,18 @@ absl::Status RewriteSubgraph(
       graph->AddControlEdge(xla_launch, n);
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-/*static*/ absl::Status EncapsulateXlaComputationsPass::BuildXlaLaunchOps(
+/*static*/ Status EncapsulateXlaComputationsPass::BuildXlaLaunchOps(
     Graph* graph) {
-  const auto is_xla_launch_node = [](const Node& node) -> absl::StatusOr<bool> {
+  const auto is_xla_launch_node = [](const Node& node) -> StatusOr<bool> {
     const string& name = GetNodeAttrString(node.attrs(), kXlaClusterIdAttr);
     return !name.empty();
   };
 
   const auto get_xla_function_info =
-      [](const Node& node) -> absl::StatusOr<XlaFunctionInfo> {
+      [](const Node& node) -> StatusOr<XlaFunctionInfo> {
     XlaFunctionInfo result;
     TF_RETURN_IF_ERROR(GetNodeAttr(node.attrs(), "_variable_start_index",
                                    &result.variable_start_index));
@@ -376,7 +377,7 @@ absl::Status RewriteSubgraph(
                            /*add_edges_to_output_of_downstream_nodes=*/true);
 }
 
-absl::Status EncapsulateXlaComputationsPass::Run(
+Status EncapsulateXlaComputationsPass::Run(
     const GraphOptimizationPassOptions& options) {
   VLOG(1) << "EncapsulateXlaComputations(): "
           << DumpGraphToFile("encapsulate_xla_computations_before",
@@ -398,7 +399,7 @@ absl::Status EncapsulateXlaComputationsPass::Run(
   VLOG(1) << "EncapsulateXlaComputations() finished: "
           << DumpGraphToFile("encapsulate_xla_computations_after",
                              **options.graph, options.flib_def);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace tensorflow

@@ -40,11 +40,10 @@ py_strict_test(
     srcs_version = "PY3",
     deps = [
         ":modify_model_interface_lib",
-        #internal proto upb dep
-        "//third_party/py/numpy",
         "//tensorflow:tensorflow_py",
         "//tensorflow/python/framework:test_lib",
         "//tensorflow/python/platform:client_testlib",
+        "//third_party/py/numpy",
     ],
 )
 
@@ -58,10 +57,6 @@ py_strict_library(
 pybind_extension(
     name = "_pywrap_modify_model_interface",
     srcs = ["modify_model_interface.cc"],
-    enable_stub_generation = True,
-    pytype_srcs = [
-        "_pywrap_modify_model_interface.pyi",
-    ],
     deps = [
         "//tensorflow/lite/schema:schema_fbs",
         "//tensorflow/lite/tools/optimize:modify_model_interface",

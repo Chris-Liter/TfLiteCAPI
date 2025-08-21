@@ -15,48 +15,36 @@ limitations under the License.
 
 #include "tensorflow/core/common_runtime/next_pluggable_device/c_plugin_op_kernel.h"
 
-#include <cstdint>
-#include <memory>
 #include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
 
-#include "absl/status/status.h"
 #include "tensorflow/c/c_api.h"
 #include "tensorflow/c/experimental/next_pluggable_device/c_api.h"
 #include "tensorflow/c/kernels.h"
 #include "tensorflow/c/kernels_experimental.h"
-#include "tensorflow/c/tf_buffer.h"
 #include "tensorflow/c/tf_buffer_internal.h"
-#include "tensorflow/c/tf_datatype.h"
-#include "tensorflow/c/tf_status.h"
 #include "tensorflow/c/tf_status_helper.h"
-#include "tensorflow/c/tf_tensor_helper.h"
+#include "tensorflow/c/tf_tensor_internal.h"
 #include "tensorflow/core/common_runtime/next_pluggable_device/c_plugin_variable.h"
-#include "tensorflow/core/common_runtime/next_pluggable_device/plugin_coordination_service_agent.h"
 #include "tensorflow/core/common_runtime/next_pluggable_device/plugin_coordination_service_agent_helper.h"
 #include "tensorflow/core/common_runtime/next_pluggable_device/plugin_variable.h"
-#include "tensorflow/core/framework/attr_value.pb.h"
 #include "tensorflow/core/framework/function.h"
-#include "tensorflow/core/framework/function.pb.h"
-#include "tensorflow/core/framework/op.h"
 #include "tensorflow/core/framework/resource_handle.h"
 #include "tensorflow/core/framework/resource_handle.pb.h"
-#include "tensorflow/core/framework/tensor_shape.h"
+#include "tensorflow/core/platform/errors.h"
 #include "tensorflow/core/platform/status.h"
-#include "tensorflow/core/protobuf/config.pb.h"
-#include "tsl/platform/errors.h"
-#include "tsl/platform/logging.h"  // IWYU pragma: keep
-#include "tsl/platform/mutex.h"
+#include "tensorflow/tsl/platform/errors.h"
+#include "tensorflow/tsl/platform/status.h"
 
 constexpr int kInvalidLineNumber = -1;
 
 namespace tensorflow {
 
 // ------------------  CPluginOpKernelConstruction  ----------------------------
-absl::Status CPluginOpKernelConstruction::GetBoolAttr(
-    std::string_view attr_name, bool* value) const {
+Status CPluginOpKernelConstruction::GetBoolAttr(std::string_view attr_name,
+                                                bool* value) const {
   TF_StatusPtr c_status_ptr(TF_NewStatus());
   TF_Status* status = c_status_ptr.get();
   unsigned char bool_as_char;
@@ -66,15 +54,15 @@ absl::Status CPluginOpKernelConstruction::GetBoolAttr(
   return StatusFromTF_Status(status);
 }
 
-absl::Status CPluginOpKernelConstruction::GetInt32Attr(
-    std::string_view attr_name, int32_t* value) const {
+Status CPluginOpKernelConstruction::GetInt32Attr(std::string_view attr_name,
+                                                 int32_t* value) const {
   TF_StatusPtr c_status_ptr(TF_NewStatus());
   TF_Status* status = c_status_ptr.get();
   TF_OpKernelConstruction_GetAttrInt32(ctx_, attr_name.data(), value, status);
   return StatusFromTF_Status(status);
 }
 
-absl::Status CPluginOpKernelConstruction::GetInt32AttrList(
+Status CPluginOpKernelConstruction::GetInt32AttrList(
     std::string_view attr_name, std::vector<int32_t>* value) const {
   TF_StatusPtr c_status_ptr(TF_NewStatus());
   TF_Status* status = c_status_ptr.get();
@@ -84,23 +72,23 @@ absl::Status CPluginOpKernelConstruction::GetInt32AttrList(
                                       &total_size, status);
   TF_RETURN_IF_ERROR(StatusFromTF_Status(status));
 
-  value->resize(list_size);
+  value->reserve(list_size);
 
   TF_OpKernelConstruction_GetAttrInt32List(
       ctx_, attr_name.data(), value->data(), /*max_vals=*/list_size, status);
   return StatusFromTF_Status(status);
 }
 
-absl::Status CPluginOpKernelConstruction::GetInt64Attr(
-    std::string_view attr_name, int64_t* value) const {
+Status CPluginOpKernelConstruction::GetInt64Attr(std::string_view attr_name,
+                                                 int64_t* value) const {
   TF_StatusPtr c_status_ptr(TF_NewStatus());
   TF_Status* status = c_status_ptr.get();
   TF_OpKernelConstruction_GetAttrInt64(ctx_, attr_name.data(), value, status);
   return StatusFromTF_Status(status);
 }
 
-absl::Status CPluginOpKernelConstruction::GetStringAttr(
-    std::string_view attr_name, std::string* value) const {
+Status CPluginOpKernelConstruction::GetStringAttr(std::string_view attr_name,
+                                                  std::string* value) const {
   TF_StatusPtr c_status_ptr(TF_NewStatus());
   TF_Status* status = c_status_ptr.get();
   int list_size = 0, attr_string_size = 0;  // list_size is not used.
@@ -114,7 +102,7 @@ absl::Status CPluginOpKernelConstruction::GetStringAttr(
   return StatusFromTF_Status(status);
 }
 
-absl::Status CPluginOpKernelConstruction::GetFunctionAttr(
+Status CPluginOpKernelConstruction::GetFunctionAttr(
     std::string_view attr_name, NameAttrList* function) const {
   TF_StatusPtr c_status_ptr(TF_NewStatus());
   TF_Status* status = c_status_ptr.get();
@@ -123,15 +111,15 @@ absl::Status CPluginOpKernelConstruction::GetFunctionAttr(
   TF_RETURN_IF_ERROR(StatusFromTF_Status(status));
   TF_RETURN_IF_ERROR(BufferToMessage(serialized_function, function));
   TF_DeleteBuffer(serialized_function);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-void CPluginOpKernelConstruction::CtxFailure(const absl::Status& status) {
+void CPluginOpKernelConstruction::CtxFailure(const Status& status) {
   CtxFailure(/*file=*/"", /*line=*/kInvalidLineNumber, status);
 }
 
 void CPluginOpKernelConstruction::CtxFailure(const char* file, int line,
-                                             const absl::Status& status) {
+                                             const Status& status) {
   TF_StatusPtr c_status_ptr(TF_NewStatus());
   tsl::Set_TF_Status_from_Status(c_status_ptr.get(), status);
   if (line != kInvalidLineNumber) {
@@ -148,7 +136,7 @@ std::string_view CPluginOpKernelContext::GetResourceMgrDefaultContainerName() {
   return {default_container_name.data, default_container_name.len};
 }
 
-absl::Status CPluginOpKernelContext::LookupOrCreateResource(
+Status CPluginOpKernelContext::LookupOrCreateResource(
     std::string_view container_name, std::string_view plugin_resource_name,
     void** result_plugin_resource, void* (*create_func)(void*),
     void* create_func_args, void (*delete_func)(void*)) {
@@ -165,13 +153,13 @@ absl::Status CPluginOpKernelContext::LookupOrCreateResource(
   return StatusFromTF_Status(status);
 }
 
-std::unique_ptr<PluginCoordinationServiceAgent>
+PluginCoordinationServiceAgent*
 CPluginOpKernelContext::GetPluginCoordinationServiceAgent() const {
   auto* agent = TF_GetCoordinationServiceAgent(ctx_);
   return CreatePluginCoordinationServiceAgent(agent);
 }
 
-absl::Status CPluginOpKernelContext::CreatePluginVariable(
+Status CPluginOpKernelContext::CreatePluginVariable(
     int index, PluginVariable** variable) const {
   TF_StatusPtr c_status_ptr(TF_NewStatus());
   TF_VariableInfo* c_var_info =
@@ -180,17 +168,17 @@ absl::Status CPluginOpKernelContext::CreatePluginVariable(
     return StatusFromTF_Status(c_status_ptr.get());
   }
   *variable = new CPluginVariable(c_var_info);
-  return absl::OkStatus();
+  return tsl::OkStatus();
 }
 
-absl::Status CPluginOpKernelContext::AllocateTempForPluginVariable(
+Status CPluginOpKernelContext::AllocateTempForPluginVariable(
     PluginVariable* variable) {
   TF_StatusPtr c_status_ptr(TF_NewStatus());
   CPluginVariable* c_plugin_variable =
       reinterpret_cast<CPluginVariable*>(variable);
   TF_AllocateTempForVariableInfo(ctx_, c_plugin_variable->var_info_,
                                  c_status_ptr.get());
-  absl::Status status = StatusFromTF_Status(c_status_ptr.get());
+  tsl::Status status = StatusFromTF_Status(c_status_ptr.get());
   if (status.ok()) {
     // Invalidate the cached tensor since we allocated a new one.
     c_plugin_variable->tensor_obtained_ = false;
@@ -198,8 +186,7 @@ absl::Status CPluginOpKernelContext::AllocateTempForPluginVariable(
   return status;
 }
 
-absl::Status CPluginOpKernelContext::GetInput(int index,
-                                              const Tensor** tensor) const {
+Status CPluginOpKernelContext::GetInput(int index, Tensor* tensor) const {
   TF_StatusPtr c_status_ptr(TF_NewStatus());
   TF_Tensor* c_tensor;
   TF_GetInput(ctx_, index, &c_tensor, c_status_ptr.get());
@@ -207,35 +194,27 @@ absl::Status CPluginOpKernelContext::GetInput(int index,
   if (TF_GetCode(c_status_ptr.get()) != TF_OK) {
     return StatusFromTF_Status(c_status_ptr.get());
   }
-  Tensor tensor_tmp;
-  absl::Status status = TF_TensorToTensor(c_tensor, &tensor_tmp);
-  if (status.ok()) {
-    tsl::mutex_lock lock(mu_);
-    *tensor = &obtained_tensors_.emplace_back(std::move(tensor_tmp));
-  }
-  return status;
+  return TF_TensorToTensor(c_tensor, tensor);
 }
 
-absl::Status CPluginOpKernelContext::GetInput(const char* name,
-                                              const Tensor** tensor) const {
+Status CPluginOpKernelContext::GetInput(const char* name,
+                                        const Tensor** tensor) {
   TF_StatusPtr c_status_ptr(TF_NewStatus());
   TF_Tensor* c_tensor;
   TF_GetInputByName(ctx_, name, &c_tensor, c_status_ptr.get());
   TF_TensorPtr c_tensor_ptr(c_tensor);
-  if (TF_GetCode(c_status_ptr.get()) != TF_OK) {
-    return StatusFromTF_Status(c_status_ptr.get());
-  }
   Tensor tensor_tmp;
-  absl::Status status = TF_TensorToTensor(c_tensor, &tensor_tmp);
+  tsl::Status status = TF_TensorToTensor(c_tensor, &tensor_tmp);
   if (status.ok()) {
-    tsl::mutex_lock lock(mu_);
-    *tensor = &obtained_tensors_.emplace_back(std::move(tensor_tmp));
+    mutex_lock lock(mu_);
+    obtained_tensors_.push_back(std::move(tensor_tmp));
+    *tensor = &(obtained_tensors_.back());
   }
   return status;
 }
 
-absl::Status CPluginOpKernelContext::GetInputRange(
-    std::string_view name, std::pair<int, int>* range) const {
+Status CPluginOpKernelContext::GetInputRange(std::string_view name,
+                                             std::pair<int, int>* range) const {
   TF_StatusPtr c_status_ptr(TF_NewStatus());
   TF_InputRange_Args args;
   args.status = c_status_ptr.get();
@@ -243,7 +222,7 @@ absl::Status CPluginOpKernelContext::GetInputRange(
   TF_RETURN_IF_ERROR(StatusFromTF_Status(args.status));
   range->first = args.start;
   range->second = args.stop;
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 DataType CPluginOpKernelContext::GetInputDataType(int index) const {
@@ -261,12 +240,7 @@ std::string_view CPluginOpKernelContext::GetOpKernelName() const {
   return {op_kernel_name.data, op_kernel_name.len};
 }
 
-std::string_view CPluginOpKernelContext::GetDeviceName() const {
-  TF_StringView device_name = TF_GetDeviceName(ctx_);
-  return {device_name.data, device_name.len};
-}
-
-absl::Status CPluginOpKernelContext::GetConfigProto(
+Status CPluginOpKernelContext::GetConfigProto(
     const ConfigProto** config_proto) const {
   TF_BufferPtr serialized_config_proto_ptr(TF_NewBuffer());
   TF_StatusPtr c_status_ptr(TF_NewStatus());
@@ -274,13 +248,13 @@ absl::Status CPluginOpKernelContext::GetConfigProto(
                               c_status_ptr.get());
   TF_RETURN_IF_ERROR(StatusFromTF_Status(c_status_ptr.get()));
   ConfigProto* config_proto_ptr = new ConfigProto();
-  absl::Status status =
+  Status status =
       BufferToMessage(serialized_config_proto_ptr.get(), config_proto_ptr);
   *config_proto = config_proto_ptr;
   return status;
 }
 
-absl::Status CPluginOpKernelContext::GetFunctionLibraryDefinition(
+Status CPluginOpKernelContext::GetFunctionLibraryDefinition(
     const FunctionLibraryDefinition** flib_def) const {
   TF_BufferPtr serialized_function_library_ptr(TF_NewBuffer());
   TF_StatusPtr c_status_ptr(TF_NewStatus());
@@ -294,10 +268,10 @@ absl::Status CPluginOpKernelContext::GetFunctionLibraryDefinition(
   auto flib_def_ptr =
       new FunctionLibraryDefinition(OpRegistry::Global(), fdef_lib);
   *flib_def = flib_def_ptr;
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status CPluginOpKernelContext::GetResourceHandle(
+Status CPluginOpKernelContext::GetResourceHandle(
     int index, const ResourceHandle** handle) const {
   TF_BufferPtr serialized_resource_handle_ptr(TF_NewBuffer());
   TF_StatusPtr c_status_ptr(TF_NewStatus());
@@ -312,12 +286,12 @@ absl::Status CPluginOpKernelContext::GetResourceHandle(
   const ResourceHandle* handle_ptr = new ResourceHandle(handle_proto);
 
   *handle = handle_ptr;
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status CPluginOpKernelContext::AllocateOutput(int index,
-                                                    const TensorShape& shape,
-                                                    Tensor** out) {
+Status CPluginOpKernelContext::AllocateOutput(int index,
+                                              const TensorShape& shape,
+                                              Tensor** out) {
   TF_StatusPtr c_status_ptr(TF_NewStatus());
   const auto num_dims = shape.dims();
   int64_t* dim_array = new int64_t[num_dims];
@@ -333,23 +307,22 @@ absl::Status CPluginOpKernelContext::AllocateOutput(int index,
   return TF_TensorToTensor(c_tensor_ptr.get(), *out);
 }
 
-absl::Status CPluginOpKernelContext::SetOutput(int index,
-                                               const Tensor& tensor) {
+Status CPluginOpKernelContext::SetOutput(int index, const Tensor& tensor) {
   TF_StatusPtr c_status_ptr(TF_NewStatus());
   TF_TensorPtr c_tensor_ptr;
-  absl::Status status;
+  Status status;
   c_tensor_ptr.reset(TF_TensorFromTensor(tensor, &status));
   TF_RETURN_IF_ERROR(status);
   TF_SetOutput(ctx_, index, c_tensor_ptr.get(), c_status_ptr.get());
   return StatusFromTF_Status(c_status_ptr.get());
 }
 
-void CPluginOpKernelContext::CtxFailure(const absl::Status& status) {
+void CPluginOpKernelContext::CtxFailure(const Status& status) {
   CtxFailure(/*file=*/"", /*line=*/kInvalidLineNumber, status);
 }
 
 void CPluginOpKernelContext::CtxFailure(const char* file, int line,
-                                        const absl::Status& status) {
+                                        const Status& status) {
   TF_StatusPtr c_status_ptr(TF_NewStatus());
   tsl::Set_TF_Status_from_Status(c_status_ptr.get(), status);
   if (line != kInvalidLineNumber) {

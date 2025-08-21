@@ -20,14 +20,14 @@ limitations under the License.
 #include <string>
 
 #include "absl/strings/string_view.h"
-#include "tsl/platform/errors.h"
-#include "tsl/platform/regexp.h"
-#include "tsl/platform/strcat.h"
+#include "tensorflow/tsl/platform/errors.h"
+#include "tensorflow/tsl/platform/regexp.h"
+#include "tensorflow/tsl/platform/strcat.h"
 
 namespace tensorflow {
 
-absl::Status FindOpRegistationFromFile(absl::string_view filename,
-                                       OpRegOffsets& op_reg_offsets) {
+tsl::Status FindOpRegistationFromFile(absl::string_view filename,
+                                      OpRegOffsets& op_reg_offsets) {
   static constexpr LazyRE2 reg_pattern = {
       R"regex((REGISTER_OP)\("([\w>]+)"\))regex"};
   std::ifstream f(std::string{filename});
@@ -53,7 +53,7 @@ absl::Status FindOpRegistationFromFile(absl::string_view filename,
     offsets += line.size() + 1;  // `line` doesn't contain line break
   }
   f.close();
-  return absl::OkStatus();
+  return tsl::OkStatus();
 }
 
 }  // namespace tensorflow

@@ -17,12 +17,11 @@ limitations under the License.
 #include <unordered_map>
 #include <vector>
 
-#include "absl/status/status.h"
-#include "tensorflow/core/platform/logging.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/lite/toco/graph_transformations/graph_transformations.h"
 #include "tensorflow/lite/toco/model.h"
+#include "tensorflow/lite/toco/runtime/types.h"
 #include "tensorflow/lite/toco/tooling_util.h"
+#include "tensorflow/core/platform/logging.h"
 
 namespace toco {
 
@@ -32,7 +31,7 @@ namespace toco {
   *modified = false;
   auto bn_it = model->operators.begin() + op_index;
   if (bn_it->get()->type != OperatorType::kBatchNormalization) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   const auto* bn_op =
       static_cast<const BatchNormalizationOperator*>(bn_it->get());
@@ -45,7 +44,7 @@ namespace toco {
   // we need to exit early if these buffers don't exist yet (i.e. if the params
   // haven't yet been resolved as constants) and will process it once they have.
   if (!mean_array.buffer || !multiplier_array.buffer || !offset_array.buffer) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   CHECK(IsConstantParameterArray(*model, bn_op->inputs[1]) &&
@@ -142,7 +141,7 @@ namespace toco {
   DeleteOpAndArrays(model, bn_op);
 
   *modified = true;
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 }  // namespace toco

@@ -11,6 +11,7 @@ cc_library(
     hdrs = ["interpreter_utils.h"],
     deps = [
         "//tensorflow/lite:framework",
+        "//tensorflow/lite:string",
         "//tensorflow/lite/core:framework",
         "//tensorflow/lite/core/api",
         "//tensorflow/lite/core/c:common",
@@ -18,5 +19,6 @@ cc_library(
         "//tensorflow/lite/delegates/gpu/common:status",
         "//tensorflow/lite/delegates/gpu/common:tensor",
         "//tensorflow/lite/schema:schema_fbs",
+        "@com_google_absl//absl/memory",
     ],
 )

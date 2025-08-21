@@ -59,11 +59,11 @@ namespace functor {
 
 template <typename T>
 struct StatelessRandomGammaFunctor<CPUDevice, T> {
-  static absl::Status Fill(OpKernelContext* ctx, const T* alpha_flat,
-                           int64_t num_samples, int64_t num_alphas,
-                           int64_t samples_per_alpha, const uint64* key,
-                           const uint64* counter, random::PhiloxRandom random,
-                           T* samples_flat) {
+  static Status Fill(OpKernelContext* ctx, const T* alpha_flat,
+                     int64_t num_samples, int64_t num_alphas,
+                     int64_t samples_per_alpha, const uint64* key,
+                     const uint64* counter, random::PhiloxRandom random,
+                     T* samples_flat) {
     if (key != nullptr && counter != nullptr) {
       random = GetPhiloxRandomFromCounterKeyMem(counter, key);
     }
@@ -192,7 +192,7 @@ struct StatelessRandomGammaFunctor<CPUDevice, T> {
     auto worker_threads = *(ctx->device()->tensorflow_cpu_worker_threads());
     Shard(worker_threads.num_threads, worker_threads.workers, num_samples,
           kElementCost, DoWork);
-    return absl::OkStatus();
+    return OkStatus();
   }
 };
 
@@ -200,7 +200,7 @@ struct StatelessRandomGammaFunctor<CPUDevice, T> {
 
 namespace {
 
-absl::StatusOr<std::tuple<int64_t, int64_t, int64_t>> GetParams(
+StatusOr<std::tuple<int64_t, int64_t, int64_t> > GetParams(
     const Tensor& alpha_t, const TensorShape& samples_shape) {
   if (!TensorShapeUtils::EndsWith(samples_shape, alpha_t.shape())) {
     return errors::InvalidArgument(
@@ -244,8 +244,7 @@ class StatelessRandomGammaOp : public StatelessRandomOpBase {
                  /*key=*/nullptr, /*counter=*/nullptr, random, samples_flat));
   }
 
-  StatelessRandomGammaOp(const StatelessRandomGammaOp&) = delete;
-  void operator=(const StatelessRandomGammaOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(StatelessRandomGammaOp);
 };
 
 // A stateless-random-gamma kernel that takes shape, key, counter and algorithm

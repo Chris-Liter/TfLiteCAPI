@@ -23,7 +23,6 @@ limitations under the License.
 #include "mlir/Dialect/Func/IR/FuncOps.h"  // from @llvm-project
 #include "mlir/IR/BuiltinOps.h"  // from @llvm-project
 #include "mlir/IR/MLIRContext.h"  // from @llvm-project
-#include "mlir/IR/OwningOpRef.h"  // from @llvm-project
 #include "mlir/Parser/Parser.h"  // from @llvm-project
 
 namespace mlir {
@@ -37,10 +36,9 @@ absl::StatusOr<mlir::OwningOpRef<mlir::ModuleOp>> ImportFlatbufferOrMlir(
     llvm::SourceMgr* source_mgr, mlir::MLIRContext* context);
 
 // Export the module to file, can be either mlir or flatbuffer.
-absl::Status ExportFlatbufferOrMlir(
-    const std::string& output_filename, bool output_mlir, mlir::ModuleOp module,
-    bool enable_select_tf_ops,
-    std::optional<int> custom_option_alignment = std::nullopt);
+absl::Status ExportFlatbufferOrMlir(const std::string& output_filename,
+                                    bool output_mlir, mlir::ModuleOp module,
+                                    bool enable_select_tf_ops);
 
 }  // namespace tac
 }  // namespace TFL

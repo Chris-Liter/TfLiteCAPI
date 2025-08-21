@@ -58,6 +58,7 @@ apt-get install -y --no-install-recommends \
     openjdk-8-jdk \
     openjdk-8-jre-headless \
     pkg-config \
+    python-dev \
     python-setuptools \
     python3-virtualenv \
     python3-dev \

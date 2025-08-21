@@ -17,23 +17,21 @@ limitations under the License.
 #include <unordered_map>
 #include <vector>
 
-#include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
-#include "tensorflow/core/platform/errors.h"
-#include "tensorflow/core/platform/logging.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/lite/toco/graph_transformations/graph_transformations.h"
 #include "tensorflow/lite/toco/model.h"
 #include "tensorflow/lite/toco/tooling_util.h"
+#include "tensorflow/core/platform/logging.h"
 
 namespace toco {
 
-absl::Status ConvertExpandDimsToReshape::Run(Model* model, std::size_t op_index,
-                                             bool* modified) {
+::tensorflow::Status ConvertExpandDimsToReshape::Run(Model* model,
+                                                     std::size_t op_index,
+                                                     bool* modified) {
   *modified = false;
   auto expand_it = model->operators.begin() + op_index;
   if (expand_it->get()->type != OperatorType::kExpandDims) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   ExpandDimsOperator* expand_op =
       static_cast<ExpandDimsOperator*>(expand_it->get());
@@ -43,18 +41,18 @@ absl::Status ConvertExpandDimsToReshape::Run(Model* model, std::size_t op_index,
   const auto& input_array = model->GetArray(expand_op->inputs[0]);
   if (!input_array.has_shape()) {
     // Yield until input dims have been resolved.
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   const auto& axis_array = model->GetArray(expand_op->inputs[1]);
   if (!axis_array.has_shape()) {
     // Yield until input axis array shape has been resolved.
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   CHECK_EQ(RequiredBufferSizeForShape(axis_array.shape()), 1);
   if (!axis_array.buffer) {
     // Yield until the input axis array is constant
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   int axis = axis_array.GetBuffer<ArrayDataType::kInt32>().data[0];
   std::vector<int> reshape_dims(input_array.shape().dims());
@@ -101,7 +99,7 @@ absl::Status ConvertExpandDimsToReshape::Run(Model* model, std::size_t op_index,
   DeleteOpAndArrays(model, expand_op);
 
   *modified = true;
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 }  // namespace toco

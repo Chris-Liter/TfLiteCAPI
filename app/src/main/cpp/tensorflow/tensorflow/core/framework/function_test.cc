@@ -15,8 +15,6 @@ limitations under the License.
 
 #include "tensorflow/core/framework/function.h"
 
-#include <memory>
-#include <utility>
 #include <vector>
 
 #include <gmock/gmock.h>
@@ -27,18 +25,15 @@ limitations under the License.
 #include "tensorflow/core/framework/optimized_function_graph.pb.h"
 #include "tensorflow/core/framework/tensor_shape.pb.h"
 #include "tensorflow/core/framework/tensor_testutil.h"
-#include "tensorflow/core/graph/graph_debug_info_builder.h"
 #include "tensorflow/core/kernels/ops_util.h"
 #include "tensorflow/core/lib/core/status_test_util.h"
 #include "tensorflow/core/lib/gtl/array_slice.h"
 #include "tensorflow/core/lib/strings/str_util.h"
 #include "tensorflow/core/lib/strings/strcat.h"
-#include "tensorflow/core/platform/refcount.h"
-#include "tensorflow/core/platform/stack_frame.h"
 #include "tensorflow/core/platform/test.h"
 #include "tensorflow/core/platform/types.h"
 #include "tensorflow/core/protobuf/error_codes.pb.h"
-#include "tsl/platform/status.h"
+#include "tensorflow/tsl/platform/status.h"
 
 namespace tensorflow {
 namespace {
@@ -46,9 +41,6 @@ namespace {
 using ::testing::ElementsAre;
 using ::testing::ElementsAreArray;
 using ::testing::Eq;
-using ::testing::Ne;
-using ::testing::NotNull;
-using ::testing::UnorderedElementsAreArray;
 
 // A helper class to make AttrSlice from initializer lists
 class Attrs {
@@ -69,7 +61,7 @@ class Attrs {
 
 typedef FunctionDefHelper FDH;
 
-absl::Status GetOpSig(const string& op, const OpDef** sig) {
+Status GetOpSig(const string& op, const OpDef** sig) {
   return OpRegistry::Global()->LookUpOpDef(op, sig);
 }
 
@@ -633,7 +625,7 @@ TEST(TFunc, IntsOnDeviceArgSet) {
   EXPECT_EQ("_DeviceRetval", result.nodes[4].op());
 }
 
-static void HasError(const absl::Status& s, const string& substr) {
+static void HasError(const Status& s, const string& substr) {
   EXPECT_TRUE(absl::StrContains(s.ToString(), substr))
       << ">>" << s << "<<, expected substring >>" << substr << "<<";
 }
@@ -1053,7 +1045,7 @@ TEST(Canonicalize, Basic) {
 }
 
 TEST(FunctionLibraryDefinitionTest, Contains) {
-  FunctionLibraryDefinition lib_def(OpRegistry::Global(), FunctionDefLibrary());
+  FunctionLibraryDefinition lib_def(OpRegistry::Global(), {});
   TF_CHECK_OK(lib_def.AddFunctionDef(test::function::XTimesTwo()));
 
   EXPECT_FALSE(lib_def.Contains("XTimes16"));
@@ -1061,7 +1053,7 @@ TEST(FunctionLibraryDefinitionTest, Contains) {
 }
 
 TEST(FunctionLibraryDefinitionTest, Find) {
-  FunctionLibraryDefinition lib_def(OpRegistry::Global(), FunctionDefLibrary());
+  FunctionLibraryDefinition lib_def(OpRegistry::Global(), {});
   TF_CHECK_OK(lib_def.AddFunctionDef(test::function::XTimesTwo()));
 
   EXPECT_EQ(lib_def.Find("XTimes16"), nullptr);
@@ -1077,7 +1069,7 @@ TEST(FunctionLibraryDefinitionTest, Find) {
 }
 
 TEST(FunctionLibraryDefinitionTest, LookUp) {
-  FunctionLibraryDefinition lib_def(OpRegistry::Global(), FunctionDefLibrary());
+  FunctionLibraryDefinition lib_def(OpRegistry::Global(), {});
   TF_CHECK_OK(lib_def.AddFunctionDef(test::function::XTimesTwo()));
 
   const OpDef* op_def;
@@ -1096,7 +1088,7 @@ TEST(FunctionLibraryDefinitionTest, LookUp) {
 }
 
 TEST(FunctionLibraryDefinitionTest, AddFunctionDef) {
-  FunctionLibraryDefinition lib_def(OpRegistry::Global(), FunctionDefLibrary());
+  FunctionLibraryDefinition lib_def(OpRegistry::Global(), {});
   TF_CHECK_OK(lib_def.AddFunctionDef(test::function::XTimesTwo()));
 
   // Test lookup of existing function.
@@ -1109,7 +1101,7 @@ TEST(FunctionLibraryDefinitionTest, AddFunctionDef) {
   // Test that adding a function with same name as existing op fails.
   FunctionDef fdef = test::function::XTimesTwo();
   fdef.mutable_signature()->set_name("Add");
-  absl::Status s = lib_def.AddFunctionDef(fdef);
+  Status s = lib_def.AddFunctionDef(fdef);
   EXPECT_FALSE(s.ok());
   EXPECT_EQ(s.message(),
             "Cannot add function 'Add' because an op with the same name "
@@ -1117,22 +1109,6 @@ TEST(FunctionLibraryDefinitionTest, AddFunctionDef) {
 
   // Test that adding the same functions again does not produce an error.
   TF_EXPECT_OK(lib_def.AddFunctionDef(test::function::XTimesTwo()));
-}
-
-TEST(FunctionLibraryDefinitionTest, AddFunctionDefMove) {
-  FunctionLibraryDefinition lib_def(OpRegistry::Global(), FunctionDefLibrary());
-  FunctionDef fdef = test::function::XTimesTwo();
-  EXPECT_GT(fdef.node_def_size(), 0);
-  TF_CHECK_OK(lib_def.AddFunctionDef(std::move(fdef)));
-  // The protobuf move constructor will empty the node defs from the function.
-  EXPECT_EQ(fdef.node_def_size(), 0);  // NOLINT
-
-  // Test lookup of existing function.
-  const OpDef* op_def;
-  TF_EXPECT_OK(lib_def.LookUpOpDef("XTimesTwo", &op_def));
-  ASSERT_NE(op_def, nullptr);
-  EXPECT_EQ(op_def->DebugString(),
-            test::function::XTimesTwo().signature().DebugString());
 }
 
 TEST(FunctionLibraryDefinitionTest, AddGradientDef) {
@@ -1151,7 +1127,7 @@ TEST(FunctionLibraryDefinitionTest, AddGradientDef) {
 
   // Test that adding a duplicate gradient fails
   grad.set_gradient_func(test::function::XTimes16().signature().name());
-  absl::Status s = lib_def.AddGradientDef(grad);
+  Status s = lib_def.AddGradientDef(grad);
   EXPECT_EQ(s.code(), error::Code::INVALID_ARGUMENT);
   EXPECT_EQ(s.message(),
             "Cannot assign gradient function 'XTimes16' to 'XTimesTwo' because "
@@ -1159,10 +1135,10 @@ TEST(FunctionLibraryDefinitionTest, AddGradientDef) {
 }
 
 TEST(FunctionLibraryDefinitionTest, RemoveFunction) {
-  FunctionLibraryDefinition lib_def(OpRegistry::Global(), FunctionDefLibrary());
+  FunctionLibraryDefinition lib_def(OpRegistry::Global(), {});
   TF_CHECK_OK(lib_def.AddFunctionDef(test::function::XTimesTwo()));
 
-  absl::Status s = lib_def.RemoveFunction("XTimes16");
+  Status s = lib_def.RemoveFunction("XTimes16");
   EXPECT_FALSE(s.ok());
   EXPECT_EQ(s.message(), "Tried to remove non-existent function 'XTimes16'.");
 
@@ -1172,7 +1148,7 @@ TEST(FunctionLibraryDefinitionTest, RemoveFunction) {
 }
 
 TEST(FunctionLibraryDefinitionTest, Clear) {
-  FunctionLibraryDefinition lib_def(OpRegistry::Global(), FunctionDefLibrary());
+  FunctionLibraryDefinition lib_def(OpRegistry::Global(), {});
   TF_CHECK_OK(lib_def.AddFunctionDef(test::function::XTimesTwo()));
   TF_CHECK_OK(lib_def.AddFunctionDef(test::function::XAddX()));
 
@@ -1200,7 +1176,7 @@ TEST(FunctionLibraryDefinitionTest, AddLibrary) {
       test::function::XTimesTwo().signature().name());
   *proto.add_function() = fdef;
   FunctionLibraryDefinition lib_def2(OpRegistry::Global(), proto);
-  absl::Status s = lib_def.AddLibrary(lib_def2);
+  Status s = lib_def.AddLibrary(lib_def2);
   EXPECT_EQ(s.code(), error::Code::INVALID_ARGUMENT);
   EXPECT_EQ(s.message(),
             "Cannot add function 'XTimesTwo' because a different function with "
@@ -1248,7 +1224,7 @@ TEST(FunctionLibraryDefinitionTest, AddLibrary_Atomic) {
   FunctionLibraryDefinition lib_def(OpRegistry::Global(), FunctionDefLibrary());
 
   // Try adding the two functions to lib_def
-  absl::Status s = lib_def.AddLibrary(proto);
+  Status s = lib_def.AddLibrary(proto);
   EXPECT_EQ(error::Code::INVALID_ARGUMENT, s.code());
   EXPECT_EQ(
       "Cannot add function 'XTimesTwo' because a different function with "
@@ -1299,7 +1275,7 @@ TEST(FunctionLibraryDefinitionTest, AddLibraryDefinition_Atomic_FuncConflict) {
 
   // Verify that adding lib_def2 will fail because of function conflict
   // and WXPlusB is not added.
-  absl::Status s = lib_def.AddLibrary(lib_def2);
+  Status s = lib_def.AddLibrary(lib_def2);
   EXPECT_EQ(error::Code::INVALID_ARGUMENT, s.code());
   EXPECT_EQ(
       "Cannot add function 'XTimesTwo' because a different function "
@@ -1335,7 +1311,7 @@ TEST(FunctionLibraryDefinitionTest, AddLibraryDefinition_Atomic_GradConflict) {
 
   // Verify that adding lib_def2 will fail because of gradient conflict
   // and WXPlusB is not added.
-  absl::Status s = lib_def.AddLibrary(lib_def2);
+  Status s = lib_def.AddLibrary(lib_def2);
   EXPECT_EQ(error::Code::INVALID_ARGUMENT, s.code());
   EXPECT_EQ(
       "Cannot assign gradient function 'WXPlusB' to 'XTimesTwo'"
@@ -1347,8 +1323,7 @@ TEST(FunctionLibraryDefinitionTest, AddLibraryDefinition_Atomic_GradConflict) {
 }
 
 TEST(FunctionLibraryDefinitionTest, ToProto) {
-  FunctionLibraryDefinition lib_def1(OpRegistry::Global(),
-                                     FunctionDefLibrary());
+  FunctionLibraryDefinition lib_def1(OpRegistry::Global(), {});
   TF_CHECK_OK(lib_def1.AddFunctionDef(test::function::XTimesTwo()));
   TF_CHECK_OK(lib_def1.AddFunctionDef(test::function::WXPlusB()));
 
@@ -1368,7 +1343,7 @@ TEST(FunctionLibraryDefinitionTest, ToProto) {
 }
 
 TEST(FunctionLibraryDefinitionTest, ListFunctionNames) {
-  FunctionLibraryDefinition lib_def(OpRegistry::Global(), FunctionDefLibrary());
+  FunctionLibraryDefinition lib_def(OpRegistry::Global(), {});
   TF_CHECK_OK(lib_def.AddFunctionDef(test::function::XTimesTwo()));
   TF_CHECK_OK(lib_def.AddFunctionDef(test::function::WXPlusB()));
 
@@ -1531,81 +1506,22 @@ TEST(FunctionLibraryDefinitionTest, ReachableDefinitions) {
 }
 
 TEST(FunctionLibraryDefinitionTest, AddAndFindOptimizedFunctionGraph) {
-  FunctionLibraryDefinition lib_def(OpRegistry::Global(), FunctionDefLibrary());
-  EXPECT_FALSE(lib_def.FindOptimizedFunctionGraph("test").has_value());
+  FunctionLibraryDefinition lib_def(OpRegistry::Global(), {});
+  EXPECT_EQ(lib_def.FindOptimizedFunctionGraph("test"), nullptr);
   OptimizedFunctionGraph proto;
   lib_def.AddOptimizedFunctionGraph("test", proto);
-  EXPECT_TRUE(lib_def.FindOptimizedFunctionGraph("test").has_value());
-  EXPECT_TRUE(lib_def.FindOptimizedFunctionGraph("test").value().ok());
+  EXPECT_NE(lib_def.FindOptimizedFunctionGraph("test"), nullptr);
 }
 
 TEST(FunctionLibraryDefinitionTest, MoveTest) {
-  FunctionLibraryDefinition lib_def(OpRegistry::Global(), FunctionDefLibrary());
+  FunctionLibraryDefinition lib_def(OpRegistry::Global(), {});
   const OptimizedFunctionGraph proto;
   lib_def.AddOptimizedFunctionGraph("test", proto);
   TF_CHECK_OK(lib_def.AddFunctionDef(test::function::XTimesTwo()));
 
   FunctionLibraryDefinition copy_lib_def = std::move(lib_def);
   EXPECT_TRUE(copy_lib_def.Contains("XTimesTwo"));
-  EXPECT_TRUE(copy_lib_def.FindOptimizedFunctionGraph("test").has_value());
-  EXPECT_TRUE(copy_lib_def.FindOptimizedFunctionGraph("test").value().ok());
-}
-
-TEST(FunctionLibraryDefinitionTest, ConstructFromGraphDef) {
-  // Prepare GraphDef with FunctionDefLibrary and associated stackt traces.
-  FunctionDefLibrary library;
-  *library.add_function() = test::function::XTimesTwo();
-  *library.add_function() = test::function::XTimesFour();
-  GraphDef graph_def;
-  *graph_def.mutable_library() = library;
-  GraphDebugInfoBuilder builder;
-  StackTracesMap x2_expected_traces;
-  x2_expected_traces["two"] =
-      std::make_shared<FrozenStackTrace>(std::vector<StackFrame>{
-          {"alpha.cc", 20, "bar"}, {"x.cc", 5, "x"}, {"beta.cc", 30, "sop"}});
-  StackTracesMap x4_expected_traces;
-  x4_expected_traces["y"] =
-      std::make_shared<FrozenStackTrace>(std::vector<StackFrame>{
-          {"beta.cc", 10, "foo"},
-          {"x.cc", 5, "x"},  // duplicate one frame exactly
-          {"gamma.cc", 123, "bell"},
-      });
-  builder.AccumulateStackTracesMap(x2_expected_traces, "@XTimesTwo");
-  builder.AccumulateStackTracesMap(x4_expected_traces, "@XTimesFour");
-  *graph_def.mutable_debug_info() = builder.Build();
-
-  // This is the constructor being tested. It should pull the stack traces from
-  // the GraphDef, and populate the FunctionLibraryDefinition's FunctionRecords
-  // with them.
-  FunctionLibraryDefinition lib_def(OpRegistry::Global(), graph_def);
-
-  // Check that expected stack traces exist and are correctly mapped.
-  EXPECT_THAT(lib_def.ListFunctionNames(),
-              UnorderedElementsAreArray({"XTimesTwo", "XTimesFour"}));
-  const core::RefCountPtr<FunctionRecord> x2_record =
-      lib_def.FindRecord("XTimesTwo");
-  EXPECT_THAT(x2_record.get(), NotNull());
-  const StackTracesMap& x2_traces = x2_record->stack_traces();
-  const auto& two_it = x2_traces.find("two");
-  EXPECT_THAT(two_it, Ne(x2_traces.end()));
-  if (two_it != x2_traces.end()) {
-    EXPECT_THAT(two_it->second->ToString({}),
-                Eq("File \"alpha.cc\", line 20, in bar\n"
-                   "File \"x.cc\", line 5, in x\n"
-                   "File \"beta.cc\", line 30, in sop"));
-  }
-  const core::RefCountPtr<FunctionRecord> x4_record =
-      lib_def.FindRecord("XTimesFour");
-  EXPECT_THAT(x4_record, NotNull());
-  const StackTracesMap& x4_traces = x4_record->stack_traces();
-  const auto& y_it = x4_traces.find("y");
-  EXPECT_THAT(y_it, Ne(x4_traces.end()));
-  if (y_it != x4_traces.end()) {
-    EXPECT_THAT(y_it->second->ToString({}),
-                Eq("File \"beta.cc\", line 10, in foo\n"
-                   "File \"x.cc\", line 5, in x\n"
-                   "File \"gamma.cc\", line 123, in bell"));
-  }
+  EXPECT_NE(copy_lib_def.FindOptimizedFunctionGraph("test"), nullptr);
 }
 
 // TODO(skyewm): this could be more thorough

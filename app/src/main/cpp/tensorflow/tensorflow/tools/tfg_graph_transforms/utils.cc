@@ -17,12 +17,10 @@ limitations under the License.
 
 #include <string>
 
-#include "tensorflow/cc/saved_model/image_format/internal_api.h"
-#include "tensorflow/core/platform/path.h"
+#include "absl/strings/string_view.h"
+#include "tensorflow/tools/proto_splitter_public/internal_api.h"
 #include "tensorflow/core/platform/status.h"
-#include "tensorflow/core/platform/stringpiece.h"
-#include "tensorflow/core/protobuf/saved_model.pb.h"
-#include "tsl/platform/stringpiece.h"
+#include "tensorflow/tsl/platform/stringpiece.h"
 
 namespace mlir {
 namespace tfg {
@@ -30,28 +28,28 @@ namespace graph_transforms {
 
 namespace {
 
-absl::string_view GetNameWithoutExtension(absl::string_view filename) {
+tsl::StringPiece GetNameWithoutExtension(tsl::StringPiece filename) {
   auto pos = filename.rfind('.');
-  if (pos == absl::string_view::npos) return filename;
+  if (pos == tsl::StringPiece::npos) return filename;
   return filename.substr(0, pos);
 }
 
 }  // namespace
 
 bool IsTextProto(const std::string& input_file) {
-  absl::string_view extension = tensorflow::io::Extension(input_file);
+  tensorflow::StringPiece extension = tensorflow::io::Extension(input_file);
   return !extension.compare("pbtxt");
 }
 
-absl::Status ReadSavedModelImageFormat(const std::string& input_file,
-                                       tensorflow::SavedModel& model_proto) {
+tensorflow::Status ReadSavedModelImageFormat(
+    const std::string& input_file, tensorflow::SavedModel& model_proto) {
   std::string saved_model_prefix(GetNameWithoutExtension(input_file));
   return tensorflow::image_format::ReadSavedModel(saved_model_prefix,
                                                   &model_proto);
 }
-absl::Status WriteSavedModelImageFormat(tensorflow::SavedModel* model_proto,
-                                        const std::string& output_file,
-                                        int debug_max_size) {
+tensorflow::Status WriteSavedModelImageFormat(
+    tensorflow::SavedModel* model_proto, const std::string& output_file,
+    int debug_max_size) {
   std::string saved_model_prefix(GetNameWithoutExtension(output_file));
   if (debug_max_size > 0) {
     return tensorflow::image_format::WriteSavedModel(

@@ -16,6 +16,7 @@ limitations under the License.
 #ifndef TENSORFLOW_TOOLS_PROTO_SPLITTER_CC_SPLIT_H_
 #define TENSORFLOW_TOOLS_PROTO_SPLITTER_CC_SPLIT_H_
 
+#include <memory>
 #include <string>
 #include <utility>
 #include <variant>
@@ -23,16 +24,17 @@ limitations under the License.
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "tensorflow/tools/proto_splitter/cc/util.h"
 #include "tensorflow/tools/proto_splitter/chunk.pb.h"
 #include "tensorflow/tools/proto_splitter/versions.pb.h"
-#include "tsl/platform/protobuf.h"
+#include "tensorflow/tsl/platform/protobuf.h"
 
 namespace tensorflow {
 namespace tools::proto_splitter {
 
-using ::tensorflow::proto_splitter::ChunkedMessage;
-using ::tensorflow::proto_splitter::VersionDef;
+using ::proto_splitter::ChunkedMessage;
+using ::proto_splitter::VersionDef;
+using MessageBytes = std::variant<std::shared_ptr<tsl::protobuf::Message>,
+                                  tsl::protobuf::Message*, std::string>;
 
 // Interface for proto message splitters.
 class Splitter {
@@ -40,7 +42,8 @@ class Splitter {
   virtual ~Splitter() = default;
 
   // Split message into chunks.
-  virtual absl::StatusOr<ChunkedProto> Split() = 0;
+  virtual absl::StatusOr<std::pair<std::vector<MessageBytes>*, ChunkedMessage*>>
+  Split() = 0;
 
   // Write message to disk.
   virtual absl::Status Write(std::string file_prefix) = 0;

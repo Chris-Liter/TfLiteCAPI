@@ -99,9 +99,7 @@ class FakeDevice : public Device {
       : Device(nullptr, device_attributes) {}
 
  public:
-  absl::Status Sync() override {
-    return errors::Unimplemented("FakeDevice::Sync()");
-  }
+  Status Sync() override { return errors::Unimplemented("FakeDevice::Sync()"); }
 
   Allocator* GetAllocator(AllocatorAttributes attr) override { return nullptr; }
 
@@ -139,8 +137,7 @@ TEST_F(ConstantFoldingTest, Basic) {
 // Tests that different node creation ordering creates same graph after constant
 // folding.
 TEST_F(ConstantFoldingTest, DeterministicFolding) {
-  auto build_graph_and_constant_folding = [](Graph& g,
-                                             bool swap) -> absl::Status {
+  auto build_graph_and_constant_folding = [](Graph& g, bool swap) -> Status {
     Scope s = Scope::NewRootScope();
     auto a = ops::Const<float>(s, {1.0}, {});
     auto b = ops::Const<float>(s, {2.0}, {});
@@ -172,7 +169,7 @@ TEST_F(ConstantFoldingTest, DeterministicFolding) {
     opt.generate_new_name = generate_new_name;
     TF_CHECK_OK(
         ConstantFold(opt, nullptr, Env::Default(), nullptr, &g, &was_mutated));
-    return absl::OkStatus();
+    return OkStatus();
   };
 
   Graph g1(OpRegistry::Global());
@@ -354,7 +351,7 @@ TEST_F(ConstantFoldingTest, TestNoReplaceFunctionCall) {
         NodeDefBuilder("times_two", "XTimesTwo", s.graph()->op_registry())
             .Input(c.name(), 0, DT_INT32)
             .Finalize(&def));
-    absl::Status status;
+    Status status;
     Node* times_two = s.graph()->AddNode(def, &status);
     TF_ASSERT_OK(status);
     TF_ASSERT_OK(s.DoShapeInference(times_two));
@@ -388,7 +385,7 @@ TEST_F(ConstantFoldingTest, TestNoReplaceNonCPUOp) {
     TF_ASSERT_OK(NodeDefBuilder("testop", "ConstantFoldingTestOp")
                      .Input(aconst.name(), 0, DT_INT64)
                      .Finalize(&def));
-    absl::Status status;
+    Status status;
     Node* non_cpu = s.graph()->AddNode(def, &status);
     TF_ASSERT_OK(status);
     TF_ASSERT_OK(s.DoShapeInference(non_cpu));
@@ -684,17 +681,17 @@ class TestTFFileSystem : public ::tensorflow::NullFileSystem {
 
   using ::tensorflow::NullFileSystem::NewReadOnlyMemoryRegionFromFile;
 
-  absl::Status NewReadOnlyMemoryRegionFromFile(
+  ::tensorflow::Status NewReadOnlyMemoryRegionFromFile(
       const string& fname, ::tensorflow::TransactionToken* token,
       std::unique_ptr<::tensorflow::ReadOnlyMemoryRegion>* result) override {
     if (fname != kTestMemRegionName) {
       return ::tensorflow::errors::Unimplemented(
           "NewReadOnlyMemoryRegionFromFile unimplemented");
     }
-    const absl::string_view sp = data_tensor_.tensor_data();
+    const ::tensorflow::StringPiece sp = data_tensor_.tensor_data();
     *result = std::unique_ptr<::tensorflow::ReadOnlyMemoryRegion>(
         new TestReadOnlyMemoryRegion(sp.data(), sp.size()));
-    return absl::OkStatus();
+    return OkStatus();
   }
 
  protected:
@@ -706,12 +703,12 @@ class TestTFEnvironment : public ::tensorflow::EnvWrapper {
  public:
   using tf_base = ::tensorflow::EnvWrapper;
   TestTFEnvironment() : ::tensorflow::EnvWrapper(Default()) {}
-  absl::Status GetFileSystemForFile(
+  ::tensorflow::Status GetFileSystemForFile(
       const string& fname, ::tensorflow::FileSystem** result) override {
     was_used_ = true;
     if (fname == "test://test") {
       *result = &test_filesystem_;
-      return absl::OkStatus();
+      return OkStatus();
     }
     return tf_base::GetFileSystemForFile(fname, result);
   }
@@ -735,8 +732,8 @@ TEST_F(ConstantFoldingTest, TestImmutableConst) {
   TF_ASSERT_OK(root.ToGraph(&g));
   TestTFEnvironment test_env;
   bool was_mutated;
-  absl::Status status = ConstantFold(ConstantFoldingOptions{}, nullptr,
-                                     Env::Default(), nullptr, &g, &was_mutated);
+  Status status = ConstantFold(ConstantFoldingOptions{}, nullptr,
+                               Env::Default(), nullptr, &g, &was_mutated);
   EXPECT_FALSE(was_mutated);
   EXPECT_FALSE(status.ok());
   TF_EXPECT_OK(ConstantFold(ConstantFoldingOptions{}, nullptr, &test_env,

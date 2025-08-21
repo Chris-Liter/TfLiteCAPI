@@ -29,9 +29,9 @@ namespace tensorflow {
 namespace graph_transforms {
 
 // Rounds any large float constants to the specified number of levels.
-absl::Status RoundWeights(const GraphDef& input_graph_def,
-                          const TransformFuncContext& context,
-                          GraphDef* output_graph_def) {
+Status RoundWeights(const GraphDef& input_graph_def,
+                    const TransformFuncContext& context,
+                    GraphDef* output_graph_def) {
   int32_t num_steps;
   TF_RETURN_IF_ERROR(
       context.GetOneInt32Parameter("num_steps", 256, &num_steps));
@@ -62,7 +62,7 @@ absl::Status RoundWeights(const GraphDef& input_graph_def,
         // and the benefit of shrinking them is very marginal.
         if ((old_dtype != DT_FLOAT) || (num_elements < 16)) {
           new_nodes->push_back(old_const_node);
-          return absl::OkStatus();
+          return OkStatus();
         }
         const float* old_values = old_tensor.flat<float>().data();
         float min = std::numeric_limits<float>::max();
@@ -103,11 +103,11 @@ absl::Status RoundWeights(const GraphDef& input_graph_def,
         SetNodeTensorAttr<float>("value", rounded_tensor, &rounded_const_node);
         new_nodes->push_back(rounded_const_node);
 
-        return absl::OkStatus();
+        return OkStatus();
       },
       {}, output_graph_def));
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 REGISTER_GRAPH_TRANSFORM("round_weights", RoundWeights);

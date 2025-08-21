@@ -17,9 +17,7 @@ limitations under the License.
 #define TENSORFLOW_C_EXPERIMENTAL_SAVED_MODEL_CORE_REVIVED_TYPES_PARTIALLY_REVIVED_OBJECTS_H_
 
 #include <memory>
-#include <string>
 
-#include "absl/status/status.h"
 #include "tensorflow/c/eager/immediate_execution_context.h"
 #include "tensorflow/c/experimental/saved_model/core/revived_types/asset.h"
 #include "tensorflow/c/experimental/saved_model/core/revived_types/constant.h"
@@ -55,9 +53,8 @@ struct PartiallyRevivedObjects {
   gtl::FlatMap<int, RestoredResourceRevivalState> restored_resources;
   gtl::FlatMap<std::string, int> signatures_map;
 
-  absl::Status Build(ImmediateExecutionContext* ctx,
-                     const SavedObjectGraph& obj_graph,
-                     RevivedObjects* revived);
+  Status Build(ImmediateExecutionContext* ctx,
+               const SavedObjectGraph& obj_graph, RevivedObjects* revived);
 };
 
 }  // namespace tensorflow

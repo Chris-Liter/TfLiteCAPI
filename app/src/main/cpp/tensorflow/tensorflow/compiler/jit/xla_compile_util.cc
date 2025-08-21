@@ -19,14 +19,9 @@ limitations under the License.
 #include <string>
 #include <vector>
 
-#include "absl/status/status.h"
 #include "tensorflow/compiler/jit/flags.h"
-#include "tensorflow/core/framework/op_kernel.h"
-#include "tensorflow/core/framework/resource_mgr.h"
-#include "tensorflow/core/framework/types.h"
 #include "tensorflow/core/graph/algorithm.h"
 #include "tensorflow/core/graph/node_builder.h"
-#include "tensorflow/core/tfrt/common/global_state.h"
 #include "tensorflow/core/util/determinism.h"
 
 namespace tensorflow {
@@ -36,7 +31,7 @@ constexpr const char* kPjRtDeviceCompilationProfilerResourceName =
     "pjrt_device_compilation_profiler";
 }  // namespace
 
-absl::StatusOr<std::unique_ptr<Graph>> CreateSingleOpGraph(
+StatusOr<std::unique_ptr<Graph>> CreateSingleOpGraph(
     const NodeDef& node_def, absl::Span<const XlaArgument> args,
     absl::Span<const DataType> result_types) {
   // TODO(b/74182462): We implement this by creating a new dummy Graph including
@@ -51,7 +46,7 @@ absl::StatusOr<std::unique_ptr<Graph>> CreateSingleOpGraph(
   for (int64_t i = 0, end = args.size(); i < end; ++i) {
     Node* node;
     string arg_name = absl::StrCat("_arg", i);
-    absl::Status status =
+    Status status =
         NodeBuilder(arg_name, FunctionLibraryDefinition::kArgOp)
             .ControlInput(graph->source_node())
             .Attr("T", args[i].kind == XlaArgument::kResource ? DT_RESOURCE
@@ -66,12 +61,11 @@ absl::StatusOr<std::unique_ptr<Graph>> CreateSingleOpGraph(
   for (int64_t i = 0, end = result_types.size(); i < end; ++i) {
     Node* node;
     string retval_name = absl::StrCat("_retval", i);
-    absl::Status status =
-        NodeBuilder(retval_name, FunctionLibraryDefinition::kRetOp)
-            .Input(main_node, i)
-            .Attr("T", result_types[i])
-            .Attr("index", i)
-            .Finalize(graph.get(), &node);
+    Status status = NodeBuilder(retval_name, FunctionLibraryDefinition::kRetOp)
+                        .Input(main_node, i)
+                        .Attr("T", result_types[i])
+                        .Attr("index", i)
+                        .Finalize(graph.get(), &node);
     TF_RETURN_IF_ERROR(status);
   }
   FixupSourceAndSinkEdges(graph.get());
@@ -95,25 +89,4 @@ std::string GetPjRtDeviceCompilationProfilerResourceName(
   return absl::StrCat(kPjRtDeviceCompilationProfilerResourceName, "_",
                       device_type.type_string());
 }
-
-absl::StatusOr<ResourceMgr*> GetResourceMgrForDeviceCompiler(
-    const OpKernelContext& ctx, const DeviceType& device_type) {
-  // We store information about the JIT-compiled XLA computation in the
-  // ResourceMgr. The DeviceCompiler (which contains the DeviceCompilationCache)
-  // is stored in the tfrt_global ResourceMgr for TPU and the Device ResourceMgr
-  // for CPU/GPU. This is to make sure the DeviceCompiler's lifecycle is
-  // maintained appropriately.
-  ResourceMgr* rm = nullptr;
-  if (device_type == DEVICE_TPU) {
-    rm = tfrt_global::GetTFGlobalResourceMgr();
-  } else {
-    rm = ctx.resource_manager();
-  }
-
-  if (!rm) {
-    return absl::InternalError("No resource manager found.");
-  }
-  return rm;
-}
-
 }  // namespace tensorflow

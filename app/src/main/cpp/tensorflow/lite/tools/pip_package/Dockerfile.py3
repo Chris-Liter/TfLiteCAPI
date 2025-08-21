@@ -45,6 +45,7 @@ RUN apt-get update && \
       python$PYTHON_VERSION \
       python$PYTHON_VERSION-dev \
       python$PYTHON_VERSION-venv \
+      python$PYTHON_VERSION-distutils \
       libpython$PYTHON_VERSION-dev \
       libpython$PYTHON_VERSION-dev:armhf \
       libpython$PYTHON_VERSION-dev:arm64

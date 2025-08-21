@@ -22,9 +22,7 @@ limitations under the License.
 #include <cfloat>
 #include <vector>
 
-#include "absl/status/status.h"
-#include "absl/strings/str_cat.h"
-#include "unsupported/Eigen/CXX11/Tensor"  // from @eigen_archive
+#include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 #include "tensorflow/core/common_runtime/device.h"
 #include "tensorflow/core/framework/kernel_shape_util.h"
 #include "tensorflow/core/framework/numeric_op.h"
@@ -240,11 +238,6 @@ class DilationBackpropInputOp : public OpKernel {
                &out_cols);
     if (!context->status().ok()) return;
 
-    OP_REQUIRES(context, out_backprop.dims() == 4,
-                absl::InvalidArgumentError(
-                    absl::StrCat("out_backprop must be 4-dimensional",
-                                 out_backprop.shape().DebugString())));
-
     // Verify that the incoming gradient tensor has the expected size
     // [ batch, out_rows, out_cols, depth ]
     const int batch = input.dim_size(0);
@@ -372,11 +365,6 @@ class DilationBackpropFilterOp : public OpKernel {
                &rate_rows, &rate_cols, &pad_top, &pad_left, &out_rows,
                &out_cols);
     if (!context->status().ok()) return;
-
-    OP_REQUIRES(context, out_backprop.dims() == 4,
-                absl::InvalidArgumentError(
-                    absl::StrCat("out_backprop must be 4-dimensional",
-                                 out_backprop.shape().DebugString())));
 
     // Verify that the incoming gradient tensor has the expected size
     // [ batch, out_rows, out_cols, depth ]

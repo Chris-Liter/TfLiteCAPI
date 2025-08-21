@@ -229,7 +229,7 @@ TEST(GraphToFunctionDefTest, ArgAttrConstInput) {
       args_or_retvals->resize(index + 1);
     }
     (*args_or_retvals)[index].node = node;
-    return absl::OkStatus();
+    return OkStatus();
   };
   for (Node* node : root.graph()->op_nodes()) {
     // Set const as the input node.

@@ -17,7 +17,6 @@
 from absl.testing import parameterized
 import numpy as np
 
-from tensorflow.python.eager import def_function
 from tensorflow.python.framework import constant_op
 from tensorflow.python.framework import dtypes
 from tensorflow.python.framework import extension_type
@@ -241,15 +240,6 @@ class WeakTensorUnaryOpsTest(
     tensor_input = np.array([1.0, 2.0, 3.0])
     res = unary_api_specific_dtype(tensor_input)
     self.assertIsInstance(res, tensor.Tensor)
-
-  @test_util.run_in_graph_and_eager_modes
-  def test_weak_tensor_from_scalar_in_tf_func(self):
-    @def_function.function()
-    def f():
-      return 1
-
-    res = f()
-    self.assertIsInstance(res, WeakTensor)
 
   # Test unary ops with optional dtype arg.
   @parameterized.parameters(
@@ -520,7 +510,8 @@ class WeakTensorBinaryOpsTest(
           self.match_expected(y**x, reverse_expected_val, expected_dtype)
 
     run_test_pow(a=4, b=2)
-    run_test_pow(a=10, b=5)
+    run_test_pow(a=41, b=10)
+    run_test_pow(a=2, b=6)
 
   def test_weak_tensor_mod(self, a_dtype, b_dtype, expected_dtype):
     def run_test_mod(a, b):
@@ -815,11 +806,11 @@ class WeakTensorBinaryOpsTest(
     run_test_div_no_nan(a=2, b=6)
 
     # Test div_no_nan(x, 0) = 0 even if x is NaN or Inf.
-    x = np.nan
+    x = np.NaN
     y = 0
     self.match_expected(math_ops.div_no_nan(x, y), 0, (dtypes.float32, True))
 
-    x = np.inf
+    x = np.Inf
     self.match_expected(math_ops.div_no_nan(x, y), 0, (dtypes.float32, True))
 
   def test_weak_tensor_multiply_no_nan(self, a_dtype, b_dtype, expected_dtype):
@@ -847,13 +838,13 @@ class WeakTensorBinaryOpsTest(
     run_test_multiply_no_nan(a=2, b=6)
 
     # Test multiply_no_nan(x, 0) = 0 even if x is NaN or Inf.
-    x = np.nan
+    x = np.NaN
     y = 0
     self.match_expected(
         math_ops.multiply_no_nan(x, y), 0, (dtypes.float32, True)
     )
 
-    x = np.inf
+    x = np.Inf
     self.match_expected(
         math_ops.multiply_no_nan(x, y), 0, (dtypes.float32, True)
     )

@@ -38,9 +38,8 @@ constexpr char kTensor2FileName[] = "memmapped_package://t2";
 constexpr char kProtoFileName[] = "memmapped_package://b";
 constexpr int kTestGraphDefVersion = 666;
 
-absl::Status CreateMemmappedFileSystemFile(const string& filename,
-                                           bool corrupted,
-                                           Tensor* test_tensor) {
+Status CreateMemmappedFileSystemFile(const string& filename, bool corrupted,
+                                     Tensor* test_tensor) {
   Env* env = Env::Default();
   MemmappedFileSystemWriter writer;
   TF_RETURN_IF_ERROR(writer.InitializeToFile(env, filename));
@@ -66,7 +65,7 @@ absl::Status CreateMemmappedFileSystemFile(const string& filename,
     // Flush and close the file.
     TF_RETURN_IF_ERROR(writer.FlushAndClose());
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 TEST(MemmappedFileSystemTest, SimpleTest) {
@@ -139,7 +138,7 @@ TEST(MemmappedFileSystemTest, Corrupted) {
   TF_ASSERT_OK(CreateMemmappedFileSystemFile(filename, true, &test_tensor));
   MemmappedFileSystem memmapped_env;
   ASSERT_NE(memmapped_env.InitializeFromFile(Env::Default(), filename),
-            absl::OkStatus());
+            OkStatus());
 }
 
 TEST(MemmappedFileSystemTest, ProxyToDefault) {

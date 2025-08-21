@@ -148,7 +148,7 @@ static std::function<void(std::function<void()>)>* GetDefaultRunner() {
   return default_runner;
 }
 
-absl::Status SetUpKernelFallbackCompatRequestContext(
+Status SetUpKernelFallbackCompatRequestContext(
     tfrt::RequestContextBuilder* builder,
     const tensorflow::DeviceMgr* device_manager,
     const tensorflow::ProcessFunctionLibraryRuntime* pflr,
@@ -179,7 +179,7 @@ absl::Status SetUpKernelFallbackCompatRequestContext(
   fallback_request_state.set_cancellation_manager(cancellation_manager);
   fallback_request_state.set_runtime_config(runtime_config);
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace tfd

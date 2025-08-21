@@ -39,7 +39,6 @@ template struct FillProjectiveTransform<CPUDevice, int64_t>;
 template struct FillProjectiveTransform<CPUDevice, Eigen::half>;
 template struct FillProjectiveTransform<CPUDevice, float>;
 template struct FillProjectiveTransform<CPUDevice, double>;
-template struct FillProjectiveTransform<CPUDevice, bfloat16>;
 
 }  // end namespace functor
 
@@ -164,7 +163,6 @@ TF_CALL_int64(REGISTER);
 TF_CALL_half(REGISTER);
 TF_CALL_float(REGISTER);
 TF_CALL_double(REGISTER);
-TF_CALL_bfloat16(REGISTER);
 
 #undef REGISTER
 
@@ -188,7 +186,6 @@ TF_CALL_int64(REGISTER);
 TF_CALL_half(REGISTER);
 TF_CALL_float(REGISTER);
 TF_CALL_double(REGISTER);
-TF_CALL_bfloat16(REGISTER);
 
 #undef REGISTER
 

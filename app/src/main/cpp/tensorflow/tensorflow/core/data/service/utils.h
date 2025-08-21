@@ -28,12 +28,11 @@ namespace data {
 
 // Writes a dataset definition to the specified path. If the file already
 // exists, it will be overwritten.
-absl::Status WriteDatasetDef(const std::string& path,
-                             const DatasetDef& dataset_def);
+Status WriteDatasetDef(const std::string& path, const DatasetDef& dataset_def);
 
 // Reads a dataset definition from specified path, and stores it in
 // `dataset_def`. Returns NOT_FOUND if the path cannot be found.
-absl::Status ReadDatasetDef(const std::string& path, DatasetDef& dataset_def);
+Status ReadDatasetDef(const std::string& path, DatasetDef& dataset_def);
 
 }  // namespace data
 }  // namespace tensorflow

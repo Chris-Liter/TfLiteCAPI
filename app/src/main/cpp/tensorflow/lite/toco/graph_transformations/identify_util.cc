@@ -18,7 +18,6 @@ limitations under the License.
 #include <string>
 
 #include "tensorflow/lite/toco/model.h"
-#include "tensorflow/lite/toco/runtime/types.h"
 #include "tensorflow/lite/toco/tooling_util.h"
 
 namespace toco {

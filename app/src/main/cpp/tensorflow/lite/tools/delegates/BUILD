@@ -170,25 +170,7 @@ cc_library_with_tflite(
         "//tensorflow/lite/tools/evaluation:utils",
     ],
     visibility = ["//visibility:public"],
-    deps = [
-        "//tensorflow/lite/delegates/xnnpack:xnnpack_delegate",
-        "//tensorflow/lite/tools:tool_params",
-    ],
     alwayslink = 1,
-)
-
-cc_test(
-    name = "xnnpack_delegate_provider_test",
-    srcs = ["xnnpack_delegate_provider_test.cc"],
-    copts = tflite_copts(),
-    visibility = ["//visibility:public"],
-    deps = [
-        ":delegate_provider_hdr",
-        ":xnnpack_delegate_provider",
-        "//tensorflow/lite/delegates/xnnpack:xnnpack_delegate",
-        "//tensorflow/lite/tools:tool_params",
-        "@com_google_googletest//:gtest_main",
-    ],
 )
 
 cc_library(
@@ -212,7 +194,6 @@ cc_test_with_tflite(
     name = "delegate_provider_lib_test",
     size = "small",
     srcs = ["delegate_provider_test.cc"],
-    copts = tflite_copts(),
     # See details in https://github.com/bazelbuild/bazel/issues/11552 to avoid
     # lazy symbol binding failure on macOS.
     linkstatic = select({

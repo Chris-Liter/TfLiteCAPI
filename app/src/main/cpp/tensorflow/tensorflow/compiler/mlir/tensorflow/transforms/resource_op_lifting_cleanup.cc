@@ -24,7 +24,6 @@ limitations under the License.
 #include "mlir/IR/BuiltinOps.h"  // from @llvm-project
 #include "mlir/IR/Value.h"  // from @llvm-project
 #include "mlir/IR/Visitors.h"  // from @llvm-project
-#include "mlir/Support/LLVM.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_device.h"
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_ops.h"
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_types.h"
@@ -33,7 +32,7 @@ namespace mlir {
 namespace {
 
 bool IsResource(Value value) {
-  return mlir::isa<TF::ResourceType>(getElementTypeOrSelf(value.getType()));
+  return getElementTypeOrSelf(value.getType()).isa<TF::ResourceType>();
 }
 
 // Checks if a cast op is casting a resource -> resource.
@@ -183,7 +182,7 @@ void EliminateUnusedResultsForIfCase(Operation *op,
     if (cloned == func) continue;
     // Patch up the op attribute to point to the new function.
     for (NamedAttribute attr : op->getAttrs()) {
-      auto symref = mlir::dyn_cast<FlatSymbolRefAttr>(attr.getValue());
+      auto symref = attr.getValue().dyn_cast<FlatSymbolRefAttr>();
       if (!symref) continue;
       if (symref.getValue() != func.getName()) continue;
       op->setAttr(attr.getName(),
@@ -302,8 +301,7 @@ LogicalResult ForwardCommonArgToOutput(Operation *op,
     std::optional<int> common_arg_index;
     for (func::FuncOp func : branches) {
       auto ret = func.front().getTerminator();
-      auto block_arg =
-          mlir::dyn_cast<BlockArgument>(ret->getOperand(result_idx));
+      auto block_arg = ret->getOperand(result_idx).dyn_cast<BlockArgument>();
       if (!block_arg) {
         return op->emitOpError("result #")
                << result_idx << " not tied to function argument for branch @"

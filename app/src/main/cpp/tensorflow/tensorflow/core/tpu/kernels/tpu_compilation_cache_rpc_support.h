@@ -1,4 +1,3 @@
-#include "absl/status/statusor.h"
 /* Copyright 2020 The TensorFlow Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -71,8 +70,7 @@ class CacheWrapper : public CompilationCacheEntryRef {
                                     /*core_index=*/0);
   }
 
-  absl::Status ToSubEntryRef(
-      CompilationCacheFetchTarget fetch_target) override {
+  Status ToSubEntryRef(CompilationCacheFetchTarget fetch_target) override {
     LOG(FATAL) << "Not implemented by designed.";
   }
 
@@ -86,12 +84,12 @@ std::shared_ptr<::grpc::ChannelCredentials> CreateChannelCredentials();
 // Fills an uinitialized `CacheEntry` from `GetTpuProgramResponse` proto. The
 // `cache_entry` will be instantiated by the function.
 template <typename ResponseType>
-absl::Status DeserializeRpcResponseToCacheEntry(
+Status DeserializeRpcResponseToCacheEntry(
     absl::string_view local_proto_key, ResponseType* response,
     std::shared_ptr<CacheEntry>* cache_entry);
 
 // Serializes `TpuCompilationCacheEntry` to gRPC bufer slices.
-absl::StatusOr<std::vector<::grpc::Slice>> SerializeCacheEntryToBufferSlices(
+xla::StatusOr<std::vector<::grpc::Slice>> SerializeCacheEntryToBufferSlices(
     const TpuCompilationCacheEntry& cache_entry);
 }  // namespace tpu
 }  // namespace tensorflow

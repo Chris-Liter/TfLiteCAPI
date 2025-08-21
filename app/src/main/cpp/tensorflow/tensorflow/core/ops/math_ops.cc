@@ -20,9 +20,6 @@ limitations under the License.
 #include "tensorflow/core/framework/op.h"
 #include "tensorflow/core/framework/shape_inference.h"
 
-// TODO(intel-tf): Move all MKL ops in this file to a separate file,
-// mkl_math_ops.cc.
-
 namespace tensorflow {
 
 using shape_inference::DimensionHandle;
@@ -50,7 +47,7 @@ REGISTER_OP("AddN")
 
       if (dtype != DT_VARIANT) {
         // Exit early if not DT_VARIANT.
-        return absl::OkStatus();
+        return OkStatus();
       } else {
         // DT_VARIANT shape handle shape inference.  All sizes and dtypes must
         // be the same; all shapes must be compatible via Merge.
@@ -97,7 +94,7 @@ REGISTER_OP("AddN")
         if (shapes_and_types) {
           c->set_output_handle_shapes_and_types(0, cur_shapes_and_types);
         }
-        return absl::OkStatus();
+        return OkStatus();
       }
     });
 
@@ -129,8 +126,6 @@ REGISTER_OP("BatchMatMul")
         "complex128}")
     .Attr("adj_x: bool = false")
     .Attr("adj_y: bool = false")
-    .Attr("grad_x: bool = false")
-    .Attr("grad_y: bool = false")
     .SetShapeFn(shape_inference::BatchMatMulShape);
 
 REGISTER_OP("BatchMatMulV2")
@@ -142,8 +137,6 @@ REGISTER_OP("BatchMatMulV2")
         "uint16, uint32, uint64, complex64, complex128}")
     .Attr("adj_x: bool = false")
     .Attr("adj_y: bool = false")
-    .Attr("grad_x: bool = false")
-    .Attr("grad_y: bool = false")
     .SetShapeFn(shape_inference::BatchMatMulV2Shape);
 
 REGISTER_OP("BatchMatMulV3")
@@ -161,8 +154,6 @@ REGISTER_OP("BatchMatMulV3")
         "complex128}")
     .Attr("adj_x: bool = false")
     .Attr("adj_y: bool = false")
-    .Attr("grad_x: bool = false")
-    .Attr("grad_y: bool = false")
     .SetShapeFn(shape_inference::BatchMatMulV2Shape);
 
 #ifdef INTEL_MKL
@@ -170,22 +161,18 @@ REGISTER_OP("_MklBatchMatMul")
     .Input("x: T")
     .Input("y: T")
     .Output("output: T")
-    .Attr("T: {bfloat16, float, half}")
+    .Attr("T: {bfloat16, float}")
     .Attr("adj_x: bool = false")
     .Attr("adj_y: bool = false")
-    .Attr("grad_x: bool = false")
-    .Attr("grad_y: bool = false")
     .SetShapeFn(shape_inference::BatchMatMulShape);
 
 REGISTER_OP("_MklBatchMatMulV2")
     .Input("x: T")
     .Input("y: T")
     .Output("output: T")
-    .Attr("T: {bfloat16, float, half}")
+    .Attr("T: {bfloat16, float}")
     .Attr("adj_x: bool = false")
     .Attr("adj_y: bool = false")
-    .Attr("grad_x: bool = false")
-    .Attr("grad_y: bool = false")
     .SetShapeFn(shape_inference::BatchMatMulV2Shape);
 #endif  // INTEL_MKL
 
@@ -432,6 +419,45 @@ REGISTER_OP("AddV2")
     .SetIsAggregate()
     .SetIsCommutative();
 
+#ifdef INTEL_MKL
+REGISTER_OP("_MklAdd")
+    .Input("x: T")
+    .Input("y: T")
+    .Input("mkl_x: uint8")
+    .Input("mkl_y: uint8")
+    .Output("z: T")
+    .Output("mkl_z: uint8")
+    .Attr(
+        "T: {half, float, double, uint8, int8, int16, int32, int64, complex64, "
+        "complex128, string, bfloat16}")
+    .SetShapeFn(shape_inference::BroadcastBinaryOpShapeFn)
+    .Doc(R"doc(
+Returns `x` + `y` element-wise.
+
+*NOTE*: `tf.math.add` supports broadcasting. `tf.math.add_n` does not. More about broadcasting
+[here](http://docs.scipy.org/doc/numpy/user/basics.broadcasting.html).
+)doc");
+
+REGISTER_OP("_MklAddV2")
+    .Input("x: T")
+    .Input("y: T")
+    .Input("mkl_x: uint8")
+    .Input("mkl_y: uint8")
+    .Output("z: T")
+    .Output("mkl_z: uint8")
+    .Attr(
+        "T: {bfloat16, half, float, double, uint8, int8, int16, int32, int64, "
+        "complex64, complex128}")
+    .SetShapeFn(shape_inference::BroadcastBinaryOpShapeFn)
+    .SetIsAggregate()
+    .SetIsCommutative()
+    .Doc(R"doc(
+Returns `x` + `y` element-wise.
+*NOTE*: `tf.math.add` supports broadcasting. `tf.math.add_n` does not. More about broadcasting
+[here](http://docs.scipy.org/doc/numpy/user/basics.broadcasting.html).
+)doc");
+#endif  // INTEL_MKL
+
 REGISTER_OP("Sub")
     .Input("x: T")
     .Input("y: T")
@@ -440,6 +466,19 @@ REGISTER_OP("Sub")
         "T: {bfloat16, half, float, double, uint8, int8, uint16, int16, int32, "
         "int64, complex64, complex128, uint32, uint64}")
     .SetShapeFn(shape_inference::BroadcastBinaryOpShapeFn);
+
+REGISTER_OP("_MklSub")
+    .BINARY_FEWER()
+    .Input("mkl_x: uint8")
+    .Input("mkl_y: uint8")
+    .Output("mkl_z: uint8")
+    .SetShapeFn(shape_inference::BroadcastBinaryOpShapeFn)
+    .Doc(R"doc(
+Returns x - y element-wise.
+
+*NOTE*: `Sub` supports broadcasting. More about broadcasting
+[here](http://docs.scipy.org/doc/numpy/user/basics.broadcasting.html)
+)doc");
 
 REGISTER_OP("Mul").BINARY_MORE().SetIsCommutative().SetShapeFn(
     shape_inference::BroadcastBinaryOpShapeFn);
@@ -450,6 +489,20 @@ REGISTER_OP("MulNoNan")
     .Output("z: T")
     .Attr("T: {bfloat16, half, float, double, complex64, complex128}")
     .SetShapeFn(shape_inference::BroadcastBinaryOpShapeFn);
+
+// Note: This op is not commutative w.r.t. to all its inputs.
+REGISTER_OP("_MklMul")
+    .BINARY_MORE()
+    .Input("mkl_x: uint8")
+    .Input("mkl_y: uint8")
+    .Output("mkl_z: uint8")
+    .SetShapeFn(shape_inference::BroadcastBinaryOpShapeFn)
+    .Doc(R"doc(
+Returns x * y element-wise.
+
+*NOTE*: `Mul` supports broadcasting. More about broadcasting
+[here](http://docs.scipy.org/doc/numpy/user/basics.broadcasting.html)
+)doc");
 
 REGISTER_OP("Div").BINARY_MORE().SetShapeFn(
     shape_inference::BroadcastBinaryOpShapeFn);
@@ -477,6 +530,20 @@ REGISTER_OP("SquaredDifference")
     .BINARY_FEWER()
     .SetIsCommutative()
     .SetShapeFn(shape_inference::BroadcastBinaryOpShapeFn);
+
+// Note: This op is not commutative w.r.t. to all its inputs.
+REGISTER_OP("_MklSquaredDifference")
+    .BINARY_FEWER()
+    .Input("mkl_x: uint8")
+    .Input("mkl_y: uint8")
+    .Output("mkl_z: uint8")
+    .SetShapeFn(shape_inference::BroadcastBinaryOpShapeFn)
+    .Doc(R"doc(
+Returns (x - y)(x - y) element-wise.
+
+*NOTE*: `SquaredDifference` supports broadcasting. More about broadcasting
+[here](http://docs.scipy.org/doc/numpy/user/basics.broadcasting.html)
+)doc");
 
 REGISTER_OP("Xlogy")
     .Input("x: T")
@@ -510,6 +577,22 @@ REGISTER_OP("Maximum")
         "T: {bfloat16, half, float, double, int8, uint8, int16, uint16, "
         "int32, uint32, int64, uint64}")
     .SetShapeFn(shape_inference::BroadcastBinaryOpShapeFn);
+
+REGISTER_OP("_MklMaximum")
+    .Input("x: T")
+    .Input("y: T")
+    .Input("mkl_x: uint8")
+    .Input("mkl_y: uint8")
+    .Output("z: T")
+    .Output("mkl_z: uint8")
+    .Attr("T: {half, float, double, int32, int64, bfloat16}")
+    .SetShapeFn(shape_inference::BroadcastBinaryOpShapeFn)
+    .Doc(R"doc(
+Returns the max of x and y (i.e. x > y ? x : y) element-wise.
+
+*NOTE*: `Maximum` supports broadcasting. More about broadcasting
+[here](http://docs.scipy.org/doc/numpy/user/basics.broadcasting.html)
+)doc");
 
 REGISTER_OP("Minimum")
     .Input("x: T")
@@ -630,7 +713,7 @@ REGISTER_OP("Betainc")
       }
 
       c->set_output(0, output);
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 // --------------------------------------------------------------------------
@@ -765,7 +848,7 @@ REGISTER_OP("Select")
 
       if (!c->RankKnown(cond) || !c->RankKnown(data)) {
         c->set_output(0, data);
-        return absl::OkStatus();
+        return OkStatus();
       }
 
       // rank of shape and data is known.
@@ -777,7 +860,7 @@ REGISTER_OP("Select")
         // The rank of 'cond' is a scalar.
         // t and e can have any shape.
         c->set_output(0, data);
-        return absl::OkStatus();
+        return OkStatus();
       }
 
       if (cond_rank != 1) {
@@ -785,14 +868,14 @@ REGISTER_OP("Select")
         // then shape must match 'then' and 'else'
         TF_RETURN_IF_ERROR(c->Merge(data, cond, &data));
         c->set_output(0, data);
-        return absl::OkStatus();
+        return OkStatus();
       }
 
       if (data_rank == 0) {
         // if 'then' and 'else' are scalar also the cond must be
         TF_RETURN_IF_ERROR(c->Merge(data, cond, &data));
         c->set_output(0, data);
-        return absl::OkStatus();
+        return OkStatus();
       }
 
       if (cond_rank == 1) {
@@ -800,12 +883,12 @@ REGISTER_OP("Select")
         // the first dimension of 'then' and 'else'
         TF_RETURN_IF_ERROR(c->Merge(cond, c->Vector(c->Dim(data, 0)), &cond));
         c->set_output(0, data);
-        return absl::OkStatus();
+        return OkStatus();
       }
 
       c->set_output(0, data);
 
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 REGISTER_OP("SelectV2")
@@ -856,7 +939,7 @@ REGISTER_OP("SelectV2")
       TF_RETURN_IF_ERROR(
           BroadcastBinaryOpOutputShapeFnHelper(c, cond, other, true, &output));
       c->set_output(0, output);
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 // --------------------------------------------------------------------------
@@ -870,8 +953,6 @@ REGISTER_OP("MatMul")
     .Attr(
         "T: {bfloat16, half, float, double, int32, int64, uint8, "
         "uint16, uint32, uint64, complex64, complex128}")
-    .Attr("grad_a: bool = false")
-    .Attr("grad_b: bool = false")
     .SetShapeFn(shape_inference::MatMulShape);
 
 #ifdef INTEL_MKL
@@ -881,9 +962,7 @@ REGISTER_OP("_MklMatMul")
     .Output("product: T")
     .Attr("transpose_a: bool = false")
     .Attr("transpose_b: bool = false")
-    .Attr("T: {bfloat16, float, half}")
-    .Attr("grad_a: bool = false")
-    .Attr("grad_b: bool = false")
+    .Attr("T: {bfloat16, float}")
     .SetShapeFn(shape_inference::MatMulShape);
 #endif  // INTEL_MKL
 
@@ -997,7 +1076,7 @@ REGISTER_OP("Max")
 
 namespace {
 
-absl::Status ArgOpShape(shape_inference::InferenceContext* c) {
+Status ArgOpShape(shape_inference::InferenceContext* c) {
   ShapeHandle dimension_shape;
   TF_RETURN_IF_ERROR(c->WithRank(c->input(1), 0, &dimension_shape));
 
@@ -1023,7 +1102,7 @@ absl::Status ArgOpShape(shape_inference::InferenceContext* c) {
     }
 
     c->set_output(0, c->MakeShape(dims));
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   int64_t dimension_val;
@@ -1049,7 +1128,7 @@ absl::Status ArgOpShape(shape_inference::InferenceContext* c) {
     }
   }
   c->set_output(0, c->MakeShape(dims));
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace
@@ -1074,7 +1153,7 @@ REGISTER_OP("ArgMin")
 
 namespace {
 
-absl::Status SegmentReductionShapeFn(InferenceContext* c) {
+Status SegmentReductionShapeFn(InferenceContext* c) {
   ShapeHandle data_shape;
   ShapeHandle segment_ids_shape;
   TF_RETURN_IF_ERROR(c->WithRankAtLeast(c->input(0), 1, &data_shape));
@@ -1087,10 +1166,10 @@ absl::Status SegmentReductionShapeFn(InferenceContext* c) {
   TF_RETURN_IF_ERROR(
       c->Concatenate(c->Vector(InferenceContext::kUnknownDim), subshape, &out));
   c->set_output(0, out);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status SparseSegmentReductionShapeFn(InferenceContext* c) {
+Status SparseSegmentReductionShapeFn(InferenceContext* c) {
   ShapeHandle data_shape;
   TF_RETURN_IF_ERROR(c->WithRankAtLeast(c->input(0), 1, &data_shape));
 
@@ -1111,11 +1190,11 @@ absl::Status SparseSegmentReductionShapeFn(InferenceContext* c) {
   TF_RETURN_IF_ERROR(
       c->Concatenate(c->Vector(InferenceContext::kUnknownDim), subshape, &out));
   c->set_output(0, out);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status SparseSegmentReductionGradShapeFnImpl(
-    InferenceContext* c, bool outputs_unique_indices) {
+Status SparseSegmentReductionGradShapeFnImpl(InferenceContext* c,
+                                             bool outputs_unique_indices) {
   ShapeHandle data_shape;
   TF_RETURN_IF_ERROR(c->WithRankAtLeast(c->input(0), 1, &data_shape));
 
@@ -1155,21 +1234,21 @@ absl::Status SparseSegmentReductionGradShapeFnImpl(
   if (outputs_unique_indices) {
     c->set_output(1, c->Vector(InferenceContext::kUnknownDim));
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status SparseSegmentReductionGradShapeFn(InferenceContext* c) {
+Status SparseSegmentReductionGradShapeFn(InferenceContext* c) {
   return SparseSegmentReductionGradShapeFnImpl(
       c,
       /*outputs_unique_indices=*/false);
 }
 
-absl::Status SparseSegmentReductionGradV2ShapeFn(InferenceContext* c) {
+Status SparseSegmentReductionGradV2ShapeFn(InferenceContext* c) {
   return SparseSegmentReductionGradShapeFnImpl(c,
                                                /*outputs_unique_indices=*/true);
 }
 
-absl::Status SparseSegmentReductionWithNumSegmentsShapeFn(InferenceContext* c) {
+Status SparseSegmentReductionWithNumSegmentsShapeFn(InferenceContext* c) {
   ShapeHandle data_shape;
   TF_RETURN_IF_ERROR(c->WithRankAtLeast(c->input(0), 1, &data_shape));
 
@@ -1205,7 +1284,7 @@ absl::Status SparseSegmentReductionWithNumSegmentsShapeFn(InferenceContext* c) {
     TF_RETURN_IF_ERROR(c->Concatenate(c->Vector(dim0_value), subshape, &out));
   }
   c->set_output(0, out);
-  return absl::OkStatus();
+  return OkStatus();
 }
 }  // namespace
 
@@ -1338,7 +1417,6 @@ REGISTER_OP("SparseSegmentSum")
     .Attr("T: realnumbertype")
     .Attr("Tidx: {int32, int64} = DT_INT32")
     .Attr("Tsegmentids: {int32, int64} = DT_INT32")
-    .Attr("sparse_gradient: bool = false")
     .SetShapeFn(SparseSegmentReductionShapeFn);
 
 REGISTER_OP("SparseSegmentSumWithNumSegments")
@@ -1351,7 +1429,6 @@ REGISTER_OP("SparseSegmentSumWithNumSegments")
     .Attr("Tidx: {int32, int64} = DT_INT32")
     .Attr("Tnumsegments: {int32,int64} = DT_INT32")
     .Attr("Tsegmentids: {int32, int64} = DT_INT32")
-    .Attr("sparse_gradient: bool = false")
     .SetShapeFn(SparseSegmentReductionWithNumSegmentsShapeFn);
 
 REGISTER_OP("SparseSegmentSumGrad")
@@ -1387,7 +1464,6 @@ REGISTER_OP("SparseSegmentMean")
     .Attr("T: {bfloat16, half, float, double}")
     .Attr("Tidx: {int32, int64} = DT_INT32")
     .Attr("Tsegmentids: {int32, int64} = DT_INT32")
-    .Attr("sparse_gradient: bool = false")
     .SetShapeFn(SparseSegmentReductionShapeFn);
 
 REGISTER_OP("SparseSegmentMeanWithNumSegments")
@@ -1400,7 +1476,6 @@ REGISTER_OP("SparseSegmentMeanWithNumSegments")
     .Attr("Tidx: {int32, int64} = DT_INT32")
     .Attr("Tnumsegments: {int32,int64} = DT_INT32")
     .Attr("Tsegmentids: {int32, int64} = DT_INT32")
-    .Attr("sparse_gradient: bool = false")
     .SetShapeFn(SparseSegmentReductionWithNumSegmentsShapeFn);
 
 REGISTER_OP("SparseSegmentMeanGrad")
@@ -1434,7 +1509,6 @@ REGISTER_OP("SparseSegmentSqrtN")
     .Attr("T: {bfloat16, half, float, double}")
     .Attr("Tidx: {int32, int64} = DT_INT32")
     .Attr("Tsegmentids: {int32, int64} = DT_INT32")
-    .Attr("sparse_gradient: bool = false")
     .SetShapeFn(SparseSegmentReductionShapeFn);
 
 REGISTER_OP("SparseSegmentSqrtNWithNumSegments")
@@ -1447,7 +1521,6 @@ REGISTER_OP("SparseSegmentSqrtNWithNumSegments")
     .Attr("Tidx: {int32, int64} = DT_INT32")
     .Attr("Tnumsegments: {int32,int64} = DT_INT32")
     .Attr("Tsegmentids: {int32, int64} = DT_INT32")
-    .Attr("sparse_gradient: bool = false")
     .SetShapeFn(SparseSegmentReductionWithNumSegmentsShapeFn);
 
 REGISTER_OP("SparseSegmentSqrtNGrad")
@@ -1494,8 +1567,8 @@ REGISTER_OP("Any")
 namespace {
 
 template <typename T>
-absl::Status RangeSize(const Tensor* start_t, const Tensor* limit_t,
-                       const Tensor* delta_t, InferenceContext* const c) {
+Status RangeSize(const Tensor* start_t, const Tensor* limit_t,
+                 const Tensor* delta_t, InferenceContext* const c) {
   T start = start_t->scalar<T>()();
   T limit = limit_t->scalar<T>()();
   T delta = delta_t->scalar<T>()();
@@ -1513,21 +1586,8 @@ absl::Status RangeSize(const Tensor* start_t, const Tensor* limit_t,
 
   int64_t size;
   if (std::is_integral<T>::value) {
-    uint64_t range;
-    if ((limit > 0 && start < 0) || (limit < 0 && start > 0)) {
-      range = static_cast<uint64_t>(Eigen::numext::abs(limit)) +
-              static_cast<uint64_t>(Eigen::numext::abs(start));
-    } else {
-      range = static_cast<uint64_t>(Eigen::numext::abs(limit - start));
-    }
-
-    uint64_t size_unsigned =
-        Eigen::divup(range, static_cast<uint64_t>(Eigen::numext::abs(delta)));
-    if (size_unsigned > std::numeric_limits<int64_t>::max()) {
-      return errors::InvalidArgument("Requires ((limit - start) / delta) <= ",
-                                     std::numeric_limits<int64_t>::max());
-    }
-    size = static_cast<int64_t>(size_unsigned);
+    size = Eigen::divup(static_cast<int64_t>(Eigen::numext::abs(limit - start)),
+                        static_cast<int64_t>(Eigen::numext::abs(delta)));
   } else {
     auto size_auto =
         Eigen::numext::ceil(Eigen::numext::abs((limit - start) / delta));
@@ -1539,7 +1599,7 @@ absl::Status RangeSize(const Tensor* start_t, const Tensor* limit_t,
   }
 
   c->set_output(0, c->Vector(static_cast<int64_t>(size)));
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace
@@ -1569,7 +1629,7 @@ REGISTER_OP("Range")
       TF_RETURN_IF_ERROR(c->GetAttr("Tidx", &dtype));
       if (start_t == nullptr || limit_t == nullptr || delta_t == nullptr) {
         c->set_output(0, c->Vector(InferenceContext::kUnknownDim));
-        return absl::OkStatus();
+        return OkStatus();
       }
       if (dtype == DT_INT32) {
         return RangeSize<int32>(start_t, limit_t, delta_t, c);
@@ -1592,7 +1652,7 @@ REGISTER_OP("Range")
       } else {
         return errors::InvalidArgument("Unsupported dtype", dtype);
       }
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 REGISTER_OP("LinSpace")
@@ -1613,7 +1673,7 @@ REGISTER_OP("LinSpace")
       const Tensor* num_t = c->input_tensor(2);
       if (num_t == nullptr) {
         c->set_output(0, c->Vector(InferenceContext::kUnknownDim));
-        return absl::OkStatus();
+        return OkStatus();
       }
 
       int64_t num;
@@ -1624,7 +1684,7 @@ REGISTER_OP("LinSpace")
       }
       if (num <= 0) return errors::InvalidArgument("Requires num > 0: ", num);
       c->set_output(0, c->Vector(num));
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 REGISTER_OP("Complex")
@@ -1666,7 +1726,7 @@ REGISTER_OP("Conj")
       if (handle_data != nullptr) {
         c->set_output_handle_shapes_and_types(0, *handle_data);
       }
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 // --------------------------------------------------------------------------
@@ -1693,7 +1753,7 @@ REGISTER_OP("Cross")
         TF_RETURN_IF_ERROR(c->WithValue(dim, 3, &dim));
       }
       c->set_output(0, a_shape);
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 // --------------------------------------------------------------------------
@@ -1730,7 +1790,7 @@ REGISTER_OP("HistogramFixedWidth")
       } else {
         c->set_output(0, c->UnknownShapeOfRank(1));
       }
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 REGISTER_OP("Bincount")
@@ -1748,7 +1808,7 @@ REGISTER_OP("Bincount")
       if (size_tensor == nullptr) {
         // Return unknown shape if size is not known.
         c->set_output(0, c->UnknownShapeOfRank(1));
-        return absl::OkStatus();
+        return OkStatus();
       }
 
       if (size_tensor->dims() != 0) {
@@ -1763,7 +1823,7 @@ REGISTER_OP("Bincount")
                                        ") must be non-negative");
       }
       c->set_output(0, c->MakeShape({size_val}));
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 REGISTER_OP("DenseBincount")
@@ -1783,11 +1843,9 @@ REGISTER_OP("DenseBincount")
 
       const Tensor* size_tensor = c->input_tensor(1);
       if (size_tensor == nullptr) {
-        // Return "vector of unknown size", "matrix of unknown size" or
-        // "unknown shape" if size is unknown, based on whether the rank of the
-        // input is 1, 2 or unknown respectively.
-        c->set_output(0, c->UnknownShapeOfRank(c->Rank(c->input(0))));
-        return absl::OkStatus();
+        // Return unknown shape if size is not known.
+        c->set_output(0, c->UnknownShape());
+        return OkStatus();
       }
       if (size_tensor->dims() != 0) {
         return errors::InvalidArgument("Shape must be rank 0 but is rank ",
@@ -1809,12 +1867,12 @@ REGISTER_OP("DenseBincount")
         return errors::InvalidArgument("size (", size_val,
                                        ") must be non-negative");
       }
-      if (c->Rank(c->input(0)) == 1 || c->Rank(c->input(0)) == 0) {
+      if (c->Rank(c->input(0)) == 1) {
         c->set_output(0, c->MakeShape({size_val}));
       } else if (c->Rank(c->input(0)) == 2) {
         c->set_output(0, c->MakeShape({c->Dim(c->input(0), 0), size_val}));
       }
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 REGISTER_OP("SparseBincount")
@@ -1832,7 +1890,7 @@ REGISTER_OP("SparseBincount")
       if (size_tensor == nullptr) {
         // Return unknown shape if size is not known.
         c->set_output(0, c->UnknownShape());
-        return absl::OkStatus();
+        return OkStatus();
       }
       if (size_tensor->dims() != 0) {
         return errors::InvalidArgument("Shape must be rank 0 but is rank ",
@@ -1859,7 +1917,7 @@ REGISTER_OP("SparseBincount")
       if (shape_tensor == nullptr) {
         // Return unknown shape if size is not known.
         c->set_output(0, c->UnknownShape());
-        return absl::OkStatus();
+        return OkStatus();
       }
       if (shape_tensor->NumElements() == 1) {
         c->set_output(0, c->MakeShape({size_val}));
@@ -1869,7 +1927,7 @@ REGISTER_OP("SparseBincount")
       } else {
         return errors::InvalidArgument("Input must be less than rank 2");
       }
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 REGISTER_OP("RaggedBincount")
@@ -1883,7 +1941,7 @@ REGISTER_OP("RaggedBincount")
     .Output("output: T")
     .SetShapeFn([](InferenceContext* c) {
       c->set_output(0, c->UnknownShape());
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 REGISTER_OP("Cumsum")
@@ -1942,7 +2000,7 @@ REGISTER_OP("QuantizedMatMul")
 
       c->set_output(1, c->Scalar());
       c->set_output(2, c->Scalar());
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 // Note: This op is not commutative w.r.t. to all its inputs.
@@ -1963,7 +2021,7 @@ REGISTER_OP("QuantizedMul")
       TF_RETURN_IF_ERROR(shape_inference::BroadcastBinaryOpShapeFn(c));
       c->set_output(1, c->Scalar());
       c->set_output(2, c->Scalar());
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 // Note: This op is not commutative w.r.t. to all its inputs.
@@ -1991,7 +2049,7 @@ REGISTER_OP("QuantizedAdd")
 
       c->set_output(1, c->Scalar());
       c->set_output(2, c->Scalar());
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 REGISTER_OP("QuantizeDownAndShrinkRange")
@@ -2010,7 +2068,7 @@ REGISTER_OP("QuantizeDownAndShrinkRange")
       TF_RETURN_IF_ERROR(c->WithRank(c->input(2), 0, &unused));
       c->set_output(1, c->Scalar());
       c->set_output(2, c->Scalar());
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 REGISTER_OP("Requantize")
@@ -2033,7 +2091,7 @@ REGISTER_OP("Requantize")
       TF_RETURN_IF_ERROR(c->WithRank(c->input(4), 0, &unused));
       c->set_output(1, c->Scalar());
       c->set_output(2, c->Scalar());
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 REGISTER_OP("RequantizationRange")
@@ -2049,7 +2107,7 @@ REGISTER_OP("RequantizationRange")
       TF_RETURN_IF_ERROR(c->WithRank(c->input(2), 0, &unused));
       c->set_output(0, c->Scalar());
       c->set_output(1, c->Scalar());
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 // --------------------------------------------------------------------------
@@ -2068,6 +2126,32 @@ REGISTER_OP("ClipByValue")
     .Output("output: T")
     .Attr("T: numbertype")
     .SetShapeFn(shape_inference::UnchangedShape);
+
+#ifdef INTEL_MKL
+// Note: This op is not commutative w.r.t. to all its inputs.
+REGISTER_OP("_MklAddN")
+    .Input("inputs: N * T")
+    .Input("mkl_input: N * uint8")
+    .Output("sum: T")
+    .Output("mkl_sum: uint8")
+    .Attr("N: int >= 1")
+    .Attr("T: numbertype")
+    .SetShapeFn([](InferenceContext* c) {
+      ShapeHandle cur = c->input(c->num_inputs() - 1);
+      for (int i = c->num_inputs() - 2; i >= 0; --i) {
+        TF_RETURN_WITH_CONTEXT_IF_ERROR(c->Merge(c->input(i), cur, &cur),
+                                        "From merging shape ", i,
+                                        " with other shapes.");
+      }
+      c->set_output(0, cur);
+      return OkStatus();
+    })
+    .Doc(R"doc(
+Add two input tensors element wise using mkl kernel sum.
+inputs: Must all be the same size and shape.
+)doc");
+
+#endif  // INTEL_MKL
 
 REGISTER_OP("RequantizePerChannel")
     .Input("input: T")
@@ -2089,7 +2173,7 @@ REGISTER_OP("RequantizePerChannel")
       TF_RETURN_IF_ERROR(c->WithRank(c->input(4), 0, &unused));
       c->set_output(1, c->Scalar());
       c->set_output(2, c->Scalar());
-      return absl::OkStatus();
+      return OkStatus();
     });
 REGISTER_OP("RequantizationRangePerChannel")
     .Input("input: T")
@@ -2105,7 +2189,7 @@ REGISTER_OP("RequantizationRangePerChannel")
       TF_RETURN_IF_ERROR(c->WithRank(c->input(2), 1, &unused));
       c->set_output(0, c->Scalar());
       c->set_output(1, c->Scalar());
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 REGISTER_OP("NextAfter")
@@ -2140,7 +2224,7 @@ REGISTER_OP("SobolSample")
                                 : num_results_t->scalar<int32>()();
 
       c->set_output(0, c->Matrix(num_results, dim));
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 }  // namespace tensorflow

@@ -13,10 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include <cstdint>
 #include <functional>
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include "llvm/ADT/APFloat.h"
 #include "llvm/ADT/APInt.h"
@@ -32,11 +32,9 @@ limitations under the License.
 #include "mlir/IR/Types.h"  // from @llvm-project
 #include "mlir/Pass/Pass.h"  // from @llvm-project
 #include "mlir/Pass/PassRegistry.h"  // from @llvm-project
-#include "mlir/Support/LLVM.h"  // from @llvm-project
-#include "mlir/Support/LogicalResult.h"  // from @llvm-project
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"  // from @llvm-project
-#include "tensorflow/compiler/mlir/lite/stablehlo/transforms/stablehlo_passes.h"
-#include "xla/mlir_hlo/mhlo/IR/hlo_ops.h"
+#include "tensorflow/compiler/mlir/lite/stablehlo/transforms/passes.h"
+#include "tensorflow/compiler/xla/mlir_hlo/mhlo/IR/hlo_ops.h"
 
 namespace mlir {
 namespace odml {
@@ -118,7 +116,7 @@ static Attribute BinaryFolder(Op *op) {
   auto rhs = dyn_cast_or_null<DenseElementsAttr>(rhs_op.getValue());
   if (!lhs || !rhs) return {};
 
-  ShapedType type = mlir::cast<ShapedType>(op->getType());
+  ShapedType type = op->getType().template cast<ShapedType>();
   if (!type.hasStaticShape()) {
     return {};
   }
@@ -126,15 +124,15 @@ static Attribute BinaryFolder(Op *op) {
   Type etype = type.getElementType();
 
   // Evaluate for element types.
-  if (!mlir::isa<ElementType>(etype)) {
+  if (!etype.isa<ElementType>()) {
     return {};
   }
 
   // Special case for folding splats no matter how large.
   // Only covers the case of both attrs being splats; operation-specific cases
   // like adding a zero or multiplying by one are handled elsewhere.
-  SplatElementsAttr splatLhs = mlir::dyn_cast<SplatElementsAttr>(lhs);
-  SplatElementsAttr splatRhs = mlir::dyn_cast<SplatElementsAttr>(rhs);
+  SplatElementsAttr splatLhs = lhs.template dyn_cast<SplatElementsAttr>();
+  SplatElementsAttr splatRhs = rhs.template dyn_cast<SplatElementsAttr>();
   if (splatLhs && splatRhs) {
     auto signedLhs = addSign(splatLhs.getSplatValue<ValType>(), etype);
     auto signedRhs = addSign(splatRhs.getSplatValue<ValType>(), etype);
@@ -175,11 +173,6 @@ class FoldBroadcastInDimBeforeBinaryElementwiseOp
       return rewriter.notifyMatchFailure(
           binary_op, "Operands should have exactly one BroadcastInDim op.");
     }
-    // When the operand other than the broadcast op is not a const op, we
-    // should not fold broadcast op.
-    auto binary_op_const_operand =
-        (lhs_bcast_op ? rhs : lhs).template getDefiningOp<mhlo::ConstantOp>();
-    if (!binary_op_const_operand) return failure();
     auto bcast_op = lhs_bcast_op ? lhs_bcast_op : rhs_bcast_op;
     auto const_op =
         bcast_op.getOperand().template getDefiningOp<mhlo::ConstantOp>();
@@ -196,10 +189,10 @@ class FoldBroadcastInDimBeforeBinaryElementwiseOp
     auto bcast_dims = bcast_op.getBroadcastDimensions();
     auto elem_type = const_val.getElementType();
     Attribute result;
-    if (mlir::isa<FloatType>(elem_type)) {
+    if (elem_type.template isa<FloatType>()) {
       result = ConstFoldBroadcastInDim<FloatAttr>(result_type, const_val,
                                                   bcast_dims);
-    } else if (mlir::isa<IntegerType>(elem_type)) {
+    } else if (elem_type.template isa<IntegerType>()) {
       result = ConstFoldBroadcastInDim<IntegerAttr>(result_type, const_val,
                                                     bcast_dims);
     } else {
@@ -218,14 +211,14 @@ using FoldBroadcastInDimBeforeMulOp =
 // Constant folds mhlo.mul, this folder doesn't have an upper limit on how many
 // elements can be folded.
 LogicalResult ConstantFoldMul(mhlo::MulOp op, PatternRewriter &rewriter) {
-  ShapedType type = mlir::dyn_cast<ShapedType>(op.getType());
+  ShapedType type = op.getType().dyn_cast<ShapedType>();
   Type etype = type.getElementType();
   Attribute result = {};
-  if (mlir::isa<FloatType>(etype)) {
+  if (etype.isa<FloatType>()) {
     result =
         BinaryFolder<mhlo::MulOp, FloatType, APFloat, std::multiplies<APFloat>>(
             &op);
-  } else if (mlir::isa<IntegerType>(etype)) {
+  } else if (etype.isa<IntegerType>()) {
     result =
         BinaryFolder<mhlo::MulOp, IntegerType, APInt, std::multiplies<APSInt>>(
             &op);

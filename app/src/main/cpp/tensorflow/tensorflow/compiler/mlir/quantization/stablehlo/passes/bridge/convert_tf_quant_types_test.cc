@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include <cstdint>
 #include <memory>
 #include <string>
 
@@ -27,12 +26,12 @@ limitations under the License.
 #include "tensorflow/compiler/mlir/quantization/stablehlo/passes/bridge/passes.h"
 #include "tensorflow/compiler/mlir/register_common_dialects.h"
 #include "tensorflow/compiler/mlir/tensorflow/utils/serialize_mlir_module_utils.h"
-#include "xla/tsl/lib/core/status_test_util.h"
 #include "tensorflow/core/lib/core/status_test_util.h"
 #include "tensorflow/core/lib/monitoring/cell_reader.h"
-#include "tsl/platform/statusor.h"
+#include "tensorflow/tsl/platform/statusor.h"
 
-namespace mlir::quant::stablehlo {
+namespace mlir {
+namespace stablehlo {
 namespace {
 
 using ::mlir::DialectRegistry;
@@ -40,12 +39,11 @@ using ::mlir::MLIRContext;
 using ::mlir::ModuleOp;
 using ::mlir::OwningOpRef;
 using ::tensorflow::monitoring::testing::CellReader;
-using ::testing::Test;
 
 static constexpr char kMetricsName[] =
     "/tensorflow/core/tf2xla/tf_quant_op_count";
 
-class LegalizeTfTypesTest : public Test {
+class LegalizeTfTypesTest : public ::testing::Test {
  protected:
   void CreateModule(const char* module_string) {
     DialectRegistry mlir_registry;
@@ -56,7 +54,7 @@ class LegalizeTfTypesTest : public Test {
 
     pm_ = std::make_unique<mlir::PassManager>(&context_);
     pm_->addNestedPass<mlir::func::FuncOp>(
-        quant::stablehlo::CreateConvertTFQuantTypesPass());
+        mlir::stablehlo::CreateConvertTFQuantTypesPass());
   }
   mlir::LogicalResult Run() { return pm_->run(module_.get()); }
 
@@ -107,4 +105,5 @@ TEST_F(LegalizeTfTypesTest, RecordsStreamzNoQuantOps) {
 }
 
 }  // namespace
-}  // namespace mlir::quant::stablehlo
+}  // namespace stablehlo
+}  // namespace mlir

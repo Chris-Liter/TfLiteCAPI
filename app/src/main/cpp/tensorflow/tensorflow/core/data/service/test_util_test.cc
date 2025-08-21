@@ -158,9 +158,8 @@ TEST(TestUtilTest, InterleaveTextlineEmptyFiles) {
   EXPECT_THAT(GetIteratorOutput<tstring>(*iterator), IsOkAndHolds(IsEmpty()));
 }
 
-TEST(TestUtilTest, GetTestDataset) {
-  TF_ASSERT_OK_AND_ASSIGN(const DatasetDef dataset_def,
-                          GetTestDataset("choose_from_datasets"));
+TEST(TestUtilTest, ChooseFromDatasets) {
+  TF_ASSERT_OK_AND_ASSIGN(const DatasetDef dataset_def, ChooseFromDatasets());
   standalone::Dataset::Params params;
   std::unique_ptr<standalone::Dataset> dataset;
   TF_ASSERT_OK(

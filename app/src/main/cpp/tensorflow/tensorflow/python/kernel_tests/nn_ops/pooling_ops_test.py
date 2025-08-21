@@ -808,8 +808,7 @@ class PoolingTest(test.TestCase, parameterized.TestCase):
   def testMaxPoolWithArgmaxKsizeOverflow(self):
     with self.assertRaisesRegex(
         (ValueError, errors_impl.InvalidArgumentError),
-        "ksize must be a positive int32 value",
-    ):
+        "ksize must be a postive int32 value"):
       with self.cached_session():
         t = gen_nn_ops.max_pool_with_argmax(
             input=[[[[1, 1, 1]]]],
@@ -1255,7 +1254,7 @@ class PoolingTest(test.TestCase, parameterized.TestCase):
         err_tolerance = 1e-4
       else:
         if x_init_value is None:
-          x_init_value = np.asarray(
+          x_init_value = np.asfarray(
               np.arange(1, total_size + 1),
               dtype=np.float32).reshape(input_sizes)
         func_name = "max_pool"
@@ -1333,7 +1332,7 @@ class PoolingTest(test.TestCase, parameterized.TestCase):
         err_tolerance = 1e-3
       else:
         if x_init_value is None:
-          x_init_value = np.asarray(
+          x_init_value = np.asfarray(
               np.arange(1, total_size + 1),
               dtype=np.float32).reshape(input_sizes)
         func_name = "max_pool"

@@ -28,6 +28,7 @@ cat >pythons.txt <<EOF
 $VERSION
 $VERSION-dev
 $VERSION-venv
+$VERSION-distutils
 EOF
 /setup.packages.sh pythons.txt
 
@@ -58,7 +59,6 @@ fi
 curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
 python3 get-pip.py
 python3 -m pip install --no-cache-dir --upgrade pip
-python3 -m pip install -U setuptools
 
 # Disable the cache dir to save image space, and install packages
 python3 -m pip install --no-cache-dir -r $REQUIREMENTS -U

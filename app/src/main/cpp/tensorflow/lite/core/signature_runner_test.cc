@@ -18,11 +18,11 @@ limitations under the License.
 #include <string>
 #include <vector>
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include "tensorflow/lite/core/interpreter.h"
 #include "tensorflow/lite/core/interpreter_builder.h"
 #include "tensorflow/lite/core/kernels/register.h"
-#include "tensorflow/lite/model_builder.h"
 #include "tensorflow/lite/testing/util.h"
 
 namespace tflite {
@@ -32,7 +32,7 @@ namespace {
 TEST(SignatureRunnerTest, TestMultiSignatures) {
   TestErrorReporter reporter;
   auto model = FlatBufferModel::BuildFromFile(
-      "tensorflow/lite/testdata/multi_signatures.bin", &reporter);
+      "third_party/tensorflow/lite/testdata/multi_signatures.bin", &reporter);
   ASSERT_TRUE(model);
   ops::builtin::BuiltinOpResolver resolver;
   InterpreterBuilder builder(*model, resolver);

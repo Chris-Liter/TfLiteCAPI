@@ -24,9 +24,9 @@ namespace tensorflow {
 namespace ops {
 namespace {
 
-absl::Status SoftmaxGrad(const Scope& scope, const Operation& op,
-                         const std::vector<Output>& grad_inputs,
-                         std::vector<Output>* grad_outputs) {
+Status SoftmaxGrad(const Scope& scope, const Operation& op,
+                   const std::vector<Output>& grad_inputs,
+                   std::vector<Output>* grad_outputs) {
   // Softmax gradient function.
   // p = softmax(x) maps from [batch, n] to [batch, m]
   // dp/dx = [dp0/dx0   ... dp0/dxn-1  ]
@@ -73,9 +73,10 @@ Output BroadcastMul(const Scope& scope, const Output& vec, const Output& mat) {
   return Multiply(scope, reshaped, mat);
 }
 
-absl::Status SoftmaxCrossEntropyWithLogitsGrad(
-    const Scope& scope, const Operation& op,
-    const std::vector<Output>& grad_inputs, std::vector<Output>* grad_outputs) {
+Status SoftmaxCrossEntropyWithLogitsGrad(const Scope& scope,
+                                         const Operation& op,
+                                         const std::vector<Output>& grad_inputs,
+                                         std::vector<Output>* grad_outputs) {
   // Softmax gradient with cross entropy logits function.
   // We multiply the backprop for cost with the gradients - op.output[1].
   // There is no gradient for labels.
@@ -112,9 +113,9 @@ absl::Status SoftmaxCrossEntropyWithLogitsGrad(
 REGISTER_GRADIENT_OP("SoftmaxCrossEntropyWithLogits",
                      SoftmaxCrossEntropyWithLogitsGrad);
 
-absl::Status LogSoftmaxGrad(const Scope& scope, const Operation& op,
-                            const std::vector<Output>& grad_inputs,
-                            std::vector<Output>* grad_outputs) {
+Status LogSoftmaxGrad(const Scope& scope, const Operation& op,
+                      const std::vector<Output>& grad_inputs,
+                      std::vector<Output>* grad_outputs) {
   auto softmax = Exp(scope, op.output(0));
   auto sum = Sum(scope, grad_inputs[0], {1}, Sum::KeepDims(true));
   auto mul = Mul(scope, sum, softmax);
@@ -124,27 +125,27 @@ absl::Status LogSoftmaxGrad(const Scope& scope, const Operation& op,
 }
 REGISTER_GRADIENT_OP("LogSoftmax", LogSoftmaxGrad);
 
-absl::Status ReluGradHelper(const Scope& scope, const Operation& op,
-                            const std::vector<Output>& grad_inputs,
-                            std::vector<Output>* grad_outputs) {
+Status ReluGradHelper(const Scope& scope, const Operation& op,
+                      const std::vector<Output>& grad_inputs,
+                      std::vector<Output>* grad_outputs) {
   auto dx = internal::ReluGrad(scope, grad_inputs[0], op.input(0));
   grad_outputs->push_back(dx);
   return scope.status();
 }
 REGISTER_GRADIENT_OP("Relu", ReluGradHelper);
 
-absl::Status Relu6GradHelper(const Scope& scope, const Operation& op,
-                             const std::vector<Output>& grad_inputs,
-                             std::vector<Output>* grad_outputs) {
+Status Relu6GradHelper(const Scope& scope, const Operation& op,
+                       const std::vector<Output>& grad_inputs,
+                       std::vector<Output>* grad_outputs) {
   auto dx = internal::Relu6Grad(scope, grad_inputs[0], op.input(0));
   grad_outputs->push_back(dx);
   return scope.status();
 }
 REGISTER_GRADIENT_OP("Relu6", Relu6GradHelper);
 
-absl::Status LeakyReluGradHelper(const Scope& scope, const Operation& op,
-                                 const std::vector<Output>& grad_inputs,
-                                 std::vector<Output>* grad_outputs) {
+Status LeakyReluGradHelper(const Scope& scope, const Operation& op,
+                           const std::vector<Output>& grad_inputs,
+                           std::vector<Output>* grad_outputs) {
   float alpha;
   TF_RETURN_IF_ERROR(GetNodeAttr(op.node()->attrs(), "alpha", &alpha));
   internal::LeakyReluGrad::Attrs attrs;
@@ -155,9 +156,9 @@ absl::Status LeakyReluGradHelper(const Scope& scope, const Operation& op,
 }
 REGISTER_GRADIENT_OP("LeakyRelu", LeakyReluGradHelper);
 
-absl::Status LeakyReluGradGradHelper(const Scope& scope, const Operation& op,
-                                     const std::vector<Output>& grad_inputs,
-                                     std::vector<Output>* grad_outputs) {
+Status LeakyReluGradGradHelper(const Scope& scope, const Operation& op,
+                               const std::vector<Output>& grad_inputs,
+                               std::vector<Output>* grad_outputs) {
   float alpha;
   TF_RETURN_IF_ERROR(GetNodeAttr(op.node()->attrs(), "alpha", &alpha));
   internal::LeakyReluGrad::Attrs attrs;
@@ -169,35 +170,35 @@ absl::Status LeakyReluGradGradHelper(const Scope& scope, const Operation& op,
 }
 REGISTER_GRADIENT_OP("LeakyReluGrad", LeakyReluGradGradHelper);
 
-absl::Status EluGradHelper(const Scope& scope, const Operation& op,
-                           const std::vector<Output>& grad_inputs,
-                           std::vector<Output>* grad_outputs) {
+Status EluGradHelper(const Scope& scope, const Operation& op,
+                     const std::vector<Output>& grad_inputs,
+                     std::vector<Output>* grad_outputs) {
   auto dx = internal::EluGrad(scope, grad_inputs[0], op.output(0));
   grad_outputs->push_back(dx);
   return scope.status();
 }
 REGISTER_GRADIENT_OP("Elu", EluGradHelper);
 
-absl::Status SeluGradHelper(const Scope& scope, const Operation& op,
-                            const std::vector<Output>& grad_inputs,
-                            std::vector<Output>* grad_outputs) {
+Status SeluGradHelper(const Scope& scope, const Operation& op,
+                      const std::vector<Output>& grad_inputs,
+                      std::vector<Output>* grad_outputs) {
   auto dx = internal::SeluGrad(scope, grad_inputs[0], op.output(0));
   grad_outputs->push_back(dx);
   return scope.status();
 }
 REGISTER_GRADIENT_OP("Selu", SeluGradHelper);
 
-absl::Status L2LossGrad(const Scope& scope, const Operation& op,
-                        const std::vector<Output>& grad_inputs,
-                        std::vector<Output>* grad_outputs) {
+Status L2LossGrad(const Scope& scope, const Operation& op,
+                  const std::vector<Output>& grad_inputs,
+                  std::vector<Output>* grad_outputs) {
   grad_outputs->push_back(Mul(scope, op.input(0), grad_inputs[0]));
   return scope.status();
 }
 REGISTER_GRADIENT_OP("L2Loss", L2LossGrad);
 
-absl::Status BiasAddGradHelper(const Scope& scope, const Operation& op,
-                               const std::vector<Output>& grad_inputs,
-                               std::vector<Output>* grad_outputs) {
+Status BiasAddGradHelper(const Scope& scope, const Operation& op,
+                         const std::vector<Output>& grad_inputs,
+                         std::vector<Output>* grad_outputs) {
   string data_format;
   TF_RETURN_IF_ERROR(
       GetNodeAttr(op.output(0).node()->attrs(), "data_format", &data_format));
@@ -209,9 +210,9 @@ absl::Status BiasAddGradHelper(const Scope& scope, const Operation& op,
 }
 REGISTER_GRADIENT_OP("BiasAdd", BiasAddGradHelper);
 
-absl::Status Conv2DGrad(const Scope& scope, const Operation& op,
-                        const std::vector<Output>& grad_inputs,
-                        std::vector<Output>* grad_outputs) {
+Status Conv2DGrad(const Scope& scope, const Operation& op,
+                  const std::vector<Output>& grad_inputs,
+                  std::vector<Output>* grad_outputs) {
   string data_format;
   string padding;
   std::vector<int32> strides;
@@ -236,9 +237,9 @@ absl::Status Conv2DGrad(const Scope& scope, const Operation& op,
 }
 REGISTER_GRADIENT_OP("Conv2D", Conv2DGrad);
 
-absl::Status MaxPoolGradHelper(const Scope& scope, const Operation& op,
-                               const std::vector<Output>& grad_inputs,
-                               std::vector<Output>* grad_outputs) {
+Status MaxPoolGradHelper(const Scope& scope, const Operation& op,
+                         const std::vector<Output>& grad_inputs,
+                         std::vector<Output>* grad_outputs) {
   string data_format;
   string padding;
   std::vector<int32> strides;
@@ -256,9 +257,9 @@ absl::Status MaxPoolGradHelper(const Scope& scope, const Operation& op,
 }
 REGISTER_GRADIENT_OP("MaxPool", MaxPoolGradHelper);
 
-absl::Status MaxPoolGradV2Helper(const Scope& scope, const Operation& op,
-                                 const std::vector<Output>& grad_inputs,
-                                 std::vector<Output>* grad_outputs) {
+Status MaxPoolGradV2Helper(const Scope& scope, const Operation& op,
+                           const std::vector<Output>& grad_inputs,
+                           std::vector<Output>* grad_outputs) {
   string data_format;
   string padding;
   auto attrs = op.output(0).node()->attrs();
@@ -274,9 +275,9 @@ absl::Status MaxPoolGradV2Helper(const Scope& scope, const Operation& op,
 }
 REGISTER_GRADIENT_OP("MaxPoolV2", MaxPoolGradV2Helper);
 
-absl::Status MaxPool3DGradHelper(const Scope& scope, const Operation& op,
-                                 const std::vector<Output>& grad_inputs,
-                                 std::vector<Output>* grad_outputs) {
+Status MaxPool3DGradHelper(const Scope& scope, const Operation& op,
+                           const std::vector<Output>& grad_inputs,
+                           std::vector<Output>* grad_outputs) {
   std::vector<int32> ksize;
   std::vector<int32> strides;
   string padding;
@@ -295,9 +296,9 @@ absl::Status MaxPool3DGradHelper(const Scope& scope, const Operation& op,
 }
 REGISTER_GRADIENT_OP("MaxPool3D", MaxPool3DGradHelper);
 
-absl::Status AvgPoolGradHelper(const Scope& scope, const Operation& op,
-                               const std::vector<Output>& grad_inputs,
-                               std::vector<Output>* grad_outputs) {
+Status AvgPoolGradHelper(const Scope& scope, const Operation& op,
+                         const std::vector<Output>& grad_inputs,
+                         std::vector<Output>* grad_outputs) {
   std::vector<int32> ksize;
   std::vector<int32> strides;
   string padding;
@@ -316,9 +317,9 @@ absl::Status AvgPoolGradHelper(const Scope& scope, const Operation& op,
 }
 REGISTER_GRADIENT_OP("AvgPool", AvgPoolGradHelper);
 
-absl::Status AvgPool3DGradHelper(const Scope& scope, const Operation& op,
-                                 const std::vector<Output>& grad_inputs,
-                                 std::vector<Output>* grad_outputs) {
+Status AvgPool3DGradHelper(const Scope& scope, const Operation& op,
+                           const std::vector<Output>& grad_inputs,
+                           std::vector<Output>* grad_outputs) {
   std::vector<int32> ksize;
   std::vector<int32> strides;
   string padding;
@@ -337,37 +338,36 @@ absl::Status AvgPool3DGradHelper(const Scope& scope, const Operation& op,
 }
 REGISTER_GRADIENT_OP("AvgPool3D", AvgPool3DGradHelper);
 
-absl::Status LRNGradHelper(const Scope& scope, const Operation& op,
-                           const std::vector<Output>& grad_inputs,
-                           std::vector<Output>* grad_outputs) {
+Status LRNGradHelper(const Scope& scope, const Operation& op,
+                     const std::vector<Output>& grad_inputs,
+                     std::vector<Output>* grad_outputs) {
   auto dx = internal::LRNGrad(scope, grad_inputs[0], op.input(0), op.output(0));
   grad_outputs->push_back(dx);
   return scope.status();
 }
 REGISTER_GRADIENT_OP("LRN", LRNGradHelper);
 
-absl::Status SoftplusGradHelper(const Scope& scope, const Operation& op,
-                                const std::vector<Output>& grad_inputs,
-                                std::vector<Output>* grad_outputs) {
+Status SoftplusGradHelper(const Scope& scope, const Operation& op,
+                          const std::vector<Output>& grad_inputs,
+                          std::vector<Output>* grad_outputs) {
   auto dx = internal::SoftplusGrad(scope, grad_inputs[0], op.input(0));
   grad_outputs->push_back(dx);
   return scope.status();
 }
 REGISTER_GRADIENT_OP("Softplus", SoftplusGradHelper);
 
-absl::Status SoftsignGradHelper(const Scope& scope, const Operation& op,
-                                const std::vector<Output>& grad_inputs,
-                                std::vector<Output>* grad_outputs) {
+Status SoftsignGradHelper(const Scope& scope, const Operation& op,
+                          const std::vector<Output>& grad_inputs,
+                          std::vector<Output>* grad_outputs) {
   auto dx = internal::SoftsignGrad(scope, grad_inputs[0], op.input(0));
   grad_outputs->push_back(dx);
   return scope.status();
 }
 REGISTER_GRADIENT_OP("Softsign", SoftsignGradHelper);
 
-absl::Status FractionalAvgPoolGradHelper(const Scope& scope,
-                                         const Operation& op,
-                                         const std::vector<Output>& grad_inputs,
-                                         std::vector<Output>* grad_outputs) {
+Status FractionalAvgPoolGradHelper(const Scope& scope, const Operation& op,
+                                   const std::vector<Output>& grad_inputs,
+                                   std::vector<Output>* grad_outputs) {
   bool overlapping;
   TF_RETURN_IF_ERROR(
       GetNodeAttr(op.output(0).node()->attrs(), "overlapping", &overlapping));
@@ -380,10 +380,9 @@ absl::Status FractionalAvgPoolGradHelper(const Scope& scope,
 }
 REGISTER_GRADIENT_OP("FractionalAvgPool", FractionalAvgPoolGradHelper);
 
-absl::Status FractionalMaxPoolGradHelper(const Scope& scope,
-                                         const Operation& op,
-                                         const std::vector<Output>& grad_inputs,
-                                         std::vector<Output>* grad_outputs) {
+Status FractionalMaxPoolGradHelper(const Scope& scope, const Operation& op,
+                                   const std::vector<Output>& grad_inputs,
+                                   std::vector<Output>* grad_outputs) {
   bool overlapping;
   TF_RETURN_IF_ERROR(
       GetNodeAttr(op.output(0).node()->attrs(), "overlapping", &overlapping));
@@ -397,7 +396,7 @@ REGISTER_GRADIENT_OP("FractionalMaxPool", FractionalMaxPoolGradHelper);
 
 // Templated constructor for FusedBatchNormGrad[..]::Attrs.
 template <typename T>
-T FusedBatchNormGradAttrs(float epsilon, absl::string_view data_format,
+T FusedBatchNormGradAttrs(float epsilon, StringPiece data_format,
                           bool is_training) {
   T result;
   result.epsilon_ = epsilon;
@@ -406,16 +405,16 @@ T FusedBatchNormGradAttrs(float epsilon, absl::string_view data_format,
   return result;
 }
 
-using BatchNormGradFn = std::function<absl::Status(
-    const Scope&, Output x, Output grad_y, Output scale,
-    const std::vector<Output>& reserve_spaces, float epsilon,
-    absl::string_view data_format, bool is_training,
-    std::vector<Output>* grad_outputs)>;
+using BatchNormGradFn =
+    std::function<Status(const Scope&, Output x, Output grad_y, Output scale,
+                         const std::vector<Output>& reserve_spaces,
+                         float epsilon, StringPiece data_format,
+                         bool is_training, std::vector<Output>* grad_outputs)>;
 
-absl::Status BaseFusedBatchNormGrad(const Scope& scope, const Operation& op,
-                                    const std::vector<Output>& grad_inputs,
-                                    BatchNormGradFn grad_fn,
-                                    std::vector<Output>* grad_outputs) {
+Status BaseFusedBatchNormGrad(const Scope& scope, const Operation& op,
+                              const std::vector<Output>& grad_inputs,
+                              BatchNormGradFn grad_fn,
+                              std::vector<Output>* grad_outputs) {
   if (op.num_outputs() < 5) {
     return errors::InvalidArgument(
         "FusedBatchNorm requires at least 5 outputs");
@@ -465,7 +464,7 @@ absl::Status BaseFusedBatchNormGrad(const Scope& scope, const Operation& op,
       grad_y = Transpose(scope, grad_y, {0, 2, 3, 4, 1});
     }
 
-    absl::string_view target_data_format;
+    StringPiece target_data_format;
     if (data_format == "NCHW" || data_format == "NHWC") {
       target_data_format = "NHWC";
     } else {
@@ -484,14 +483,14 @@ absl::Status BaseFusedBatchNormGrad(const Scope& scope, const Operation& op,
   }
 }
 
-absl::Status FusedBatchNormV3Grad(const Scope& scope, const Operation& op,
-                                  const std::vector<Output>& grad_inputs,
-                                  std::vector<Output>* grad_outputs) {
+Status FusedBatchNormV3Grad(const Scope& scope, const Operation& op,
+                            const std::vector<Output>& grad_inputs,
+                            std::vector<Output>* grad_outputs) {
   return BaseFusedBatchNormGrad(
       scope, op, grad_inputs,
       [](const Scope& scope, Output x, Output grad_y, Output scale,
          const std::vector<Output>& reserve_spaces, float epsilon,
-         absl::string_view data_format, bool is_training,
+         StringPiece data_format, bool is_training,
          std::vector<Output>* grad_outputs) {
         FusedBatchNormGradV3 grad(
             scope, grad_y, x, scale, reserve_spaces[0], reserve_spaces[1],
@@ -510,9 +509,9 @@ absl::Status FusedBatchNormV3Grad(const Scope& scope, const Operation& op,
 
 REGISTER_GRADIENT_OP("FusedBatchNormV3", FusedBatchNormV3Grad);
 
-absl::Status Conv2DBackpropInputGrad(const Scope& scope, const Operation& op,
-                                     const std::vector<Output>& grad_inputs,
-                                     std::vector<Output>* grad_outputs) {
+Status Conv2DBackpropInputGrad(const Scope& scope, const Operation& op,
+                               const std::vector<Output>& grad_inputs,
+                               std::vector<Output>* grad_outputs) {
   if (op.num_inputs() != 3) {
     return errors::InvalidArgument("Conv2DBackpropInput requires 3 inputs.");
   }
@@ -556,9 +555,9 @@ absl::Status Conv2DBackpropInputGrad(const Scope& scope, const Operation& op,
 }
 REGISTER_GRADIENT_OP("Conv2DBackpropInput", Conv2DBackpropInputGrad);
 
-absl::Status DepthwiseConv2dNativeGrad(const Scope& scope, const Operation& op,
-                                       const std::vector<Output>& grad_inputs,
-                                       std::vector<Output>* grad_outputs) {
+Status DepthwiseConv2dNativeGrad(const Scope& scope, const Operation& op,
+                                 const std::vector<Output>& grad_inputs,
+                                 std::vector<Output>* grad_outputs) {
   if (op.num_inputs() != 2) {
     return errors::InvalidArgument("DepthwiseConv2dNative requires 2 inputs.");
   }

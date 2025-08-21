@@ -2,20 +2,7 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
-    <mapping directory="$USER_HOME$/Librerias/TensorFlow/tensorflow/tensorflow/lite/abseil-cpp" vcs="Git" />
-    <mapping directory="$USER_HOME$/Librerias/TensorFlow/tensorflow/tensorflow/lite/eigen" vcs="Git" />
-    <mapping directory="$USER_HOME$/Librerias/TensorFlow/tensorflow/tflite_build/FXdiv-source" vcs="Git" />
-    <mapping directory="$USER_HOME$/Librerias/TensorFlow/tensorflow/tflite_build/abseil-cpp" vcs="Git" />
-    <mapping directory="$USER_HOME$/Librerias/TensorFlow/tensorflow/tflite_build/cpuinfo" vcs="Git" />
-    <mapping directory="$USER_HOME$/Librerias/TensorFlow/tensorflow/tflite_build/eigen" vcs="Git" />
-    <mapping directory="$USER_HOME$/Librerias/TensorFlow/tensorflow/tflite_build/farmhash" vcs="Git" />
-    <mapping directory="$USER_HOME$/Librerias/TensorFlow/tensorflow/tflite_build/flatbuffers" vcs="Git" />
-    <mapping directory="$USER_HOME$/Librerias/TensorFlow/tensorflow/tflite_build/gemmlowp" vcs="Git" />
-    <mapping directory="$USER_HOME$/Librerias/TensorFlow/tensorflow/tflite_build/psimd-source" vcs="Git" />
-    <mapping directory="$USER_HOME$/Librerias/TensorFlow/tensorflow/tflite_build/ruy" vcs="Git" />
-    <mapping directory="$USER_HOME$/Librerias/TensorFlow/tensorflow/tflite_build/ruy/third_party/cpuinfo" vcs="Git" />
-    <mapping directory="$USER_HOME$/Librerias/TensorFlow/tensorflow/tflite_build/ruy/third_party/googletest" vcs="Git" />
-    <mapping directory="$USER_HOME$/Librerias/TensorFlow/tensorflow/tflite_build/xnnpack" vcs="Git" />
-    <mapping directory="$USER_HOME$/Librerias/intento90/tensorflow" vcs="Git" />
+    <mapping directory="$USER_HOME$/Libs/flatbuffers" vcs="Git" />
+    <mapping directory="$USER_HOME$/Libs/tensorflow" vcs="Git" />
   </component>
 </project>

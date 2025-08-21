@@ -37,7 +37,7 @@ struct XlaValidateInputsPass
   void runOnOperation() override;
 };
 
-LogicalResult HasNoNestedEntryFunctions(
+LogicalResult has_nested_entry_functions(
     const llvm::SmallVector<func::FuncOp> &entry_funcs, SymbolTable &symtab) {
   auto calls_entry_functions = [&](SymbolUserOpInterface op) {
     llvm::SmallVector<func::FuncOp> callees;
@@ -60,28 +60,18 @@ LogicalResult HasNoNestedEntryFunctions(
       return failure();
     }
     if (!calls.empty()) {
-      // This is not expected to happen in practice. We can add a pass after
+      // Some passes in MLIR GPU phase 1 pipeline uses entry functions as start
+      // point for tree traversal (input graphs are transformed to trees in
+      // GuaranteeAllFuncsOneUsePass). They will not work properly if there are
+      // nested calls of entry fucntions. We can add a pass after
       // GuaranteeAllFuncsOneUsePass to remove "tf.entry_function" or
       // "tf_saved_model.initializer_type" attribute from the callee of the
-      // inner calls if the problem ever arises.
+      // inner calls
       entry_func->emitError()
-          << "TF2XLA MLIR Non-replicated Phase 1 Bridge expects no nested calls"
-             " of entry functions as they prevent graph traversal in some "
-             "passes from "
-             "working correctly";
-      return failure();
-    }
-  }
-  return success();
-}
-
-LogicalResult HasTopLevelCompilationMarker(
-    llvm::SmallVector<func::FuncOp> &entry_funcs) {
-  for (auto &entry_func : entry_funcs) {
-    if (entry_func->hasAttr(mlir::TF::kCompileDeviceTypeAttr)) {
-      entry_func->emitError() << "TF2XLA MLIR Non-replicated Phase 1 Bridge "
-                                 "does not support top-level compilation "
-                                 "marker.";
+          << "CPU/GPU MLIR phase 1 pipeline does not support nested calls of "
+             "entry functions. Remove tf.entry_function or "
+             "tf_saved_model.initializer_type from the called functions in the "
+             "inner calls after GuaranteeAllFuncsOneUsePass to add the support";
       return failure();
     }
   }
@@ -96,11 +86,7 @@ void XlaValidateInputsPass::runOnOperation() {
     LOG(WARNING) << "missing entry functions";
   }
 
-  if (HasNoNestedEntryFunctions(entry_funcs, symtab).failed()) {
-    return signalPassFailure();
-  }
-
-  if (HasTopLevelCompilationMarker(entry_funcs).failed()) {
+  if (has_nested_entry_functions(entry_funcs, symtab).failed()) {
     return signalPassFailure();
   }
 }

@@ -26,20 +26,20 @@ namespace tensorflow {
 namespace graph_transforms {
 namespace {
 // Ensures the tensor is the expected shape.
-absl::Status ErrorIfNotVector(const Tensor& input, const string& input_name,
-                              int expected_width) {
+Status ErrorIfNotVector(const Tensor& input, const string& input_name,
+                        int expected_width) {
   if ((input.shape().dims() != 1) ||
       (input.shape().dim_size(0) != expected_width)) {
     return errors::InvalidArgument(
         input_name,
         " input to batch norm has bad shape: ", input.shape().DebugString());
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status GetScaleAndOffsetValues(const NodeMatch& match,
-                                     std::vector<float>* scale_values,
-                                     std::vector<float>* offset_values) {
+Status GetScaleAndOffsetValues(const NodeMatch& match,
+                               std::vector<float>* scale_values,
+                               std::vector<float>* offset_values) {
   // Find all the nodes we expect in the subgraph.
   const NodeDef& batch_norm_node = match.node;
   // BatchNormWithGlobalNormalization and FusedBatchNorm ops only differ
@@ -99,13 +99,14 @@ absl::Status GetScaleAndOffsetValues(const NodeMatch& match,
     (*offset_values)[i] =
         (-mean.flat<float>()(i) * (*scale_values)[i]) + beta.flat<float>()(i);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status FuseScaleOffsetToConvWeights(
-    const std::vector<float>& scale_values,
-    const std::vector<float>& offset_values, const NodeMatch& conv_node_match,
-    const string& conv_output_name, std::vector<NodeDef>* new_nodes) {
+Status FuseScaleOffsetToConvWeights(const std::vector<float>& scale_values,
+                                    const std::vector<float>& offset_values,
+                                    const NodeMatch& conv_node_match,
+                                    const string& conv_output_name,
+                                    std::vector<NodeDef>* new_nodes) {
   const NodeDef& conv_node = conv_node_match.node;
   // CHECK_EQ("Conv2D", conv_node.op());
   const NodeDef& input_node = conv_node_match.inputs[0].node;
@@ -168,11 +169,11 @@ absl::Status FuseScaleOffsetToConvWeights(
   AddNodeInput(conv_node.name(), &bias_add_node);
   AddNodeInput(bias_offset_node.name(), &bias_add_node);
   new_nodes->push_back(bias_add_node);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status FuseBatchNormWithConv(const NodeMatch& match,
-                                   std::vector<NodeDef>* new_nodes) {
+Status FuseBatchNormWithConv(const NodeMatch& match,
+                             std::vector<NodeDef>* new_nodes) {
   // Calculate the scale and offset values to apply.
   std::vector<float> scale_values;
   std::vector<float> offset_values;
@@ -184,11 +185,11 @@ absl::Status FuseBatchNormWithConv(const NodeMatch& match,
   TF_RETURN_IF_ERROR(
       FuseScaleOffsetToConvWeights(scale_values, offset_values, match.inputs[0],
                                    batch_norm_node.name(), new_nodes));
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status FuseBatchNormWithBatchToSpace(const NodeMatch& match,
-                                           std::vector<NodeDef>* new_nodes) {
+Status FuseBatchNormWithBatchToSpace(const NodeMatch& match,
+                                     std::vector<NodeDef>* new_nodes) {
   // Calculate the scale and offset values to apply.
   std::vector<float> scale_values;
   std::vector<float> offset_values;
@@ -213,11 +214,11 @@ absl::Status FuseBatchNormWithBatchToSpace(const NodeMatch& match,
   new_nodes->push_back(batch_to_space_node_match.inputs[1].node);
   new_nodes->push_back(batch_to_space_node_match.inputs[2].node);
   new_nodes->push_back(new_batch_to_space_node);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status FuseBatchNormWithConvConcat(const NodeMatch& match,
-                                         std::vector<NodeDef>* new_nodes) {
+Status FuseBatchNormWithConvConcat(const NodeMatch& match,
+                                   std::vector<NodeDef>* new_nodes) {
   // Calculate the scale and offset values to apply.
   std::vector<float> scale_values;
   std::vector<float> offset_values;
@@ -274,15 +275,15 @@ absl::Status FuseBatchNormWithConvConcat(const NodeMatch& match,
   concat_node.set_input(0, concat0_output_name);
   concat_node.set_input(1, concat1_output_name);
   new_nodes->push_back(concat_node);
-  return absl::OkStatus();
+  return OkStatus();
 }
 }  // namespace
 
 // Finds monolithic batch norm ops (as used in early versions of TensorFlow) and
 // converts them into premultiplied weight inputs to convolutions.
-absl::Status FoldOldBatchNorms(const GraphDef& input_graph_def,
-                               const TransformFuncContext& context,
-                               GraphDef* output_graph_def) {
+Status FoldOldBatchNorms(const GraphDef& input_graph_def,
+                         const TransformFuncContext& context,
+                         GraphDef* output_graph_def) {
   GraphDef current_graph_def = input_graph_def;
   // We have to do several passes to catch all the old BN nodes, since many of
   // them may share inputs and so be excluded from replacement in one pass.
@@ -312,7 +313,7 @@ absl::Status FoldOldBatchNorms(const GraphDef& input_graph_def,
                             std::vector<NodeDef>* new_nodes) {
           TF_RETURN_IF_ERROR(FuseBatchNormWithConv(match, new_nodes));
           did_graph_change = true;
-          return absl::OkStatus();
+          return OkStatus();
         },
         {}, &replaced_graph_def));
     current_graph_def = replaced_graph_def;
@@ -349,7 +350,7 @@ absl::Status FoldOldBatchNorms(const GraphDef& input_graph_def,
                             std::vector<NodeDef>* new_nodes) {
           TF_RETURN_IF_ERROR(FuseBatchNormWithBatchToSpace(match, new_nodes));
           did_graph_change = true;
-          return absl::OkStatus();
+          return OkStatus();
         },
         {}, &replaced_graph_def));
     current_graph_def = replaced_graph_def;
@@ -392,14 +393,14 @@ absl::Status FoldOldBatchNorms(const GraphDef& input_graph_def,
                             std::vector<NodeDef>* new_nodes) {
           TF_RETURN_IF_ERROR(FuseBatchNormWithConvConcat(match, new_nodes));
           did_graph_change = true;
-          return absl::OkStatus();
+          return OkStatus();
         },
         {}, &replaced_graph_def));
     current_graph_def = replaced_graph_def;
   } while (did_graph_change);
 
   *output_graph_def = current_graph_def;
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 REGISTER_GRAPH_TRANSFORM("fold_old_batch_norms", FoldOldBatchNorms);

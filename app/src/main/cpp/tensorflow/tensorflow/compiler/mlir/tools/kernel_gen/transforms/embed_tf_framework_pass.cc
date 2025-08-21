@@ -20,7 +20,6 @@ limitations under the License.
 #include "mlir/Dialect/Func/IR/FuncOps.h"  // from @llvm-project
 #include "mlir/Dialect/MemRef/IR/MemRef.h"  // from @llvm-project
 #include "mlir/Pass/Pass.h"  // from @llvm-project
-#include "mlir/Support/LLVM.h"  // from @llvm-project
 #include "mlir/Transforms/DialectConversion.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/tools/kernel_gen/ir/tf_framework_ops.h"
 #include "tensorflow/compiler/mlir/tools/kernel_gen/transforms/passes.h"
@@ -72,7 +71,7 @@ class EmbedTFFrameworkPass
       }
       FunctionType func_type = op.getFunctionType();
       return func_type.getNumInputs() > 0 &&
-             mlir::isa<OpKernelContextType>(func_type.getInput(0));
+             func_type.getInput(0).isa<OpKernelContextType>();
     });
     target.addDynamicallyLegalOp<cf::AssertOp, memref::AllocOp,
                                  memref::DeallocOp>(IsNotInsideTfEntryFunction);

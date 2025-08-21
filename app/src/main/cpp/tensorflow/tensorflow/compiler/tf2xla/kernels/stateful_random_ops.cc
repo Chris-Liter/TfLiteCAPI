@@ -15,36 +15,29 @@ limitations under the License.
 
 #include "tensorflow/core/kernels/stateful_random_ops.h"
 
-#include <cstdint>
+#include <cmath>
 #include <functional>
 #include <tuple>
 #include <utility>
 
-#include "absl/status/status.h"
-#include "absl/status/statusor.h"
 #include "tensorflow/compiler/tf2xla/kernels/random_ops_util.h"
 #include "tensorflow/compiler/tf2xla/lib/random.h"
 #include "tensorflow/compiler/tf2xla/shape_util.h"
 #include "tensorflow/compiler/tf2xla/type_util.h"
+#include "tensorflow/compiler/tf2xla/xla_helpers.h"
 #include "tensorflow/compiler/tf2xla/xla_op_kernel.h"
 #include "tensorflow/compiler/tf2xla/xla_op_registry.h"
-#include "xla/hlo/builder/lib/constants.h"
-#include "xla/hlo/builder/lib/prng.h"
-#include "xla/hlo/builder/xla_builder.h"
-#include "xla/primitive_util.h"
-#include "xla/shape.h"
-#include "xla/util.h"
-#include "xla/xla_data.pb.h"
+#include "tensorflow/compiler/xla/client/lib/constants.h"
+#include "tensorflow/compiler/xla/client/lib/math.h"
+#include "tensorflow/compiler/xla/client/lib/prng.h"
+#include "tensorflow/compiler/xla/client/xla_builder.h"
+#include "tensorflow/compiler/xla/xla_data.pb.h"
 #include "tensorflow/core/framework/op_kernel.h"
-#include "tensorflow/core/framework/op_requires.h"
 #include "tensorflow/core/framework/rng_alg.h"
+#include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor_shape.h"
-#include "tensorflow/core/framework/types.pb.h"
-#include "tensorflow/core/platform/errors.h"
-#include "tensorflow/core/platform/status.h"
-#include "tensorflow/core/platform/types.h"
-#include "tsl/platform/errors.h"
-#include "tsl/platform/statusor.h"
+#include "tensorflow/core/lib/math/math_util.h"
+#include "tensorflow/core/platform/statusor.h"
 
 namespace tensorflow {
 namespace {
@@ -125,7 +118,7 @@ xla::RngOutput StatefulRngUniformFullInt(xla::RandomAlgorithm alg,
   }
 }
 
-using SamplerReturnType = absl::StatusOr<xla::RngOutput>;
+using SamplerReturnType = StatusOr<xla::RngOutput>;
 
 int64_t GetMinStateSize(xla::RandomAlgorithm alg) {
   switch (alg) {
@@ -138,8 +131,7 @@ int64_t GetMinStateSize(xla::RandomAlgorithm alg) {
   }
 }
 
-absl::Status CheckStateShape(xla::RandomAlgorithm alg,
-                             const TensorShape& shape) {
+Status CheckStateShape(xla::RandomAlgorithm alg, const TensorShape& shape) {
   if (shape.dims() != 1) {
     return errors::InvalidArgument(
         "RNG state must have one and only one dimension, not ", shape.dims());
@@ -150,10 +142,10 @@ absl::Status CheckStateShape(xla::RandomAlgorithm alg,
     return errors::InvalidArgument("The size of the state must be at least ",
                                    min_state_size, "; got ", state_size);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::StatusOr<xla::RandomAlgorithm> ResolveAlg(int alg_id) {
+StatusOr<xla::RandomAlgorithm> ResolveAlg(int alg_id) {
   switch (alg_id) {
     case RNG_ALG_PHILOX:
       return xla::RandomAlgorithm::RNG_PHILOX;
@@ -167,8 +159,8 @@ absl::StatusOr<xla::RandomAlgorithm> ResolveAlg(int alg_id) {
   }
 }
 
-absl::StatusOr<xla::RandomAlgorithm> GetAlg(XlaOpKernelContext* ctx,
-                                            int alg_input_idx) {
+StatusOr<xla::RandomAlgorithm> GetAlg(XlaOpKernelContext* ctx,
+                                      int alg_input_idx) {
   TF_ASSIGN_OR_RETURN(auto alg_id, GetAlgId(ctx, alg_input_idx));
   return ResolveAlg(alg_id);
 }
@@ -204,7 +196,7 @@ xla::XlaOp CounterAndKeyToVariable(xla::RandomAlgorithm alg, xla::XlaOp state,
 
 // A helper function containing the common part of several kernels below.
 // Precondition: 'algorithm' and 'shape' are compile-time constants.
-absl::Status CompileImpl(
+Status CompileImpl(
     XlaOpKernelContext* ctx, int state_input_idx, int alg_input_idx,
     int shape_input_idx,
     std::function<SamplerReturnType(xla::RandomAlgorithm, xla::XlaOp,
@@ -235,7 +227,7 @@ absl::Status CompileImpl(
   var = BitcastConvertType(var, state_element_type);
   TF_RETURN_IF_ERROR(
       ctx->AssignVariable(state_input_idx, STATE_ELEMENT_DTYPE, var));
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 class StatefulUniformOp : public XlaOpKernel {
@@ -270,8 +262,7 @@ class StatefulUniformOp : public XlaOpKernel {
  private:
   DataType dtype_;
 
-  StatefulUniformOp(const StatefulUniformOp&) = delete;
-  void operator=(const StatefulUniformOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(StatefulUniformOp);
 };
 
 // TODO(wangpeng): Support plain float16 to get rid of the `TypeConstraint`.
@@ -310,8 +301,7 @@ class StatefulStandardNormalOp : public XlaOpKernel {
  private:
   DataType dtype_;
 
-  StatefulStandardNormalOp(const StatefulStandardNormalOp&) = delete;
-  void operator=(const StatefulStandardNormalOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(StatefulStandardNormalOp);
 };
 
 // TODO(wangpeng): Support plain float16 to get rid of the `TypeConstraint`.
@@ -358,8 +348,7 @@ class StatefulTruncatedNormalOp : public XlaOpKernel {
  private:
   DataType dtype_;
 
-  StatefulTruncatedNormalOp(const StatefulTruncatedNormalOp&) = delete;
-  void operator=(const StatefulTruncatedNormalOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(StatefulTruncatedNormalOp);
 };
 
 // TODO(wangpeng): Support plain float16 to get rid of the `TypeConstraint`.
@@ -395,8 +384,7 @@ class StatefulUniformIntOp : public XlaOpKernel {
  private:
   DataType dtype_;
 
-  StatefulUniformIntOp(const StatefulUniformIntOp&) = delete;
-  void operator=(const StatefulUniformIntOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(StatefulUniformIntOp);
 };
 
 REGISTER_XLA_OP(Name("StatefulUniformInt")
@@ -429,8 +417,7 @@ class StatefulUniformFullIntOp : public XlaOpKernel {
  private:
   DataType dtype_;
 
-  StatefulUniformFullIntOp(const StatefulUniformFullIntOp&) = delete;
-  void operator=(const StatefulUniformFullIntOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(StatefulUniformFullIntOp);
 };
 
 REGISTER_XLA_OP(Name("StatefulUniformFullInt")
@@ -504,8 +491,7 @@ class RngSkipOp : public XlaOpKernel {
   }
 
  private:
-  RngSkipOp(const RngSkipOp&) = delete;
-  void operator=(const RngSkipOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(RngSkipOp);
 };
 
 REGISTER_XLA_OP(Name("RngSkip").CompileTimeConstantInput("algorithm"),

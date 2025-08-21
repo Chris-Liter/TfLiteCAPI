@@ -21,7 +21,7 @@ limitations under the License.
 #include <string>
 #include <utility>
 
-#include "unsupported/Eigen/CXX11/Tensor"  // from @eigen_archive
+#include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 #include "tensorflow/core/framework/op.h"
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/framework/register_types.h"
@@ -42,10 +42,10 @@ typedef Eigen::GpuDevice GPUDevice;
 namespace {
 
 template <typename Device, typename T>
-absl::Status SpaceToBatchOpCompute(OpKernelContext* context,
-                                   const Tensor& orig_input_tensor,
-                                   const Tensor& orig_block_shape,
-                                   const Tensor& orig_paddings) {
+Status SpaceToBatchOpCompute(OpKernelContext* context,
+                             const Tensor& orig_input_tensor,
+                             const Tensor& orig_block_shape,
+                             const Tensor& orig_paddings) {
   const int input_dims = orig_input_tensor.dims();
   if (!TensorShapeUtils::IsVector(orig_block_shape.shape())) {
     return errors::InvalidArgument("block_shape rank should be 1 instead of ",
@@ -68,8 +68,8 @@ absl::Status SpaceToBatchOpCompute(OpKernelContext* context,
 
   // To avoid out-of-bounds access in the case that the block_shape and/or
   // paddings tensors are concurrently modified, we must copy the values.
-  absl::InlinedVector<int64_t, 4> block_shape;
-  absl::InlinedVector<int64_t, 8> paddings;
+  gtl::InlinedVector<int64_t, 4> block_shape;
+  gtl::InlinedVector<int64_t, 8> paddings;
   internal::spacetobatch::SubtleMustCopyFlat(orig_block_shape, &block_shape);
   internal::spacetobatch::SubtleMustCopyFlat(orig_paddings, &paddings);
 
@@ -123,7 +123,7 @@ absl::Status SpaceToBatchOpCompute(OpKernelContext* context,
 
   if (internal_block_dims == 0) {
     context->set_output(0, orig_input_tensor);
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   // For the purpose of computing the result, the input will be treated as
@@ -212,7 +212,7 @@ absl::Status SpaceToBatchOpCompute(OpKernelContext* context,
     TF_SPACETOBATCH_FOR_EACH_NUM_BLOCK_DIMS(TF_SPACETOBATCH_BLOCK_DIMS_CASE)
 #undef TF_SPACETOBATCH_BLOCK_DIMS_CASE
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace

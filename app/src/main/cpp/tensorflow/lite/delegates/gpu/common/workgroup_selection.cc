@@ -15,6 +15,8 @@ limitations under the License.
 
 #include "tensorflow/lite/delegates/gpu/common/workgroup_selection.h"
 
+#include <math.h>
+
 #include <cmath>
 #include <set>
 #include <vector>

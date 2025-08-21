@@ -14,18 +14,14 @@ limitations under the License.
 ==============================================================================*/
 #include "tensorflow/core/kernels/data/experimental/list_dataset_op.h"
 
-#include <cstdint>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "absl/status/status.h"
 #include "tensorflow/core/data/dataset_utils.h"
-#include "tensorflow/core/data/global_shuffle_utils.h"
 #include "tensorflow/core/data/name_utils.h"
 #include "tensorflow/core/data/split_utils.h"
-#include "tensorflow/core/framework/dataset.h"
 #include "tensorflow/core/framework/partial_tensor_shape.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor_util.h"
@@ -64,11 +60,11 @@ class ListDatasetOp::Dataset : public DatasetBase {
         this, name_utils::IteratorPrefix(kDatasetType, prefix)});
   }
 
-  absl::Status MakeSplitProviders(std::vector<std::unique_ptr<SplitProvider>>*
-                                      split_providers) const override {
+  Status MakeSplitProviders(std::vector<std::unique_ptr<SplitProvider>>*
+                                split_providers) const override {
     split_providers->push_back(
         std::make_unique<IndexSplitProvider>(num_elements_));
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   const DataTypeVector& output_dtypes() const override { return output_types_; }
@@ -85,37 +81,27 @@ class ListDatasetOp::Dataset : public DatasetBase {
     return num_elements_;
   }
 
-  absl::Status InputDatasets(
-      std::vector<const DatasetBase*>* inputs) const override {
-    return absl::OkStatus();
+  Status InputDatasets(std::vector<const DatasetBase*>* inputs) const override {
+    return OkStatus();
   }
 
-  absl::Status CheckExternalState() const override { return absl::OkStatus(); }
+  Status CheckExternalState() const override { return OkStatus(); }
 
-  absl::Status RandomIndexingCompatible() const override {
-    return absl::OkStatus();
-  }
-
-  absl::Status Get(OpKernelContext* ctx, int64_t index,
-                   std::vector<Tensor>* out_tensors) const override {
-    return Get(AnyContext(ctx), index, out_tensors);
-  }
-
-  absl::Status Get(AnyContext ctx, int64_t index,
-                   std::vector<Tensor>* out_tensors) const override {
+  Status Get(OpKernelContext* ctx, int64 index,
+             std::vector<Tensor>* out_tensors) const override {
     TF_RETURN_IF_ERROR(CheckRandomAccessCompatible(index));
     out_tensors->clear();
     out_tensors->reserve(num_components_);
     for (int i = 0; i < num_components_; ++i) {
       out_tensors->push_back(tensors_[i + num_components_ * index]);
     }
-    return absl::OkStatus();
+    return OkStatus();
   }
 
  protected:
-  absl::Status AsGraphDefInternal(SerializationContext* ctx,
-                                  DatasetGraphDefBuilder* b,
-                                  Node** output) const override {
+  Status AsGraphDefInternal(SerializationContext* ctx,
+                            DatasetGraphDefBuilder* b,
+                            Node** output) const override {
     std::vector<Node*> tensors;
     tensors.reserve(tensors_.size());
     for (const Tensor& t : tensors_) {
@@ -133,19 +119,18 @@ class ListDatasetOp::Dataset : public DatasetBase {
     b->BuildAttrValue(input_types_, &input_types);
     TF_RETURN_IF_ERROR(b->AddDataset(this, {}, {{0, tensors}},
                                      {{kTinputTypes, input_types}}, output));
-    return absl::OkStatus();
+    return OkStatus();
   }
 
  private:
   class Iterator : public DatasetIterator<Dataset> {
    public:
     explicit Iterator(const Params& params)
-        : DatasetIterator<Dataset>(params),
-          global_shuffle_iterator_(dataset()) {}
+        : DatasetIterator<Dataset>(params) {}
 
     bool SymbolicCheckpointCompatible() const override { return true; }
 
-    absl::Status Initialize(IteratorContext* ctx) override {
+    Status Initialize(IteratorContext* ctx) override {
       if (ctx->split_providers().empty()) {
         split_provider_ =
             std::make_shared<IndexSplitProvider>(dataset()->num_elements_);
@@ -153,21 +138,16 @@ class ListDatasetOp::Dataset : public DatasetBase {
         TF_ASSIGN_OR_RETURN(split_provider_,
                             GetSingleSplitProvider(ctx, dataset()));
       }
-      return absl::OkStatus();
+      return OkStatus();
     }
 
-    absl::Status GetNextInternal(IteratorContext* ctx,
-                                 std::vector<Tensor>* out_tensors,
-                                 bool* end_of_sequence) override {
-      if (ctx->index_mapper() != nullptr) {
-        return global_shuffle_iterator_.GetNext(ctx, out_tensors,
-                                                end_of_sequence);
-      }
-
+    Status GetNextInternal(IteratorContext* ctx,
+                           std::vector<Tensor>* out_tensors,
+                           bool* end_of_sequence) override {
       Tensor split;
       TF_RETURN_IF_ERROR(split_provider_->GetNext(&split, end_of_sequence));
       if (*end_of_sequence) {
-        return absl::OkStatus();
+        return OkStatus();
       }
       int64_t index = split.scalar<int64_t>()();
       out_tensors->reserve(dataset()->num_components_);
@@ -176,7 +156,7 @@ class ListDatasetOp::Dataset : public DatasetBase {
             dataset()->tensors_[i + dataset()->num_components_ * index]);
       }
       *end_of_sequence = false;
-      return absl::OkStatus();
+      return OkStatus();
     }
 
    protected:
@@ -185,26 +165,20 @@ class ListDatasetOp::Dataset : public DatasetBase {
       return model::MakeSourceNode(std::move(args));
     }
 
-    absl::Status SaveInternal(SerializationContext* ctx,
-                              IteratorStateWriter* writer) override {
-      TF_RETURN_IF_ERROR(split_provider_->Save(
-          [this](const std::string& key) { return full_name(key); }, writer));
-      TF_RETURN_IF_ERROR(global_shuffle_iterator_.Save(prefix(), ctx, writer));
-      return absl::OkStatus();
+    Status SaveInternal(SerializationContext* ctx,
+                        IteratorStateWriter* writer) override {
+      return split_provider_->Save(
+          [this](const std::string& key) { return full_name(key); }, writer);
     }
 
-    absl::Status RestoreInternal(IteratorContext* ctx,
-                                 IteratorStateReader* reader) override {
-      if (ctx->restored_element_count().has_value()) {
-        return global_shuffle_iterator_.Restore(prefix(), ctx, reader);
-      }
+    Status RestoreInternal(IteratorContext* ctx,
+                           IteratorStateReader* reader) override {
       return split_provider_->Restore(
           [this](const std::string& key) { return full_name(key); }, reader);
     }
 
    private:
     std::shared_ptr<SplitProvider> split_provider_;
-    GlobalShuffleIterator global_shuffle_iterator_;
   };
 
   const std::vector<Tensor> tensors_;

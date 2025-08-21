@@ -16,6 +16,7 @@ limitations under the License.
 #include "tensorflow/compiler/mlir/lite/stablehlo/transforms/tf_stablehlo_pass.h"
 
 #include <memory>
+#include <string>
 #include <utility>
 
 #include "llvm/ADT/StringRef.h"
@@ -32,16 +33,14 @@ limitations under the License.
 #include "mlir/Transforms/Passes.h"  // from @llvm-project
 #include "stablehlo/dialect/ChloOps.h"  // from @stablehlo
 #include "stablehlo/dialect/Register.h"  // from @stablehlo
-#include "tensorflow/compiler/mlir/lite/stablehlo/transforms/legalize_tf_passes.h"
 #include "tensorflow/compiler/mlir/lite/stablehlo/transforms/stablehlo_util.h"
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_ops.h"
 #include "tensorflow/compiler/mlir/tensorflow/transforms/lower_tf.h"
-#include "tensorflow/compiler/mlir/tf2xla/transforms/legalize_tf_with_tf2xla_passes.h"
-#include "xla/mlir_hlo/mhlo/IR/hlo_ops.h"
-#include "xla/mlir_hlo/mhlo/IR/register.h"
-#include "xla/mlir_hlo/mhlo/transforms/passes.h"
-#include "xla/mlir_hlo/mhlo/transforms/rewriters.h"
-#include "xla/mlir_hlo/mhlo/utils/type_conversion.h"
+#include "tensorflow/compiler/mlir/tf2xla/transforms/passes.h"
+#include "tensorflow/compiler/xla/mlir_hlo/mhlo/IR/hlo_ops.h"
+#include "tensorflow/compiler/xla/mlir_hlo/mhlo/IR/register.h"
+#include "tensorflow/compiler/xla/mlir_hlo/mhlo/transforms/passes.h"
+#include "tensorflow/compiler/xla/mlir_hlo/mhlo/transforms/rewriters.h"
 
 namespace mlir {
 namespace odml {
@@ -51,18 +50,15 @@ class TFToMhloPass
                                mlir::OperationPass<mlir::func::FuncOp>> {
  public:
   explicit TFToMhloPass(bool skip_quantization_ops = false,
-                        bool skip_resize = false,
-                        bool skip_partitioned_calls = false)
+                        bool skip_resize = false)
       : PassWrapper() {
     skip_quantization_ops_ = skip_quantization_ops;
     skip_resize_ = skip_resize;
-    skip_partitioned_calls_ = skip_partitioned_calls;
   }
 
   TFToMhloPass(const TFToMhloPass &pass) {
     skip_quantization_ops_ = pass.skip_quantization_ops_;
     skip_resize_ = pass.skip_resize_;
-    skip_partitioned_calls_ = pass.skip_partitioned_calls_;
   }
 
  private:
@@ -89,11 +85,6 @@ class TFToMhloPass
   Option<bool> skip_resize_{
       *this, "skip-resize",
       ::llvm::cl::desc("Skip tf.ResizeBilinear and tf.ResizeNearestNeighbor")};
-
-  Option<bool> skip_partitioned_calls_{
-      *this, "skip-partitioned-calls",
-      ::llvm::cl::desc(
-          "Skip tf.StatefulPartitionedCall and tf.PartitionedCall")};
 };
 
 void TFToMhloPass::runOnOperation() {
@@ -101,13 +92,13 @@ void TFToMhloPass::runOnOperation() {
   MLIRContext *context = func->getContext();
 
   RewritePatternSet patterns(context);
-  odml::PopulateLegalizeTfPatterns(context, &patterns);
+  mhlo::PopulateLegalizeTfPatterns(context, &patterns);
   TF::PopulateTFLoweringBeforeHLOPatterns(context, &patterns);
   mhlo::Tf2XlaTypeConverter converter;
   mhlo::PopulateLegalizeTfWithTf2XlaPatterns(
       "XLA_CPU_JIT", patterns, context, converter, /*prefer_tf2xla=*/false);
-  stablehlo::StablehloToHloTypeConverter hlo_converter;
-  chlo::populateChloToHloPatterns(context, &hlo_converter, &patterns);
+  chlo::populateDecomposeChloPatterns(context, &patterns);
+  chlo::populateChloBroadcastingPatterns(context, &patterns);
   chlo::ConstantLikeOp::getCanonicalizationPatterns(patterns, context);
 
   ConversionTarget target(*context);
@@ -130,10 +121,6 @@ void TFToMhloPass::runOnOperation() {
     target.addLegalOp<TF::ResizeBilinearOp>();
     target.addLegalOp<TF::ResizeNearestNeighborOp>();
   }
-  if (skip_partitioned_calls_) {
-    target.addLegalOp<TF::PartitionedCallOp>();
-    target.addLegalOp<TF::StatefulPartitionedCallOp>();
-  }
 
   FrozenRewritePatternSet frozen_patterns(std::move(patterns));
   if (failed(applyPartialConversion(func, target, frozen_patterns))) {
@@ -147,10 +134,6 @@ struct TFToStablehloOptions : public PassPipelineOptions<TFToStablehloOptions> {
   Option<bool> skip_resize{
       *this, "skip-resize",
       ::llvm::cl::desc("Skip tf.ResizeBilinear and tf.ResizeNearestNeighbor")};
-  Option<bool> skip_partitioned_calls{
-      *this, "skip-partitioned-calls",
-      ::llvm::cl::desc(
-          "Skip tf.StatefulPartitionedCall and tf.PartitionedCall")};
 };
 
 void PopulateLegalizeTFToStablehloPipeline(
@@ -159,8 +142,7 @@ void PopulateLegalizeTFToStablehloPipeline(
   // by aligning with the TF/XLA bridge on the corresponding functionality and
   // reusing their work, perhaps through `LowerToMlProgramAndHlo`.
   pm.addNestedPass<func::FuncOp>(std::make_unique<TFToMhloPass>(
-      options.skip_quantization_ops, options.skip_resize,
-      options.skip_partitioned_calls));
+      options.skip_quantization_ops, options.skip_resize));
   pm.addPass(mlir::createCanonicalizerPass());
   pm.addPass(mhlo::createHloLegalizeToStablehloPass());
 }
@@ -172,12 +154,10 @@ static PassPipelineRegistration<TFToStablehloOptions>
 
 void AddLegalizeTFToStablehloPasses(OpPassManager &pm,
                                     bool skip_quantization_ops,
-                                    bool skip_resize,
-                                    bool skip_partitioned_calls) {
+                                    bool skip_resize) {
   TFToStablehloOptions options;
   options.skip_quantization_ops = skip_quantization_ops;
   options.skip_resize = skip_resize;
-  options.skip_partitioned_calls = skip_partitioned_calls;
   PopulateLegalizeTFToStablehloPipeline(pm, options);
 }
 

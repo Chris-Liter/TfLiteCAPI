@@ -1,5 +1,5 @@
-load("@local_config_cuda//cuda:build_defs.bzl", "if_cuda")
 load("//tensorflow:tensorflow.bzl", "if_google", "tf_cc_binary")
+load("@local_config_cuda//cuda:build_defs.bzl", "if_cuda")
 
 package_group(
     name = "internal",
@@ -52,7 +52,16 @@ tf_cc_binary(
         "//conditions:default": [
             "//tensorflow/core:all_kernels",
         ],
-    }) + if_cuda([]),
+    }) + if_cuda([
+        "//tensorflow/core/runtime_fallback/runtime:runtime_fallback_gpu_alwayslink",
+        "//tensorflow/core/runtime_fallback/kernel:kernel_fallback_gpu_alwayslink",
+    ]) + select({
+        "@tf_runtime//:gpu_enabled": [
+            "@tf_runtime//backends/gpu:gpu_op_handler_alwayslink",
+            "@tf_runtime//backends/gpu:gpu_test_ops_alwayslink",
+        ],
+        "//conditions:default": [],
+    }),
 )
 
 cc_library(
@@ -60,7 +69,7 @@ cc_library(
     testonly = True,
     srcs = ["bef_executor_flags.cc"],
     hdrs = ["bef_executor_flags.h"],
-    visibility = ["//visibility:private"],
+    visibility = ["//third_party/tf_runtime_google:__pkg__"],
     deps = [
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/strings",

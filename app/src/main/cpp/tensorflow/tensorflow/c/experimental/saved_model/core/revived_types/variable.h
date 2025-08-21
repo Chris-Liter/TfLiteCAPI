@@ -17,10 +17,7 @@ limitations under the License.
 #define TENSORFLOW_C_EXPERIMENTAL_SAVED_MODEL_CORE_REVIVED_TYPES_VARIABLE_H_
 
 #include <memory>
-#include <string>
-#include <vector>
 
-#include "absl/status/status.h"
 #include "absl/types/optional.h"
 #include "tensorflow/c/eager/immediate_execution_context.h"
 #include "tensorflow/c/eager/immediate_execution_tensor_handle.h"
@@ -37,7 +34,7 @@ class Variable : public TensorHandleConvertible {
  public:
   // Creates an uninitialized resource variable. Note that a caller must
   // call "assign" to associate a value with the variable.
-  static absl::Status CreateUninitialized(
+  static Status CreateUninitialized(
       ImmediateExecutionContext* ctx, DataType dtype, TensorShape shape,
       absl::optional<std::string> name, const char* raw_device_name,
       const std::vector<std::string>& component_devices,
@@ -50,10 +47,10 @@ class Variable : public TensorHandleConvertible {
   TensorShape shape();
 
   // Updates the variable's contents with `handle`.
-  absl::Status Assign(ImmediateExecutionTensorHandle* handle);
+  Status Assign(ImmediateExecutionTensorHandle* handle);
 
   // Reads the value of the variable, and stores it in `out`
-  absl::Status ReadValue(ImmediateTensorHandlePtr* out);
+  Status ReadValue(ImmediateTensorHandlePtr* out);
 
   // Variable is movable, but not copyable.
   Variable(Variable&& other) = default;

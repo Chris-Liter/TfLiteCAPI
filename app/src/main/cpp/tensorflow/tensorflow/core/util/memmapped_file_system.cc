@@ -61,25 +61,24 @@ class RandomAccessFileFromMemmapped : public RandomAccessFile {
 
   ~RandomAccessFileFromMemmapped() override = default;
 
-  absl::Status Name(StringPiece* result) const override {
+  Status Name(StringPiece* result) const override {
     return errors::Unimplemented(
         "RandomAccessFileFromMemmapped does not support Name()");
   }
 
-  absl::Status Read(uint64 offset, size_t to_read, StringPiece* result,
-                    char* scratch) const override {
+  Status Read(uint64 offset, size_t to_read, StringPiece* result,
+              char* scratch) const override {
     if (offset >= length_) {
       *result = StringPiece(scratch, 0);
-      return absl::Status(absl::StatusCode::kOutOfRange, "Read after file end");
+      return Status(absl::StatusCode::kOutOfRange, "Read after file end");
     }
     const uint64 region_left =
         std::min(length_ - offset, static_cast<uint64>(to_read));
     *result =
         StringPiece(reinterpret_cast<const char*>(data_) + offset, region_left);
-    return (region_left == to_read)
-               ? absl::OkStatus()
-               : absl::Status(absl::StatusCode::kOutOfRange,
-                              "Read less bytes than requested");
+    return (region_left == to_read) ? OkStatus()
+                                    : Status(absl::StatusCode::kOutOfRange,
+                                             "Read less bytes than requested");
   }
 
  private:
@@ -92,19 +91,19 @@ class RandomAccessFileFromMemmapped : public RandomAccessFile {
 
 MemmappedFileSystem::MemmappedFileSystem() = default;
 
-absl::Status MemmappedFileSystem::FileExists(const string& fname,
-                                             TransactionToken* token) {
+Status MemmappedFileSystem::FileExists(const string& fname,
+                                       TransactionToken* token) {
   if (!mapped_memory_) {
     return errors::FailedPrecondition("MemmappedEnv is not initialized");
   }
   const auto dir_element = directory_.find(fname);
   if (dir_element != directory_.end()) {
-    return absl::OkStatus();
+    return OkStatus();
   }
   return errors::NotFound(fname, " not found");
 }
 
-absl::Status MemmappedFileSystem::NewRandomAccessFile(
+Status MemmappedFileSystem::NewRandomAccessFile(
     const string& filename, TransactionToken* token,
     std::unique_ptr<RandomAccessFile>* result) {
   if (!mapped_memory_) {
@@ -117,10 +116,10 @@ absl::Status MemmappedFileSystem::NewRandomAccessFile(
   *result = std::make_unique<RandomAccessFileFromMemmapped>(
       GetMemoryWithOffset(dir_element->second.offset),
       dir_element->second.length);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status MemmappedFileSystem::NewReadOnlyMemoryRegionFromFile(
+Status MemmappedFileSystem::NewReadOnlyMemoryRegionFromFile(
     const string& filename, TransactionToken* token,
     std::unique_ptr<ReadOnlyMemoryRegion>* result) {
   if (!mapped_memory_) {
@@ -133,12 +132,11 @@ absl::Status MemmappedFileSystem::NewReadOnlyMemoryRegionFromFile(
   *result = std::make_unique<ReadOnlyMemoryRegionFromMemmapped>(
       GetMemoryWithOffset(dir_element->second.offset),
       dir_element->second.length);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status MemmappedFileSystem::GetFileSize(const string& filename,
-                                              TransactionToken* token,
-                                              uint64* size) {
+Status MemmappedFileSystem::GetFileSize(const string& filename,
+                                        TransactionToken* token, uint64* size) {
   if (!mapped_memory_) {
     return errors::FailedPrecondition("MemmappedEnv is not initialized");
   }
@@ -147,12 +145,11 @@ absl::Status MemmappedFileSystem::GetFileSize(const string& filename,
     return errors::NotFound("Region ", filename, " is not found");
   }
   *size = dir_element->second.length;
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status MemmappedFileSystem::Stat(const string& fname,
-                                       TransactionToken* token,
-                                       FileStatistics* stat) {
+Status MemmappedFileSystem::Stat(const string& fname, TransactionToken* token,
+                                 FileStatistics* stat) {
   uint64 size;
   auto status = GetFileSize(fname, token, &size);
   if (status.ok()) {
@@ -161,49 +158,49 @@ absl::Status MemmappedFileSystem::Stat(const string& fname,
   return status;
 }
 
-absl::Status MemmappedFileSystem::NewWritableFile(
-    const string& filename, TransactionToken* token,
-    std::unique_ptr<WritableFile>* wf) {
+Status MemmappedFileSystem::NewWritableFile(const string& filename,
+                                            TransactionToken* token,
+                                            std::unique_ptr<WritableFile>* wf) {
   return errors::Unimplemented("memmapped format doesn't support writing");
 }
 
-absl::Status MemmappedFileSystem::NewAppendableFile(
+Status MemmappedFileSystem::NewAppendableFile(
     const string& filename, TransactionToken* token,
     std::unique_ptr<WritableFile>* result) {
   return errors::Unimplemented("memmapped format doesn't support writing");
 }
 
-absl::Status MemmappedFileSystem::GetChildren(const string& filename,
-                                              TransactionToken* token,
-                                              std::vector<string>* strings) {
+Status MemmappedFileSystem::GetChildren(const string& filename,
+                                        TransactionToken* token,
+                                        std::vector<string>* strings) {
   return errors::Unimplemented("memmapped format doesn't support GetChildren");
 }
 
-absl::Status MemmappedFileSystem::GetMatchingPaths(
-    const string& pattern, TransactionToken* token,
-    std::vector<string>* results) {
+Status MemmappedFileSystem::GetMatchingPaths(const string& pattern,
+                                             TransactionToken* token,
+                                             std::vector<string>* results) {
   return errors::Unimplemented(
       "memmapped format doesn't support GetMatchingPaths");
 }
 
-absl::Status MemmappedFileSystem::DeleteFile(const string& filename,
-                                             TransactionToken* token) {
+Status MemmappedFileSystem::DeleteFile(const string& filename,
+                                       TransactionToken* token) {
   return errors::Unimplemented("memmapped format doesn't support DeleteFile");
 }
 
-absl::Status MemmappedFileSystem::CreateDir(const string& dirname,
-                                            TransactionToken* token) {
+Status MemmappedFileSystem::CreateDir(const string& dirname,
+                                      TransactionToken* token) {
   return errors::Unimplemented("memmapped format doesn't support CreateDir");
 }
 
-absl::Status MemmappedFileSystem::DeleteDir(const string& dirname,
-                                            TransactionToken* token) {
+Status MemmappedFileSystem::DeleteDir(const string& dirname,
+                                      TransactionToken* token) {
   return errors::Unimplemented("memmapped format doesn't support DeleteDir");
 }
 
-absl::Status MemmappedFileSystem::RenameFile(const string& filename_from,
-                                             const string& filename_to,
-                                             TransactionToken* token) {
+Status MemmappedFileSystem::RenameFile(const string& filename_from,
+                                       const string& filename_to,
+                                       TransactionToken* token) {
   return errors::Unimplemented("memmapped format doesn't support RenameFile");
 }
 
@@ -214,8 +211,8 @@ const void* MemmappedFileSystem::GetMemoryWithOffset(uint64 offset) const {
 constexpr const char MemmappedFileSystem::kMemmappedPackagePrefix[];
 constexpr const char MemmappedFileSystem::kMemmappedPackageDefaultGraphDef[];
 
-absl::Status MemmappedFileSystem::InitializeFromFile(Env* env,
-                                                     const string& filename) {
+Status MemmappedFileSystem::InitializeFromFile(Env* env,
+                                               const string& filename) {
   TF_RETURN_IF_ERROR(
       env->NewReadOnlyMemoryRegionFromFile(filename, &mapped_memory_));
   directory_.clear();
@@ -259,7 +256,7 @@ absl::Status MemmappedFileSystem::InitializeFromFile(Env* env,
     }
     prev_element_offset = element_iter->offset();
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 bool MemmappedFileSystem::IsMemmappedPackageFilename(const string& filename) {
@@ -290,20 +287,20 @@ bool MemmappedFileSystem::IsWellFormedMemmappedPackageFilename(
 
 MemmappedEnv::MemmappedEnv(Env* env) : EnvWrapper(env) {}
 
-absl::Status MemmappedEnv::GetFileSystemForFile(const string& fname,
-                                                FileSystem** result) {
+Status MemmappedEnv::GetFileSystemForFile(const string& fname,
+                                          FileSystem** result) {
   if (MemmappedFileSystem::IsMemmappedPackageFilename(fname)) {
     if (!memmapped_file_system_) {
       return errors::FailedPrecondition(
           "MemmappedEnv is not initialized from a file.");
     }
     *result = memmapped_file_system_.get();
-    return absl::OkStatus();
+    return OkStatus();
   }
   return EnvWrapper::GetFileSystemForFile(fname, result);
 }
 
-absl::Status MemmappedEnv::GetRegisteredFileSystemSchemes(
+Status MemmappedEnv::GetRegisteredFileSystemSchemes(
     std::vector<string>* schemes) {
   const auto status = EnvWrapper::GetRegisteredFileSystemSchemes(schemes);
   if (status.ok()) {
@@ -312,7 +309,7 @@ absl::Status MemmappedEnv::GetRegisteredFileSystemSchemes(
   return status;
 }
 
-absl::Status MemmappedEnv::InitializeFromFile(const string& package_filename) {
+Status MemmappedEnv::InitializeFromFile(const string& package_filename) {
   std::unique_ptr<MemmappedFileSystem> file_system_ptr(new MemmappedFileSystem);
   const auto status =
       file_system_ptr->InitializeFromFile(target(), package_filename);

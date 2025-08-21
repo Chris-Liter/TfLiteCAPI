@@ -43,5 +43,6 @@ bazel test \
       --test_size_filters=small,medium,large \
       -- \
       //tensorflow/... \
+      -//tensorflow/python/integration_testing/... \
       -//tensorflow/core/tpu/... \
       -//tensorflow/lite/... \

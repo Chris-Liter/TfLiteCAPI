@@ -78,12 +78,12 @@ class ImmutableExecutorState {
       : params_(p), gview_() {}
   ~ImmutableExecutorState();
 
-  absl::Status Initialize(const Graph& graph);
+  Status Initialize(const Graph& graph);
 
   // Process all Nodes in the current graph, attempting to infer the
   // memory allocation attributes to be used wherever they may allocate
   // a tensor buffer.
-  absl::Status SetAllocAttrs();
+  Status SetAllocAttrs();
 
   const LocalExecutorParams& params() const { return params_; }
   const GraphView& graph_view() const { return gview_; }
@@ -122,8 +122,8 @@ class ImmutableExecutorState {
     std::vector<string> frame_names;
   };
 
-  static absl::Status BuildControlFlowInfo(const Graph* graph,
-                                           ControlFlowInfo* cf_info);
+  static Status BuildControlFlowInfo(const Graph* graph,
+                                     ControlFlowInfo* cf_info);
   void InitializePending(const Graph* graph, const ControlFlowInfo& cf_info);
 
   FrameInfo* EnsureFrameInfo(const string& fname);
@@ -155,8 +155,7 @@ class ImmutableExecutorState {
   // Shallow copies of the constant tensors used in the graph.
   std::vector<Tensor> const_tensors_;
 
-  ImmutableExecutorState(const ImmutableExecutorState&) = delete;
-  void operator=(const ImmutableExecutorState&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(ImmutableExecutorState);
 };
 
 }  // namespace tensorflow

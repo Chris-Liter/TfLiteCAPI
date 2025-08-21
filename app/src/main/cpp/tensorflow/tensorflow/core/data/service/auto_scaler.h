@@ -22,11 +22,10 @@ limitations under the License.
 #include <string>
 
 #include "absl/container/flat_hash_map.h"
-#include "absl/status/status.h"
 #include "absl/time/time.h"
-#include "tsl/platform/mutex.h"
-#include "tsl/platform/status.h"
-#include "tsl/platform/thread_annotations.h"
+#include "tensorflow/tsl/platform/mutex.h"
+#include "tensorflow/tsl/platform/status.h"
+#include "tensorflow/tsl/platform/thread_annotations.h"
 
 namespace tensorflow {
 namespace data {
@@ -77,24 +76,24 @@ class AutoScaler {
   // Reports the latest observed processing time from the worker with
   // `worker_address`. Returns an error if `processing_time` is ZeroDuration or
   // negative.
-  absl::Status ReportProcessingTime(const std::string& worker_address,
-                                    absl::Duration processing_time)
+  tsl::Status ReportProcessingTime(const std::string& worker_address,
+                                   absl::Duration processing_time)
       TF_LOCKS_EXCLUDED(mu_);
   // Reports the latest observed target processing time from the consumer
   // identified by `consumer_id`. Returns an error if `target_processing_time`
   // is ZeroDuration or negative.
-  absl::Status ReportTargetProcessingTime(int64_t consumer_id,
-                                          absl::Duration target_processing_time)
+  tsl::Status ReportTargetProcessingTime(int64_t consumer_id,
+                                         absl::Duration target_processing_time)
       TF_LOCKS_EXCLUDED(mu_);
   // Unregisters the worker with `worker_address`, removing its reported
   // processing time from consideration of the current workload estimation.
   // Returns an error if the specified worker does not exist.
-  absl::Status RemoveWorker(const std::string& worker_address)
+  tsl::Status RemoveWorker(const std::string& worker_address)
       TF_LOCKS_EXCLUDED(mu_);
   // Unregisters the consumer identified by `consumer_id`, removing its reported
   // target processing time from consideration of the current workload
   // estimation. Returns an error if the specified consumer does not exist.
-  absl::Status RemoveConsumer(int64_t consumer_id) TF_LOCKS_EXCLUDED(mu_);
+  tsl::Status RemoveConsumer(int64_t consumer_id) TF_LOCKS_EXCLUDED(mu_);
 
  private:
   mutable tsl::mutex mu_;
@@ -119,13 +118,13 @@ class MultipleIterationsAutoScaler {
   // Unregisters iteration with `iteration_id`, removing its reported
   // times from consideration of the current workload estimation.
   // Returns an error if the specified iteration does not exist.
-  absl::Status UnregisterIteration(int64_t iteration_id) TF_LOCKS_EXCLUDED(mu_);
+  tsl::Status UnregisterIteration(int64_t iteration_id) TF_LOCKS_EXCLUDED(mu_);
   // Updates the metric value with the current estimated optimal number of
   // workers. The estimate is limited to min(4 * `current_number_of_workers`,
   // `current_number_of_workers` + 500). Returns an error if there are no
   // previously reported processing and target processing times for at least one
   // iteration, or `current_number_of_workers` is not positive.
-  absl::Status UpdateOptimalNumberOfWorkersMetric(
+  tsl::Status UpdateOptimalNumberOfWorkersMetric(
       int64_t current_number_of_workers) TF_LOCKS_EXCLUDED(mu_);
   // Returns the estimated optimal number of workers according to the current
   // observed workload. If there are no previously reported processing and
@@ -135,31 +134,31 @@ class MultipleIterationsAutoScaler {
   // Reports the latest observed processing time from the worker with
   // `worker_address` for iteration with `iteration_id`. Returns an error if
   // `processing_time` is ZeroDuration or negative.
-  absl::Status ReportProcessingTime(int64_t iteration_id,
-                                    const std::string& worker_address,
-                                    absl::Duration processing_time)
+  tsl::Status ReportProcessingTime(int64_t iteration_id,
+                                   const std::string& worker_address,
+                                   absl::Duration processing_time)
       TF_LOCKS_EXCLUDED(mu_);
   // Reports the latest observed target processing time from the consumer
   // identified by `consumer_id` for iteration with `iteration_id`. Returns an
   // error if `target_processing_time` is ZeroDuration or negative.
-  absl::Status ReportTargetProcessingTime(int64_t iteration_id,
-                                          int64_t consumer_id,
-                                          absl::Duration target_processing_time)
+  tsl::Status ReportTargetProcessingTime(int64_t iteration_id,
+                                         int64_t consumer_id,
+                                         absl::Duration target_processing_time)
       TF_LOCKS_EXCLUDED(mu_);
   // Unregisters the worker with `worker_address` for iteration with
   // `iteration_id`, removing its reported processing time from consideration of
   // the current workload estimation. Returns an error if there are no
   // previously reported processing times for iteration with `iteration_id` and
   // the specified worker.
-  absl::Status RemoveWorker(int64_t iteration_id,
-                            const std::string& worker_address)
+  tsl::Status RemoveWorker(int64_t iteration_id,
+                           const std::string& worker_address)
       TF_LOCKS_EXCLUDED(mu_);
   // Unregisters the consumer identified by `consumer_id` for iteration with
   // `iteration_id`, removing its reported target processing time from
   // consideration of the current workload estimation. Returns an error if there
   // are no previously reported processing times for iteration with
   // `iteration_id` and the specified consumer.
-  absl::Status RemoveConsumer(int64_t iteration_id, int64_t consumer_id)
+  tsl::Status RemoveConsumer(int64_t iteration_id, int64_t consumer_id)
       TF_LOCKS_EXCLUDED(mu_);
 
  private:

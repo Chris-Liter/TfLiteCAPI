@@ -58,7 +58,7 @@ TEST(ThreadPoolDeviceTest, CopyTensor) {
   DeviceContext* device_context = new DeviceContext;
   Notification note;
   device.CopyTensorInSameDevice(&input, &output, device_context,
-                                [&note](const absl::Status& s) {
+                                [&note](const Status& s) {
                                   TF_ASSERT_OK(s);
                                   note.Notify();
                                 });

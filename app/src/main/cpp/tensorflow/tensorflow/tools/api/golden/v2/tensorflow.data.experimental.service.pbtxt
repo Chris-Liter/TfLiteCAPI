@@ -14,7 +14,7 @@ tf_module {
   }
   member {
     name: "ShardingPolicy"
-    mtype: "<class \'enum.EnumType\'>"
+    mtype: "<class \'enum.EnumMeta\'>"
   }
   member {
     name: "WorkerConfig"

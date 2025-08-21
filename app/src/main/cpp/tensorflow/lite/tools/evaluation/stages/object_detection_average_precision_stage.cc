@@ -16,13 +16,10 @@ limitations under the License.
 
 #include <stdint.h>
 
-#include <vector>
+#include <numeric>
 
 #include "tensorflow/core/platform/logging.h"
-#include "tensorflow/lite/c/c_api_types.h"
-#include "tensorflow/lite/tools/evaluation/proto/evaluation_config.pb.h"
 #include "tensorflow/lite/tools/evaluation/proto/evaluation_stages.pb.h"
-#include "tensorflow/lite/tools/evaluation/stages/utils/image_metrics.h"
 
 namespace tflite {
 namespace evaluation {

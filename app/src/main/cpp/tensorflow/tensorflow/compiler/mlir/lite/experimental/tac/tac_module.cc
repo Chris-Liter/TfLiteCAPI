@@ -62,7 +62,8 @@ void TacModule::AddTACPass(mlir::OpPassManager* pass_manager,
         mlir::createCanonicalizerPass());
     pass_manager->addPass(
         mlir::TFL::CreateLegalizeTFPass(/*run_tfl_runtime_verification=*/true));
-    pass_manager->addPass(mlir::TFL::CreateOptimizePass());
+    pass_manager->addPass(
+        mlir::TFL::CreateOptimizePass(/*enable_canonicalization=*/true));
   }
 
   pass_manager->addPass(mlir::TFL::tac::CreateComputeCostPass());

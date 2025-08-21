@@ -64,7 +64,7 @@ class TestFileSystem : public NullFileSystem {
   // import non-transactional method from the base class
   using NullFileSystem::NewReadOnlyMemoryRegionFromFile;
 
-  absl::Status NewReadOnlyMemoryRegionFromFile(
+  Status NewReadOnlyMemoryRegionFromFile(
       const string& fname, TransactionToken* token,
       std::unique_ptr<ReadOnlyMemoryRegion>* result) override {
     float val = 0;
@@ -83,7 +83,7 @@ class TestFileSystem : public NullFileSystem {
     auto region = new TestReadOnlyMemoryRegion(kTestTensorSizeBytes);
     std::fill_n(region->GetWritableDataStart(), kTestTensorSize, val);
     result->reset(region);
-    return absl::OkStatus();
+    return OkStatus();
   }
 };
 
@@ -146,8 +146,8 @@ TEST(ImmutableConstantOpTest, ExecutionError) {
       error::INTERNAL);
 }
 
-absl::Status CreateTempFileFloat(Env* env, float value, uint64 size,
-                                 string* filename) {
+Status CreateTempFileFloat(Env* env, float value, uint64 size,
+                           string* filename) {
   const string dir = testing::TmpDir();
   *filename = io::JoinPath(dir, strings::StrCat("file_", value));
   std::unique_ptr<WritableFile> file;
@@ -158,7 +158,7 @@ absl::Status CreateTempFileFloat(Env* env, float value, uint64 size,
     TF_RETURN_IF_ERROR(file->Append(sp));
   }
   TF_RETURN_IF_ERROR(file->Close());
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 TEST(ImmutableConstantOpTest, FromFile) {
@@ -191,15 +191,15 @@ TEST(ImmutableConstantOpTest, FromFile) {
   EXPECT_EQ(outputs.front().flat<float>()(2), 2.0f * 3.0f);
 }
 
-absl::Status CreateTempFileBadString(Env* env, char value, uint64 size,
-                                     const string suffix, string* filename) {
+Status CreateTempFileBadString(Env* env, char value, uint64 size,
+                               const string suffix, string* filename) {
   const string dir = testing::TmpDir();
   *filename = io::JoinPath(dir, strings::StrCat("file_", suffix));
   std::unique_ptr<WritableFile> file;
   TF_RETURN_IF_ERROR(env->NewWritableFile(*filename, &file));
   TF_RETURN_IF_ERROR(file->Append(std::string(size, value)));
   TF_RETURN_IF_ERROR(file->Close());
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 TEST(ImmutableConstantOpTest, FromFileStringUnimplmented) {

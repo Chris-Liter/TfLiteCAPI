@@ -23,12 +23,11 @@ limitations under the License.
 #include <string>
 #include <vector>
 
-#include "absl/status/status.h"
-#include "absl/strings/str_cat.h"
-#include "absl/strings/string_view.h"
+#include "tensorflow/core/common_runtime/device.h"
 #include "tensorflow/core/common_runtime/device_set.h"
 #include "tensorflow/core/common_runtime/graph_constructor.h"
 #include "tensorflow/core/common_runtime/optimization_registry.h"
+#include "tensorflow/core/framework/allocator.h"
 #include "tensorflow/core/framework/device_attributes.pb.h"
 #include "tensorflow/core/framework/function.h"
 #include "tensorflow/core/framework/function.pb.h"
@@ -38,10 +37,9 @@ limitations under the License.
 #include "tensorflow/core/graph/graph.h"
 #include "tensorflow/core/lib/core/errors.h"
 #include "tensorflow/core/lib/core/status.h"
-#include "tensorflow/core/platform/types.h"
+#include "tensorflow/core/platform/env.h"
 #include "tensorflow/core/protobuf/config.pb.h"
 #include "tensorflow/core/public/session_options.h"
-#include "tsl/platform/errors.h"
 
 namespace tensorflow {
 namespace {
@@ -52,11 +50,11 @@ class FakeDevice : public Device {
       : Device(nullptr, device_attributes) {}
 
  public:
-  absl::Status Sync() override;
+  Status Sync() override;
   static std::unique_ptr<Device> Make(const string& name, const string& type);
 };
 
-absl::Status FakeDevice::Sync() {
+Status FakeDevice::Sync() {
   return errors::Unimplemented("FakeDevice::Sync()");
 }
 
@@ -68,8 +66,8 @@ std::unique_ptr<Device> FakeDevice::Make(const string& name,
   return std::unique_ptr<Device>(new FakeDevice(device_attributes));
 }
 
-absl::Status FindPassWithName(absl::string_view name,
-                              GraphOptimizationPass** result) {
+Status FindPassWithName(absl::string_view name,
+                        GraphOptimizationPass** result) {
   *result = nullptr;
   // Run the optimization pass specified by the command line flag.
   for (const auto& groups_and_passes :
@@ -89,18 +87,18 @@ absl::Status FindPassWithName(absl::string_view name,
 
   return *result == nullptr
              ? errors::Internal("Could not find pass with name ", name)
-             : absl::OkStatus();
+             : OkStatus();
 }
 }  // namespace
 
-absl::Status OptimizationPassRunner::Run(absl::string_view pass_to_run,
-                                         GraphDef input, GraphDef* result) {
-  auto session_options = std::make_unique<SessionOptions>();
+Status OptimizationPassRunner::Run(absl::string_view pass_to_run,
+                                   GraphDef input, GraphDef* result) {
+  auto session_options = absl::make_unique<SessionOptions>();
   session_options->config.mutable_graph_options()
       ->mutable_optimizer_options()
       ->set_global_jit_level(jit_level_);
   FunctionDefLibrary flib;
-  std::unique_ptr<Graph> graph = std::make_unique<Graph>(OpRegistry::Global());
+  std::unique_ptr<Graph> graph = absl::make_unique<Graph>(OpRegistry::Global());
 
   GraphOptimizationPassOptions options;
   options.session_options = session_options.get();
@@ -128,17 +126,16 @@ absl::Status OptimizationPassRunner::Run(absl::string_view pass_to_run,
   TF_RETURN_IF_ERROR(pass->Run(options));
 
   options.graph->get()->ToGraphDef(result);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status OptimizationPassRunner::SetJitLevel(
+Status OptimizationPassRunner::SetJitLevel(
     OptimizerOptions::GlobalJitLevel jit_level) {
   jit_level_ = jit_level;
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status OptimizationPassRunner::AddDevices(absl::string_view type,
-                                                int count) {
+Status OptimizationPassRunner::AddDevices(absl::string_view type, int count) {
   for (int i = 0; i < count; i++) {
     devices_.push_back(FakeDevice::Make(
         absl::StrCat("/job:localhost/replica:0/task:0/device:", type, ":", i),
@@ -149,6 +146,6 @@ absl::Status OptimizationPassRunner::AddDevices(absl::string_view type,
         absl::StrCat(type)));
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 }  // namespace tensorflow

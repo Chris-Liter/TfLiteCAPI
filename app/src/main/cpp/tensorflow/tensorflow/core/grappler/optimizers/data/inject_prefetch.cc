@@ -78,21 +78,21 @@ bool ShouldInjectPrefetch(const NodeDef* last_node,
 
 }  // namespace
 
-absl::Status InjectPrefetch::OptimizeAndCollectStats(Cluster* cluster,
-                                                     const GrapplerItem& item,
-                                                     GraphDef* output,
-                                                     OptimizationStats* stats) {
+Status InjectPrefetch::OptimizeAndCollectStats(Cluster* cluster,
+                                               const GrapplerItem& item,
+                                               GraphDef* output,
+                                               OptimizationStats* stats) {
   *output = item.graph;
   if (!autotune_) {
     VLOG(1) << "The optimization inject_prefetch is not applied if autotune is "
                "off.";
-    return absl::OkStatus();
+    return OkStatus();
   }
   MutableGraphView graph(output);
 
   // If the GrapplerItem is derived from a FunctionDef, we don't optimize it.
   if (graph_utils::IsItemDerivedFromFunctionDef(item, graph)) {
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   if (item.fetch.size() != 1) {
@@ -104,7 +104,7 @@ absl::Status InjectPrefetch::OptimizeAndCollectStats(Cluster* cluster,
   NodeDef* sink_node = graph.GetNode(item.fetch.at(0));
   NodeDef* last_node = graph_utils::GetInputNode(*sink_node, graph);
   if (!ShouldInjectPrefetch(last_node, graph)) {
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   // Insert `prefetch(AUTOTUNE)` after the last node.
@@ -124,7 +124,7 @@ absl::Status InjectPrefetch::OptimizeAndCollectStats(Cluster* cluster,
   // attrs from the input node. If we fail to set the attributes, we abort the
   // rewrite.
   if (!graph_utils::CopyShapesAndTypesAttrs(*last_node, &prefetch_node))
-    return absl::OkStatus();
+    return OkStatus();
 
   TF_RETURN_IF_ERROR(
       graph_utils::SetMetadataName(prefetch_node.name(), &prefetch_node));
@@ -134,7 +134,7 @@ absl::Status InjectPrefetch::OptimizeAndCollectStats(Cluster* cluster,
       graph.UpdateFanouts(last_node->name(), added_node->name()));
 
   stats->num_changes++;
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 REGISTER_GRAPH_OPTIMIZER_AS(InjectPrefetch, "inject_prefetch");

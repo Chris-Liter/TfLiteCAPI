@@ -331,7 +331,7 @@ void Timeline::GenerateCodeTimeline(const CodeNode* node) {
 
 void Timeline::OutputTimeline() {
   std::string outfile = absl::StrFormat("%s_%d", outfile_, step());
-  absl::Status s =
+  Status s =
       WriteStringToFile(Env::Default(), outfile, chrome_formatter_.Format());
   if (!s.ok()) {
     absl::FPrintF(stderr, "Failed to write timeline file: %s\nError: %s\n",

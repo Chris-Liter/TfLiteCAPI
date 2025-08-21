@@ -20,8 +20,8 @@ limitations under the License.
 
 namespace tensorflow {
 
-absl::Status GetActivationModeFromString(const string& str_value,
-                                         ActivationMode* value) {
+Status GetActivationModeFromString(const string& str_value,
+                                   ActivationMode* value) {
   if (str_value == "None") {
     *value = NONE;
   } else if (str_value == "Sigmoid") {
@@ -39,7 +39,7 @@ absl::Status GetActivationModeFromString(const string& str_value,
   } else {
     return errors::NotFound(str_value, " is not an allowed activation mode");
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // end namespace tensorflow

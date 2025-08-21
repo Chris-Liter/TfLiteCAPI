@@ -40,7 +40,7 @@ typedef FunctionDefHelper FDH;
 constexpr const char* const kLowerUsingSwitchMergeAttr =
     LowerFunctionalOpsPass::kLowerUsingSwitchMergeAttr;
 
-static void AssertHasSubstr(absl::string_view s, absl::string_view expected) {
+static void AssertHasSubstr(StringPiece s, StringPiece expected) {
   ASSERT_TRUE(absl::StrContains(s, expected))
       << "'" << s << "' does not contain '" << expected << "'";
 }
@@ -53,7 +53,7 @@ SessionOptions SessionOptionsWithInlining() {
   return session_options;
 }
 
-absl::Status Rewrite(std::unique_ptr<Graph>* graph) {
+Status Rewrite(std::unique_ptr<Graph>* graph) {
   FunctionLibraryDefinition flib_def((*graph)->flib_def());
   GraphOptimizationPassOptions opt_options;
   SessionOptions session_options = SessionOptionsWithInlining();

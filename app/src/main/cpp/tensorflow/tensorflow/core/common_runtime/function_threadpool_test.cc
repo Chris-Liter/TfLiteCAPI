@@ -70,16 +70,15 @@ class FunctionLibraryRuntimeTest : public ::testing::Test {
                                tsl::core::RefCountPtr<Rendezvous>* r) {
           *r = tsl::core::RefCountPtr<Rendezvous>(
               new IntraProcessRendezvous(device_mgr));
-          return absl::OkStatus();
+          return OkStatus();
         }}));
     flr0_ = pflr_->GetFLR("/job:localhost/replica:0/task:0/cpu:0");
   }
 
-  absl::Status Run(FunctionLibraryRuntime* flr,
-                   FunctionLibraryRuntime::Handle handle,
-                   FunctionLibraryRuntime::Options opts,
-                   const std::vector<Tensor>& args, std::vector<Tensor*> rets,
-                   bool add_runner = true) {
+  Status Run(FunctionLibraryRuntime* flr, FunctionLibraryRuntime::Handle handle,
+             FunctionLibraryRuntime::Options opts,
+             const std::vector<Tensor>& args, std::vector<Tensor*> rets,
+             bool add_runner = true) {
     std::atomic<int32> call_count(0);
     std::function<void(std::function<void()>)> runner =
         [&call_count](std::function<void()> fn) {
@@ -93,8 +92,8 @@ class FunctionLibraryRuntimeTest : public ::testing::Test {
     }
     Notification done;
     std::vector<Tensor> out;
-    absl::Status status;
-    flr->Run(opts, handle, args, &out, [&status, &done](const absl::Status& s) {
+    Status status;
+    flr->Run(opts, handle, args, &out, [&status, &done](const Status& s) {
       status = s;
       done.Notify();
     });
@@ -111,42 +110,39 @@ class FunctionLibraryRuntimeTest : public ::testing::Test {
       EXPECT_GE(call_count, 1);  // Test runner is used.
     }
 
-    return absl::OkStatus();
+    return OkStatus();
   }
 
-  absl::Status Instantiate(FunctionLibraryRuntime* flr, const string& name,
-                           test::function::Attrs attrs,
-                           FunctionLibraryRuntime::Handle* handle) {
+  Status Instantiate(FunctionLibraryRuntime* flr, const string& name,
+                     test::function::Attrs attrs,
+                     FunctionLibraryRuntime::Handle* handle) {
     return flr->Instantiate(name, attrs, handle);
   }
 
-  absl::Status Instantiate(
-      FunctionLibraryRuntime* flr, const string& name,
-      test::function::Attrs attrs,
-      const FunctionLibraryRuntime::InstantiateOptions& options,
-      FunctionLibraryRuntime::Handle* handle) {
+  Status Instantiate(FunctionLibraryRuntime* flr, const string& name,
+                     test::function::Attrs attrs,
+                     const FunctionLibraryRuntime::InstantiateOptions& options,
+                     FunctionLibraryRuntime::Handle* handle) {
     return flr->Instantiate(name, attrs, options, handle);
   }
 
-  absl::Status InstantiateAndRun(FunctionLibraryRuntime* flr,
-                                 const string& name,
-                                 test::function::Attrs attrs,
-                                 const std::vector<Tensor>& args,
-                                 std::vector<Tensor*> rets,
-                                 bool add_runner = true) {
+  Status InstantiateAndRun(FunctionLibraryRuntime* flr, const string& name,
+                           test::function::Attrs attrs,
+                           const std::vector<Tensor>& args,
+                           std::vector<Tensor*> rets, bool add_runner = true) {
     return InstantiateAndRun(flr, name, attrs,
                              FunctionLibraryRuntime::InstantiateOptions(), args,
                              std::move(rets), add_runner);
   }
 
-  absl::Status InstantiateAndRun(
+  Status InstantiateAndRun(
       FunctionLibraryRuntime* flr, const string& name,
       test::function::Attrs attrs,
       const FunctionLibraryRuntime::InstantiateOptions& options,
       const std::vector<Tensor>& args, std::vector<Tensor*> rets,
       bool add_runner = true) {
     FunctionLibraryRuntime::Handle handle;
-    absl::Status status = flr->Instantiate(name, attrs, options, &handle);
+    Status status = flr->Instantiate(name, attrs, options, &handle);
     if (!status.ok()) {
       return status;
     }
@@ -158,7 +154,7 @@ class FunctionLibraryRuntimeTest : public ::testing::Test {
     status = flr->ReleaseHandle(handle);
     if (!status.ok()) return status;
 
-    absl::Status status2 = Run(flr, handle, opts, args, std::move(rets));
+    Status status2 = Run(flr, handle, opts, args, std::move(rets));
     EXPECT_TRUE(errors::IsNotFound(status2));
     EXPECT_TRUE(absl::StrContains(status2.message(), "Handle"));
     EXPECT_TRUE(absl::StrContains(status2.message(), "not found"));
@@ -166,10 +162,9 @@ class FunctionLibraryRuntimeTest : public ::testing::Test {
     return status;
   }
 
-  absl::Status Run(FunctionLibraryRuntime* flr,
-                   FunctionLibraryRuntime::Handle handle,
-                   FunctionLibraryRuntime::Options opts,
-                   CallFrameInterface* frame, bool add_runner = true) {
+  Status Run(FunctionLibraryRuntime* flr, FunctionLibraryRuntime::Handle handle,
+             FunctionLibraryRuntime::Options opts, CallFrameInterface* frame,
+             bool add_runner = true) {
     std::atomic<int32> call_count(0);
     std::function<void(std::function<void()>)> runner =
         [&call_count](std::function<void()> fn) {
@@ -182,8 +177,8 @@ class FunctionLibraryRuntimeTest : public ::testing::Test {
       opts.runner = nullptr;
     }
     Notification done;
-    absl::Status status;
-    flr->Run(opts, handle, frame, [&status, &done](const absl::Status& s) {
+    Status status;
+    flr->Run(opts, handle, frame, [&status, &done](const Status& s) {
       status = s;
       done.Notify();
     });
@@ -196,7 +191,7 @@ class FunctionLibraryRuntimeTest : public ::testing::Test {
       EXPECT_GE(call_count, 1);  // Test runner is used.
     }
 
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   FunctionLibraryRuntime* flr0_;

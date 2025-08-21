@@ -60,7 +60,7 @@ void DebuggerStateRegistry::RegisterFactory(
 }
 
 // static
-absl::Status DebuggerStateRegistry::CreateState(
+Status DebuggerStateRegistry::CreateState(
     const DebugOptions& debug_options,
     std::unique_ptr<DebuggerStateInterface>* state) {
   if (factory_ == nullptr || *factory_ == nullptr) {
@@ -69,7 +69,7 @@ absl::Status DebuggerStateRegistry::CreateState(
         "It appears that TFDBG is not linked in this TensorFlow build.");
   } else {
     *state = (*factory_)(debug_options);
-    return absl::OkStatus();
+    return OkStatus();
   }
 }
 
@@ -81,7 +81,7 @@ void DebugGraphDecoratorRegistry::RegisterFactory(
 }
 
 // static
-absl::Status DebugGraphDecoratorRegistry::CreateDecorator(
+Status DebugGraphDecoratorRegistry::CreateDecorator(
     const DebugOptions& options,
     std::unique_ptr<DebugGraphDecoratorInterface>* decorator) {
   if (factory_ == nullptr || *factory_ == nullptr) {
@@ -90,7 +90,7 @@ absl::Status DebugGraphDecoratorRegistry::CreateDecorator(
         "It appears that TFDBG is not linked in this TensorFlow build.");
   } else {
     *decorator = (*factory_)(options);
-    return absl::OkStatus();
+    return OkStatus();
   }
 }
 

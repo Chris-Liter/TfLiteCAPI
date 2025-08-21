@@ -1,4 +1,6 @@
-load("//tensorflow:strict.default.bzl", "py_strict_binary", "py_strict_library")
+# Example Estimator model
+
+load("//tensorflow:strict.default.bzl", "py_strict_binary")
 
 package(
     # copybara:uncomment default_applicable_licenses = ["//tensorflow:license"],
@@ -8,18 +10,11 @@ package(
 
 py_strict_binary(
     name = "mnist_tflite",
-    srcs = ["mnist_tflite.py"],
-    python_version = "PY3",
-    deps = [
-        ":dataset",
-        "//tensorflow:tensorflow_py",
-        "//third_party/py/numpy",
+    srcs = [
+        "dataset.py",
+        "mnist_tflite.py",
     ],
-)
-
-py_strict_library(
-    name = "dataset",
-    srcs = ["dataset.py"],
+    python_version = "PY3",
     deps = [
         "//tensorflow:tensorflow_py",
         "//third_party/py/numpy",

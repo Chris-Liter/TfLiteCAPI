@@ -14,13 +14,8 @@ limitations under the License.
 ==============================================================================*/
 #include "tensorflow/compiler/mlir/quantization/tensorflow/cc/convert_asset_args.h"
 
-#include <gmock/gmock.h>
-#include "absl/strings/string_view.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"  // from @llvm-project
-#include "mlir/IR/Attributes.h"  // from @llvm-project
-#include "mlir/IR/BuiltinAttributes.h"  // from @llvm-project
 #include "mlir/IR/BuiltinOps.h"  // from @llvm-project
-#include "mlir/IR/MLIRContext.h"  // from @llvm-project
 #include "mlir/IR/OwningOpRef.h"  // from @llvm-project
 #include "mlir/Parser/Parser.h"  // from @llvm-project
 #include "mlir/Support/LLVM.h"  // from @llvm-project
@@ -30,7 +25,8 @@ limitations under the License.
 #include "tensorflow/core/platform/test.h"
 #include "tensorflow/core/protobuf/meta_graph.pb.h"
 
-namespace mlir::quant {
+namespace mlir {
+namespace quant {
 namespace {
 
 using ::tensorflow::AssetFileDef;
@@ -94,11 +90,9 @@ TEST_F(ConvertAssetArgsTest, ConvertsSingleAssetArg) {
   EXPECT_THAT(arg_attrs.get("tf_saved_model.bound_input"), IsNull());
 
   const ArrayRef<Attribute> index_path_attrs =
-      mlir::cast<ArrayAttr>(arg_attrs.get("tf_saved_model.index_path"))
-          .getValue();
+      arg_attrs.get("tf_saved_model.index_path").cast<ArrayAttr>().getValue();
   EXPECT_THAT(index_path_attrs, SizeIs(1));
-  StringAttr index_path =
-      mlir::dyn_cast_or_null<StringAttr>(index_path_attrs[0]);
+  StringAttr index_path = index_path_attrs[0].dyn_cast_or_null<StringAttr>();
   EXPECT_THAT(index_path, NotNull());
   EXPECT_THAT(index_path, Eq("arg_0:0"));
 }
@@ -124,11 +118,9 @@ TEST_F(ConvertAssetArgsTest, NonBoundedArgsNotModified) {
   EXPECT_THAT(arg_attrs.get("tf_saved_model.bound_input"), IsNull());
 
   const ArrayRef<Attribute> index_path_attrs =
-      mlir::cast<ArrayAttr>(arg_attrs.get("tf_saved_model.index_path"))
-          .getValue();
+      arg_attrs.get("tf_saved_model.index_path").cast<ArrayAttr>().getValue();
   EXPECT_THAT(index_path_attrs, SizeIs(1));
-  StringAttr index_path =
-      mlir::dyn_cast_or_null<StringAttr>(index_path_attrs[0]);
+  StringAttr index_path = index_path_attrs[0].dyn_cast_or_null<StringAttr>();
   EXPECT_THAT(index_path, NotNull());
   EXPECT_THAT(index_path, Eq("arg_0:0"));
 }
@@ -166,4 +158,5 @@ TEST_F(ConvertAssetArgsTest, FailsWhenNoMain) {
 }
 
 }  // namespace
-}  // namespace mlir::quant
+}  // namespace quant
+}  // namespace mlir

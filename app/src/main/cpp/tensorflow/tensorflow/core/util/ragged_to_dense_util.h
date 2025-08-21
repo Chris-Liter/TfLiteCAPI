@@ -28,13 +28,13 @@ namespace tensorflow {
 
 string RowPartitionTypeToString(RowPartitionType row_partition_type);
 
-absl::Status GetRowPartitionTypesHelper(
+Status GetRowPartitionTypesHelper(
     const std::vector<string>& row_partition_type_strings,
     std::vector<RowPartitionType>* row_partition_types);
 
 // ContextType must be InferenceContext or OpKernelConstruction.
 template <typename ContextType>
-absl::Status GetRowPartitionTypes(
+Status GetRowPartitionTypes(
     ContextType* context, std::vector<RowPartitionType>* row_partition_types) {
   std::vector<string> row_partition_type_strings;
   TF_RETURN_IF_ERROR(
@@ -43,19 +43,19 @@ absl::Status GetRowPartitionTypes(
                                     row_partition_types);
 }
 
-absl::Status GetRowPartitionTypesHelper(
+Status GetRowPartitionTypesHelper(
     const std::vector<string>& row_partition_type_strings,
     std::vector<RowPartitionType>* row_partition_types);
 
-absl::Status CombineRaggedTensorToTensorShapes(
-    int ragged_rank, const TensorShapeProto& shape,
-    const TensorShapeProto& value_shape, TensorShapeProto* output_shape);
+Status CombineRaggedTensorToTensorShapes(int ragged_rank,
+                                         const TensorShapeProto& shape,
+                                         const TensorShapeProto& value_shape,
+                                         TensorShapeProto* output_shape);
 
 int GetRaggedRank(const std::vector<RowPartitionType>& row_partition_types);
 
-absl::Status ValidateDefaultValueShape(
-    const TensorShapeProto& default_value_shape,
-    const TensorShapeProto& value_shape);
+Status ValidateDefaultValueShape(const TensorShapeProto& default_value_shape,
+                                 const TensorShapeProto& value_shape);
 
 }  // namespace tensorflow
 

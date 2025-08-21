@@ -17,23 +17,15 @@ limitations under the License.
 #include <assert.h>
 #include <stdlib.h>
 
-#include <cstdint>
 #include <string>
 #include <vector>
 
-#include "absl/status/status.h"
-#include "absl/strings/numbers.h"
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/platform/errors.h"
 #include "tensorflow/core/platform/status.h"
 #include "tensorflow/core/platform/str_util.h"
 #include "tensorflow/core/platform/stringpiece.h"
-#include "tensorflow/core/platform/types.h"
 #include "tensorflow/core/runtime_fallback/util/attr_util.h"
-#include "tensorflow/core/util/padding.h"
-#include "tfrt/core_runtime/op_attr_type.h"  // from @tf_runtime
-#include "tfrt/core_runtime/op_attrs.h"  // from @tf_runtime
-#include "tfrt/host_context/kernel_utils.h"  // from @tf_runtime
 
 namespace tensorflow {
 
@@ -67,30 +59,30 @@ bool ParseBoolAttrValue(StringPiece attr_value) {
   }
 }
 
-absl::Status ParseValue(StringPiece input, bool* value) {
+Status ParseValue(StringPiece input, bool* value) {
   *value = ParseBoolAttrValue(input);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status ParseValue(StringPiece input, int32* value) {
+Status ParseValue(StringPiece input, int32* value) {
   bool parse_result = absl::SimpleAtoi(input, value);
   if (!parse_result) {
     return errors::InvalidArgument("Could not parse int32 from ", input);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status ParseValue(StringPiece input, DataType* value) {
+Status ParseValue(StringPiece input, DataType* value) {
   *value = ParseTFDataType(input);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status ParseValue(StringPiece input, std::string* value) {
+Status ParseValue(StringPiece input, std::string* value) {
   *value = std::string(input);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status ParseValue(StringPiece input, std::vector<int32>* value) {
+Status ParseValue(StringPiece input, std::vector<int32>* value) {
   std::vector<std::string> parts = str_util::Split(input, ",");
   value->reserve(parts.size());
   for (const auto& value_str : parts) {
@@ -102,16 +94,16 @@ absl::Status ParseValue(StringPiece input, std::vector<int32>* value) {
     }
     value->push_back(value_int);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status ParseValue(StringPiece input, Padding* value) {
+Status ParseValue(StringPiece input, Padding* value) {
   return GetPaddingFromString(input, value);
 }
 
-absl::Status AddOpAttr(const std::string& name, const std::string& attr_value,
-                       tfrt::OpAttrs* opattrs) {
-  absl::Status s;
+Status AddOpAttr(const std::string& name, const std::string& attr_value,
+                 tfrt::OpAttrs* opattrs) {
+  Status s;
   // Splits attr_value into type and value
   std::vector<absl::string_view> value_split = tfd::AttrValueSplit(attr_value);
   auto& type = value_split[0];
@@ -140,15 +132,14 @@ absl::Status AddOpAttr(const std::string& name, const std::string& attr_value,
   return s;
 }
 
-absl::Status FillOpAttrs(tfrt::RemainingAttributes attrs,
-                         tfrt::OpAttrs* opattrs) {
+Status FillOpAttrs(tfrt::RemainingAttributes attrs, tfrt::OpAttrs* opattrs) {
   int num_tf_attrs = attrs.size() / 2;
-  absl::Status status;
+  Status status;
   for (int i = 0; i < num_tf_attrs; ++i) {
     // Each TF attribute is represented as a pair of name and value strings.
     std::string name = attrs.GetStringAttribute(i * 2).str();
     std::string attr_value = attrs.GetStringAttribute(i * 2 + 1).str();
-    absl::Status s = AddOpAttr(name, attr_value, opattrs);
+    Status s = AddOpAttr(name, attr_value, opattrs);
     status.Update(s);
   }
   return status;

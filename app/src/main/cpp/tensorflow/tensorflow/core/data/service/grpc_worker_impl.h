@@ -41,12 +41,11 @@ class GrpcWorkerImpl : public WorkerService::Service {
                           ::grpc::ServerBuilder& server_builder);
   ~GrpcWorkerImpl() override { Stop(); }
 
-  absl::Status Start(
-      const std::string& worker_address,
-      const std::vector<DataTransferServerInfo>& transfer_servers);
+  Status Start(const std::string& worker_address,
+               const std::vector<DataTransferServerInfo>& transfer_servers);
   void Stop();
 
-  std::function<absl::Status(const GetElementRequest*, GetElementResult*)>
+  std::function<Status(const GetElementRequest*, GetElementResult*)>
   get_element_getter() {
     return [this](const GetElementRequest* request, GetElementResult* result) {
       return impl_->GetElementResult(request, result);
@@ -71,8 +70,7 @@ class GrpcWorkerImpl : public WorkerService::Service {
   // the servers' methods to avoid RPC calls and data copy.
   std::shared_ptr<DataServiceWorkerImpl> impl_;
 
-  GrpcWorkerImpl(const GrpcWorkerImpl&) = delete;
-  void operator=(const GrpcWorkerImpl&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(GrpcWorkerImpl);
 };
 
 }  // namespace data

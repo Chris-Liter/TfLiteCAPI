@@ -41,10 +41,10 @@ constexpr char kShuffleAndRepeatDatasetV2[] = "ShuffleAndRepeatDatasetV2";
 
 constexpr char kReshuffleEachIteration[] = "reshuffle_each_iteration";
 
-absl::Status FuseShuffleV1AndRepeat(const NodeDef& shuffle_node,
-                                    const NodeDef& repeat_node,
-                                    MutableGraphView* graph, GraphDef* output,
-                                    NodeDef* fused_node) {
+Status FuseShuffleV1AndRepeat(const NodeDef& shuffle_node,
+                              const NodeDef& repeat_node,
+                              MutableGraphView* graph, GraphDef* output,
+                              NodeDef* fused_node) {
   fused_node->set_op(kShuffleAndRepeatDataset);
   graph_utils::SetUniqueGraphNodeName(kShuffleAndRepeatDataset, output,
                                       fused_node);
@@ -72,13 +72,13 @@ absl::Status FuseShuffleV1AndRepeat(const NodeDef& shuffle_node,
   // Optionally set the `metadata` attribute.
   graph_utils::MaybeSetFusedMetadata(shuffle_node, repeat_node, fused_node);
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status FuseShuffleV2AndRepeat(const NodeDef& shuffle_node,
-                                    const NodeDef& repeat_node,
-                                    MutableGraphView* graph, GraphDef* output,
-                                    NodeDef* fused_node) {
+Status FuseShuffleV2AndRepeat(const NodeDef& shuffle_node,
+                              const NodeDef& repeat_node,
+                              MutableGraphView* graph, GraphDef* output,
+                              NodeDef* fused_node) {
   fused_node->set_op(kShuffleAndRepeatDatasetV2);
   graph_utils::SetUniqueGraphNodeName(kShuffleAndRepeatDatasetV2, output,
                                       fused_node);
@@ -112,13 +112,13 @@ absl::Status FuseShuffleV2AndRepeat(const NodeDef& shuffle_node,
   // Optionally set the `metadata` attribute.
   graph_utils::MaybeSetFusedMetadata(shuffle_node, repeat_node, fused_node);
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status FuseShuffleV3AndRepeat(const NodeDef& shuffle_node,
-                                    const NodeDef& repeat_node,
-                                    MutableGraphView* graph, GraphDef* output,
-                                    NodeDef* fused_node) {
+Status FuseShuffleV3AndRepeat(const NodeDef& shuffle_node,
+                              const NodeDef& repeat_node,
+                              MutableGraphView* graph, GraphDef* output,
+                              NodeDef* fused_node) {
   fused_node->set_op(kShuffleAndRepeatDatasetV2);
   graph_utils::SetUniqueGraphNodeName(kShuffleAndRepeatDataset, output,
                                       fused_node);
@@ -149,12 +149,12 @@ absl::Status FuseShuffleV3AndRepeat(const NodeDef& shuffle_node,
   // Optionally set the `metadata` attribute.
   graph_utils::MaybeSetFusedMetadata(shuffle_node, repeat_node, fused_node);
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace
 
-absl::Status ShuffleAndRepeatFusion::OptimizeAndCollectStats(
+Status ShuffleAndRepeatFusion::OptimizeAndCollectStats(
     Cluster* cluster, const GrapplerItem& item, GraphDef* output,
     OptimizationStats* stats) {
   *output = item.graph;
@@ -205,7 +205,7 @@ absl::Status ShuffleAndRepeatFusion::OptimizeAndCollectStats(
   }
 
   TF_RETURN_IF_ERROR(graph.DeleteNodes(nodes_to_delete));
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 REGISTER_GRAPH_OPTIMIZER_AS(ShuffleAndRepeatFusion,

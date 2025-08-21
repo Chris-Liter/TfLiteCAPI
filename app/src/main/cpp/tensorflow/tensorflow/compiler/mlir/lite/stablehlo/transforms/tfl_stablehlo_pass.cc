@@ -17,7 +17,6 @@ limitations under the License.
 #include <memory>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include "flatbuffers/flatbuffers.h"  // from @flatbuffers
 #include "flatbuffers/flexbuffers.h"  // from @flatbuffers
@@ -43,51 +42,6 @@ limitations under the License.
 
 namespace mlir {
 namespace odml {
-
-static bool isDenseI64Array(llvm::StringRef op_name,
-                            llvm::StringRef field_name) {
-  if (op_name == "stablehlo.broadcast" && field_name == "broadcast_sizes")
-    return true;
-  if (op_name == "stablehlo.broadcast_in_dim" &&
-      field_name == "broadcast_dimensions")
-    return true;
-  if ((op_name == "stablehlo.convolution" ||
-       op_name == "stablehlo.dynamic_conv") &&
-      (field_name == "window_strides" || field_name == "lhs_dilation" ||
-       field_name == "rhs_dilation"))
-    return true;
-  if (op_name == "stablehlo.dynamic_broadcast_in_dim" &&
-      (field_name == "broadcast_dimensions" ||
-       field_name == "known_expanding_dimensions" ||
-       field_name == "known_nonexpanding_dimensions"))
-    return true;
-  if ((op_name == "stablehlo.dynamic_slice" || op_name == "stablehlo.gather") &&
-      field_name == "slice_sizes")
-    return true;
-  if (op_name == "stablehlo.fft" && field_name == "fft_length") return true;
-  if ((op_name == "stablehlo.map" || op_name == "stablehlo.reduce" ||
-       op_name == "stablehlo.reverse") &&
-      field_name == "dimensions")
-    return true;
-  if (op_name == "stablehlo.pad" &&
-      (field_name == "edge_padding_low" || field_name == "edge_padding_high" ||
-       field_name == "interior_padding"))
-    return true;
-  if (op_name == "stablehlo.reduce_window" &&
-      (field_name == "window_dimensions" || field_name == "window_strides" ||
-       field_name == "base_dilations" || field_name == "window_dilations"))
-    return true;
-  if (op_name == "stablehlo.select_and_scatter" &&
-      (field_name == "window_dimensions" || field_name == "window_strides"))
-    return true;
-  if (op_name == "stablehlo.slice" &&
-      (field_name == "start_indices" || field_name == "limit_indices" ||
-       field_name == "strides"))
-    return true;
-  if (op_name == "stablehlo.transpose" && field_name == "permutation")
-    return true;
-  return false;
-}
 
 class TflToStablehloPass
     : public mlir::PassWrapper<TflToStablehloPass,
@@ -120,8 +74,7 @@ class TflToStablehloPass
   }
 
   llvm::SmallVector<mlir::NamedAttribute, 4> ReadAttr(const flexbuffers::Map& m,
-                                                      Builder* builder,
-                                                      std::string op_name) {
+                                                      Builder* builder) {
     llvm::SmallVector<mlir::NamedAttribute, 4> attrs;
     const auto& keys = m.Keys();
     for (size_t i = 0; i < keys.size(); ++i) {
@@ -135,20 +88,9 @@ class TflToStablehloPass
           attrs.push_back(named_attr);
           break;
         }
-        case flexbuffers::FBT_VECTOR_BOOL: {
-          llvm::SmallVector<bool> vec;
-          const auto& vector = value.AsTypedVector();
-          for (size_t i = 0; i < vector.size(); i++) {
-            vec.push_back(vector[i].AsBool());
-          }
-          attrs.push_back(
-              builder->getNamedAttr(key, builder->getDenseBoolArrayAttr(vec)));
-          break;
-        }
         case flexbuffers::FBT_VECTOR_INT: {
           const auto& vector = value.AsTypedVector();
           std::vector<int64_t> vec;
-          vec.reserve(vector.size());
           for (size_t i = 0; i < vector.size(); i++) {
             vec.push_back(vector[i].AsInt64());
           }
@@ -159,15 +101,10 @@ class TflToStablehloPass
           } else {
             shape.push_back(vec.size());
           }
-          Attribute value;
-          if (isDenseI64Array(op_name, key)) {
-            value = builder->getDenseI64ArrayAttr(vec);
-          } else {
-            RankedTensorType ty = tensorflow::GetTypeFromTFTensorShape(
-                shape, builder->getIntegerType(64));
-            value = DenseIntElementsAttr::get(ty, vec);
-          }
-          auto named_attr = builder->getNamedAttr(key, value);
+          RankedTensorType ty = tensorflow::GetTypeFromTFTensorShape(
+              shape, builder->getIntegerType(64));
+          auto named_attr =
+              builder->getNamedAttr(key, DenseIntElementsAttr::get(ty, vec));
           attrs.push_back(named_attr);
           break;
         }
@@ -243,8 +180,7 @@ void TflToStablehloPass::runOnOperation() {
         flexbuffers::GetRoot(option_buf,
                              custom_op.getCustomOption().getValue().size())
             .AsMap();
-    auto attr =
-        ReadAttr(flex_buffer_map, &builder, custom_op.getCustomCode().str());
+    auto attr = ReadAttr(flex_buffer_map, &builder);
     OperationState op_state(custom_op.getLoc(),
                             custom_op.getCustomCode().str());
     op_state.addOperands(custom_op.getOperands());

@@ -55,24 +55,23 @@ namespace tensorflow {
 namespace grappler {
 namespace {
 
-using TensorVector = absl::InlinedVector<TensorValue, 4UL>;
+using TensorVector = gtl::InlinedVector<TensorValue, 4>;
 
 class LoopInvariantNodeMotionOptimizer {
  public:
   explicit LoopInvariantNodeMotionOptimizer(GraphDef* optimized_graph)
       : optimized_graph_(optimized_graph) {}
   virtual ~LoopInvariantNodeMotionOptimizer() = default;
-  absl::Status Optimize();
+  Status Optimize();
 
  private:
-  absl::Status FindInvariantNodes(NodeDef* node);
-  absl::Status RevertInvariantNodes();
-  absl::Status MoveInvariantNodes(const int frame_id);
-  absl::Status HandleInvariantNode(NodeDef* node, const int num_outputs,
-                                   const int frame_id);
-  absl::Status HandleConst(NodeDef* node, const int num_outputs,
-                           const int frame_id);
-  absl::Status HandleInvariantEnter(NodeDef* node, const int num_outputs);
+  Status FindInvariantNodes(NodeDef* node);
+  Status RevertInvariantNodes();
+  Status MoveInvariantNodes(const int frame_id);
+  Status HandleInvariantNode(NodeDef* node, const int num_outputs,
+                             const int frame_id);
+  Status HandleConst(NodeDef* node, const int num_outputs, const int frame_id);
+  Status HandleInvariantEnter(NodeDef* node, const int num_outputs);
 
   GraphDef* optimized_graph_;  // Not owned.
   std::unique_ptr<NodeMap> node_map_;
@@ -85,7 +84,7 @@ class LoopInvariantNodeMotionOptimizer {
   int new_enter_id_;
 };
 
-absl::Status LoopInvariantNodeMotionOptimizer::HandleInvariantEnter(
+Status LoopInvariantNodeMotionOptimizer::HandleInvariantEnter(
     NodeDef* node, const int num_outputs) {
   auto consumers = node_map_->GetOutputs(node->name());
   std::vector<string> enter_control_inputs;
@@ -112,11 +111,12 @@ absl::Status LoopInvariantNodeMotionOptimizer::HandleInvariantEnter(
       }
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status LoopInvariantNodeMotionOptimizer::HandleConst(
-    NodeDef* node, const int num_outputs, const int frame_id) {
+Status LoopInvariantNodeMotionOptimizer::HandleConst(NodeDef* node,
+                                                     const int num_outputs,
+                                                     const int frame_id) {
   NodeDef* const_node = nullptr;
   if (num_outputs == 0) {
     // all successor nodes are invariant
@@ -183,10 +183,10 @@ absl::Status LoopInvariantNodeMotionOptimizer::HandleConst(
     const_node->add_input(ctrl_dep);
     node_map_->AddOutput(NodeName(ctrl_dep), const_node->name());
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status LoopInvariantNodeMotionOptimizer::HandleInvariantNode(
+Status LoopInvariantNodeMotionOptimizer::HandleInvariantNode(
     NodeDef* node, const int num_outputs, const int frame_id) {
   // have to remove control inputs to the invariant node from the same frame
   // when moving this node out of this frame
@@ -197,7 +197,7 @@ absl::Status LoopInvariantNodeMotionOptimizer::HandleInvariantNode(
     }
   }
   if (num_outputs == 0) {
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   DataTypeVector input_types;
@@ -252,10 +252,10 @@ absl::Status LoopInvariantNodeMotionOptimizer::HandleInvariantNode(
       }
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status LoopInvariantNodeMotionOptimizer::MoveInvariantNodes(
+Status LoopInvariantNodeMotionOptimizer::MoveInvariantNodes(
     const int frame_id) {
   for (auto iter = invariant_nodes_.begin(); iter != invariant_nodes_.end();
        ++iter) {
@@ -270,10 +270,10 @@ absl::Status LoopInvariantNodeMotionOptimizer::MoveInvariantNodes(
           HandleInvariantNode(invariant_node, num_outputs, frame_id));
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status LoopInvariantNodeMotionOptimizer::RevertInvariantNodes() {
+Status LoopInvariantNodeMotionOptimizer::RevertInvariantNodes() {
   std::deque<const NodeDef*> reverted_nodes;
   for (auto iter = invariant_nodes_.begin(); iter != invariant_nodes_.end();) {
     bool erased = false;
@@ -327,10 +327,10 @@ absl::Status LoopInvariantNodeMotionOptimizer::RevertInvariantNodes() {
       }
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status LoopInvariantNodeMotionOptimizer::FindInvariantNodes(
+Status LoopInvariantNodeMotionOptimizer::FindInvariantNodes(
     NodeDef* start_node) {
   std::vector<NodeDef*> stack;
   stack.reserve(32);
@@ -376,10 +376,10 @@ absl::Status LoopInvariantNodeMotionOptimizer::FindInvariantNodes(
       }
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status LoopInvariantNodeMotionOptimizer::Optimize() {
+Status LoopInvariantNodeMotionOptimizer::Optimize() {
   node_map_.reset(new NodeMap(optimized_graph_));
   FrameView frame_view;
   // TODO(ezhulenev): Use GraphView when migrated from NodeMap.
@@ -450,7 +450,7 @@ absl::Status LoopInvariantNodeMotionOptimizer::Optimize() {
 
     TF_RETURN_IF_ERROR(MoveInvariantNodes(frame_id));
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 std::vector<int> GetStackPushNodesToConvert(
@@ -516,8 +516,8 @@ std::vector<int> GetStackPushNodesToConvert(
   return nodes_to_convert;
 }
 
-absl::Status RemoveStackOps(const std::unordered_set<string>& nodes_to_preserve,
-                            GraphDef* optimized_graph) {
+Status RemoveStackOps(const std::unordered_set<string>& nodes_to_preserve,
+                      GraphDef* optimized_graph) {
   NodeMap node_map(optimized_graph);
   GraphTopologyView graph_view;
   TF_RETURN_IF_ERROR(graph_view.InitializeFromGraph(*optimized_graph));
@@ -544,7 +544,7 @@ absl::Status RemoveStackOps(const std::unordered_set<string>& nodes_to_preserve,
       }
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 bool IsSimpleBinaryOperator(const NodeDef& node) {
@@ -552,10 +552,12 @@ bool IsSimpleBinaryOperator(const NodeDef& node) {
           IsGreaterEqual(node) || IsEqual(node));
 }
 
-absl::Status EvaluateBoolOpForConstantOperands(
-    const NodeDef& op_node, const NodeDef& constant_operand_0,
-    const NodeDef& constant_operand_1, DeviceBase* cpu_device,
-    ResourceMgr* resource_mgr, bool* value) {
+Status EvaluateBoolOpForConstantOperands(const NodeDef& op_node,
+                                         const NodeDef& constant_operand_0,
+                                         const NodeDef& constant_operand_1,
+                                         DeviceBase* cpu_device,
+                                         ResourceMgr* resource_mgr,
+                                         bool* value) {
   VLOG(4) << "Evaluate bool op: op_node=" << op_node.name()
           << " input0=" << constant_operand_0.name()
           << " input1=" << constant_operand_1.name();
@@ -575,13 +577,12 @@ absl::Status EvaluateBoolOpForConstantOperands(
       EvaluateNode(op_node, inputs, cpu_device, resource_mgr, &outputs));
 
   if (outputs.size() != 1 || outputs[0].tensor == nullptr) {
-    return absl::Status(absl::StatusCode::kInvalidArgument,
-                        "Expected one output.");
+    return Status(absl::StatusCode::kInvalidArgument, "Expected one output.");
   }
   *value = outputs[0].tensor->scalar<bool>()();
   delete outputs[0].tensor;
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // TODO(lyandy): Consolidate with ConstantFolding implementation.
@@ -594,13 +595,11 @@ bool IsReallyConstant(const NodeDef& node,
   return feed_nodes.find(node.name()) == feed_nodes.end();
 }
 
-absl::Status CheckForDeadFanout(const MutableGraphView& view,
-                                const NodeDef& switch_node,
-                                const NodeMap& node_map,
-                                const absl::flat_hash_set<string>& feed_nodes,
-                                DeviceBase* cpu_device,
-                                ResourceMgr* resource_mgr,
-                                bool* has_dead_fanout, int* dead_fanout) {
+Status CheckForDeadFanout(const MutableGraphView& view,
+                          const NodeDef& switch_node, const NodeMap& node_map,
+                          const absl::flat_hash_set<string>& feed_nodes,
+                          DeviceBase* cpu_device, ResourceMgr* resource_mgr,
+                          bool* has_dead_fanout, int* dead_fanout) {
   *has_dead_fanout = false;
   GraphView::InputPort switch_loopcond_port(&switch_node, 1);
   const NodeDef* switch_predicate =
@@ -615,7 +614,7 @@ absl::Status CheckForDeadFanout(const MutableGraphView& view,
     CHECK(selector.FromProto(switch_predicate->attr().at("value").tensor()));
     *has_dead_fanout = true;
     *dead_fanout = selector.scalar<bool>()() ? 0 : 1;
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   GraphView::InputPort switch_input_port(&switch_node, 0);
@@ -626,7 +625,7 @@ absl::Status CheckForDeadFanout(const MutableGraphView& view,
   // operator which returns false for the initialization value.
   // TODO(srjoglekar): Improve to work with arbitrary predicate subgraphs.
   if (!IsMerge(*switch_input) || !IsLoopCond(*switch_predicate)) {
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   VLOG(4) << "Try to find a zero iteration while loop:"
@@ -635,7 +634,7 @@ absl::Status CheckForDeadFanout(const MutableGraphView& view,
   // Find the boolean predicate from a LoopCond node (e.g. Greater).
   NodeDef* switch_ctrl_node = view.GetRegularFanin({switch_predicate, 0}).node;
   if (!switch_ctrl_node || !IsSimpleBinaryOperator(*switch_ctrl_node)) {
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   // Find the Merge node & the Constant Operand to the condition node, if
@@ -657,7 +656,7 @@ absl::Status CheckForDeadFanout(const MutableGraphView& view,
     }
   }
   if (merge_node == nullptr || constant_ctrl_input == nullptr) {
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   // Find the initialization constant (via Enter, if one exists).
@@ -673,7 +672,7 @@ absl::Status CheckForDeadFanout(const MutableGraphView& view,
     }
   }
   if (enter_node != nullptr) {
-    if (constant_init_node != nullptr) return absl::OkStatus();
+    if (constant_init_node != nullptr) return OkStatus();
     for (const auto& input : enter_node->input()) {
       NodeDef* node = node_map.GetNode(input);
       if (IsReallyConstant(*node, feed_nodes)) {
@@ -682,7 +681,7 @@ absl::Status CheckForDeadFanout(const MutableGraphView& view,
     }
   }
   if (constant_init_node == nullptr) {
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   VLOG(4) << "Check if loop will be 0 iterations:"
@@ -713,7 +712,7 @@ absl::Status CheckForDeadFanout(const MutableGraphView& view,
   } else {
     VLOG(4) << "Was not able to prove that loop has 0 iterations.";
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace
@@ -731,8 +730,8 @@ LoopOptimizer::LoopOptimizer(RewriterConfig::Toggle opt_level,
   resource_mgr_.reset(new ResourceMgr());
 }
 
-absl::Status LoopOptimizer::Optimize(Cluster* cluster, const GrapplerItem& item,
-                                     GraphDef* optimized_graph) {
+Status LoopOptimizer::Optimize(Cluster* cluster, const GrapplerItem& item,
+                               GraphDef* optimized_graph) {
   if (!options_.enable_loop_invariant_node_motion &&
       !options_.enable_stack_push_removal &&
       !options_.enable_dead_branch_removal) {
@@ -757,13 +756,13 @@ absl::Status LoopOptimizer::Optimize(Cluster* cluster, const GrapplerItem& item,
                                           feed_nodes, optimized_graph));
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // An Identity node has only 1 output, but Switch and Merge nodes have 2.
 // Update full type information (which describes the output) if present, i.e.
 // do simple type inference.
-static absl::Status update_identity_node_type(NodeDef* sw_node) {
+static Status update_identity_node_type(NodeDef* sw_node) {
   if (sw_node->has_experimental_type() &&
       (sw_node->experimental_type().type_id() == TFT_PRODUCT)) {
     FullTypeDef old_t = sw_node->experimental_type();
@@ -782,10 +781,10 @@ static absl::Status update_identity_node_type(NodeDef* sw_node) {
     *(new_t.add_args()) = old_t.args()[0];
     *(sw_node->mutable_experimental_type()) = new_t;
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status LoopOptimizer::RemoveDeadBranches(
+Status LoopOptimizer::RemoveDeadBranches(
     const std::unordered_set<string>& nodes_to_preserve, NodeMap& node_map,
     const absl::flat_hash_set<string>& feed_nodes, GraphDef* optimized_graph) {
   std::unordered_set<const NodeDef*> dead_nodes;
@@ -934,14 +933,14 @@ absl::Status LoopOptimizer::RemoveDeadBranches(
       LOG(WARNING)
           << "Skipping loop optimization for Merge node with control input: "
           << merge_node->name();
-      return absl::OkStatus();
+      return OkStatus();
     } else if (dead_inputs.size() != 1 || num_data_inputs != 2) {
       LOG(WARNING) << "Skipping loop optimization for Merge node ("
                    << merge_node->name()
                    << ") with unexpected dead_inputs.size() ("
                    << dead_inputs.size() << " or  num_data_inputs"
                    << num_data_inputs;
-      return absl::OkStatus();
+      return OkStatus();
     }
   }
 
@@ -1014,7 +1013,7 @@ absl::Status LoopOptimizer::RemoveDeadBranches(
   }
   EraseNodesFromGraph(std::move(nodes_idx_to_delete), optimized_graph);
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // end namespace grappler

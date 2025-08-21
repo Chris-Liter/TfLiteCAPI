@@ -22,15 +22,13 @@ limitations under the License.
 
 #include "absl/strings/str_split.h"
 #include "flatbuffers/base.h"  // from @flatbuffers
-#include "flatbuffers/buffer.h"  // from @flatbuffers
-#include "flatbuffers/flatbuffer_builder.h"  // from @flatbuffers
+#include "flatbuffers/flatbuffers.h"  // from @flatbuffers
 #include "flatbuffers/idl.h"  // from @flatbuffers
+#include "flatbuffers/reflection.h"  // from @flatbuffers
 #include "flatbuffers/reflection_generated.h"  // from @flatbuffers
 #include "flatbuffers/util.h"  // from @flatbuffers
 #include "tensorflow/lite/core/interpreter.h"
 #include "tensorflow/lite/core/interpreter_builder.h"
-#include "tensorflow/lite/core/kernels/register.h"
-#include "tensorflow/lite/schema/schema_generated.h"
 #if FLATBUFFERS_LITTLEENDIAN == 0
 #include "tensorflow/lite/core/model_builder.h"
 #endif
@@ -76,7 +74,7 @@ int RunEmbedder(const EmbedderOptions& options) {
     return 3;
   }
 #if FLATBUFFERS_LITTLEENDIAN == 0
-  tflite::FlatBufferModel::ByteSwapSerializedModel(&main_model_contents, false);
+  tflite::FlatBufferModel::ByteSwapSerializedModel(&main_model_contents);
 #endif
   const Model* main_model =
       flatbuffers::GetRoot<Model>(main_model_contents.data());
@@ -90,8 +88,7 @@ int RunEmbedder(const EmbedderOptions& options) {
     return 4;
   }
 #if FLATBUFFERS_LITTLEENDIAN == 0
-  tflite::FlatBufferModel::ByteSwapSerializedModel(&metrics_model_contents,
-                                                   false);
+  tflite::FlatBufferModel::ByteSwapSerializedModel(&metrics_model_contents);
 #endif
   const Model* metrics_model =
       flatbuffers::GetRoot<Model>(metrics_model_contents.data());
@@ -141,7 +138,7 @@ int RunEmbedder(const EmbedderOptions& options) {
     return 7;
   }
 #if FLATBUFFERS_LITTLEENDIAN == 0
-  tflite::FlatBufferModel::ByteSwapSerializedModel(&binary, true);
+  tflite::FlatBufferModel::ByteSwapSerializedModel(&binary);
 #endif
   f << binary;
   f.close();

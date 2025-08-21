@@ -18,13 +18,9 @@ limitations under the License.
 
 #include <string>
 
-#include "absl/status/status.h"
-#include "tensorflow/core/framework/node_def.pb.h"
 #include "tensorflow/core/framework/node_def_builder.h"
-#include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/graph/graph.h"
-#include "tensorflow/core/platform/status.h"
-#include "tensorflow/core/platform/types.h"
+#include "tensorflow/core/lib/core/status.h"
 
 namespace tensorflow {
 
@@ -41,7 +37,7 @@ class IncompleteNodeDefBuilder {
 
   IncompleteNodeDefBuilder& Device(const string& device);
 
-  absl::Status Build(Graph* graph, Node** n);
+  Status Build(Graph* graph, Node** n);
 
   static IncompleteNodeDefBuilder Identity(const string& name,
                                            const DataType& type,

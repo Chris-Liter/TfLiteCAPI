@@ -17,10 +17,6 @@ limitations under the License.
 #include <memory>
 #include <utility>
 
-#include "xla/tsl/concurrency/async_value_ref.h"
-#include "xla/tsl/concurrency/chain.h"
-#include "tensorflow/core/tfrt/mlrt/interpreter/context.h"
-
 namespace mlrt {
 
 std::pair<AsyncHandle::Promise, AsyncHandle> AsyncHandle::Allocate(
@@ -28,8 +24,7 @@ std::pair<AsyncHandle::Promise, AsyncHandle> AsyncHandle::Allocate(
   auto user_contexts = current.CopyUserContexts();
 
   auto new_context = std::make_unique<ExecutionContext>(
-      &current.loaded_executable(), std::move(user_contexts),
-      current.user_error_loggers());
+      &current.loaded_executable(), std::move(user_contexts));
   new_context->set_work_queue(current.work_queue());
 
   auto shared_state = tsl::MakeConstructedAsyncValueRef<tsl::Chain>();

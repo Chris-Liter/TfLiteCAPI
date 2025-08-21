@@ -1,6 +1,7 @@
+load("//tensorflow/core/platform:rules_cc.bzl", "cc_library")
+
 # Experimental windows filesystem plugin.
 load("//tensorflow:tensorflow.bzl", "get_win_copts", "tf_cc_shared_object")
-load("//tensorflow/core/platform:rules_cc.bzl", "cc_library")
 
 package(
     # copybara:uncomment default_applicable_licenses = ["//tensorflow:license"],
@@ -31,5 +32,8 @@ cc_library(
         "nobuilder",
         "notap",
     ],
-    deps = ["//tensorflow/c/experimental/filesystem:filesystem_interface"],
+    deps = [
+        "//tensorflow/c:tf_status",
+        "//tensorflow/c/experimental/filesystem:filesystem_interface",
+    ],
 )

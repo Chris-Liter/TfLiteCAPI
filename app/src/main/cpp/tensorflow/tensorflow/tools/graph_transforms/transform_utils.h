@@ -118,8 +118,8 @@ void RemoveAttributes(const GraphDef& input_graph_def,
 // For a lot of replacement and matching operations it's useful to have the
 // nodes processed in a controlled order, so this does a topological sort to
 // ensure that nodes always appear in the GraphDef.node list after their inputs.
-absl::Status SortByExecutionOrder(const GraphDef& input_graph_def,
-                                  GraphDef* output_graph_def);
+Status SortByExecutionOrder(const GraphDef& input_graph_def,
+                            GraphDef* output_graph_def);
 
 // Finds inputs that refer to nodes that are not in the graph.
 void FindInvalidInputs(const GraphDef& graph_def,
@@ -127,15 +127,14 @@ void FindInvalidInputs(const GraphDef& graph_def,
 
 // Returns a descriptive error status if there are problems spotted with the
 // graph.
-absl::Status IsGraphValid(const GraphDef& graph_def);
+Status IsGraphValid(const GraphDef& graph_def);
 
 // Returns input and output types for a particular NodeDef.
-absl::Status GetInOutTypes(const NodeDef& node_def, DataTypeVector* inputs,
-                           DataTypeVector* outputs);
+Status GetInOutTypes(const NodeDef& node_def, DataTypeVector* inputs,
+                     DataTypeVector* outputs);
 
 // Takes a comma-separated string of numbers and parses them into a shape.
-absl::Status TensorShapeFromString(const string& shape_string,
-                                   TensorShape* result);
+Status TensorShapeFromString(const string& shape_string, TensorShape* result);
 
 // This is used to spot particular subgraphs in a larger model. To use it,
 // create a pattern like:
@@ -168,8 +167,8 @@ class GraphMatcher {
   // matches so that no node appears in more than one match. The NodeDef
   // pointers contained in the results are owned by the GraphMatcher object, and
   // so will be invalid after its lifetime.
-  absl::Status GetOpTypeMatches(const OpTypePattern& pattern,
-                                std::vector<NodeMatch>* matches);
+  Status GetOpTypeMatches(const OpTypePattern& pattern,
+                          std::vector<NodeMatch>* matches);
 
  private:
   bool DoesOpTypeMatch(const NodeDef& node, const OpTypePattern& pattern,
@@ -196,11 +195,11 @@ struct ReplaceMatchingOpTypesOptions {
 // by setting allow_inconsistencies to true in the options, but then it's the
 // caller's responsibility to patch up any problems before passing on the graph
 // to others. There's more comprehensive usage documentation in the README.
-absl::Status ReplaceMatchingOpTypes(
+Status ReplaceMatchingOpTypes(
     const GraphDef& input_graph_def, const OpTypePattern& pattern,
-    const std::function<absl::Status(const NodeMatch&, const std::set<string>&,
-                                     const std::set<string>&,
-                                     std::vector<NodeDef>*)>& node_generator,
+    const std::function<Status(const NodeMatch&, const std::set<string>&,
+                               const std::set<string>&, std::vector<NodeDef>*)>&
+        node_generator,
     const ReplaceMatchingOpTypesOptions& options, GraphDef* output_graph_def);
 
 // Returns a list of the unique nodes found in this match.
@@ -208,10 +207,10 @@ void MatchedNodesAsArray(const NodeMatch& match, std::vector<NodeDef>* result);
 
 // Changes all input references to a particular node name. Any nodes with names
 // listed in nodes_to_ignore will not have their inputs rewritten.
-absl::Status RenameNodeInputs(const GraphDef& input_graph_def,
-                              const std::map<string, string>& inputs_to_rename,
-                              const std::unordered_set<string>& nodes_to_ignore,
-                              GraphDef* output_graph_def);
+Status RenameNodeInputs(const GraphDef& input_graph_def,
+                        const std::map<string, string>& inputs_to_rename,
+                        const std::unordered_set<string>& nodes_to_ignore,
+                        GraphDef* output_graph_def);
 
 // Utility function that copies all the nodes found in a match into the
 // new_nodes list. This is useful in replacement functions when you decide to
@@ -229,39 +228,38 @@ struct TransformFuncContext {
   int CountParameters(const string& name) const;
 
   // Gets a single instance of a parameter, using a default if it's not present.
-  absl::Status GetOneStringParameter(const string& name,
-                                     const string& default_value,
-                                     string* result) const;
+  Status GetOneStringParameter(const string& name, const string& default_value,
+                               string* result) const;
 
   // Gets a single occurrence of a parameter as a 32-bit integer, falling back
   // to a default if it isn't present and returning an error if it isn't
   // convertible to a number.
-  absl::Status GetOneInt32Parameter(const string& name, int32_t default_value,
-                                    int32* result) const;
+  Status GetOneInt32Parameter(const string& name, int32_t default_value,
+                              int32* result) const;
 
   // Gets a single occurrence of a parameter as a 64-bit integer, falling back
   // to a default if it isn't present and returning an error if it isn't
   // convertible to a number.
-  absl::Status GetOneInt64Parameter(const string& name, int64_t default_value,
-                                    int64_t* result) const;
+  Status GetOneInt64Parameter(const string& name, int64_t default_value,
+                              int64_t* result) const;
 
   // Gets a single occurrence of a parameter as a floating point number, falling
   // back to a default if it isn't present and returning an error if it isn't
   // convertible to a number.
-  absl::Status GetOneFloatParameter(const string& name, float default_value,
-                                    float* result) const;
+  Status GetOneFloatParameter(const string& name, float default_value,
+                              float* result) const;
 
   // Gets a single occurrence of a parameter as a boolean, falling back to a
   // default if it isn't present and returning an error if it's not one of
   // "true", "1", "false", or "0".
-  absl::Status GetOneBoolParameter(const string& name, bool default_value,
-                                   bool* result) const;
+  Status GetOneBoolParameter(const string& name, bool default_value,
+                             bool* result) const;
 };
 
 // This is the function API for all graph transformations, taking an input
 // GraphDef and other arguments, and returning a transformed GraphDef.
-typedef std::function<absl::Status(
-    const GraphDef&, const TransformFuncContext& context, GraphDef*)>
+typedef std::function<Status(const GraphDef&,
+                             const TransformFuncContext& context, GraphDef*)>
     TransformFunc;
 
 // To add a new graph transform function, call the macro:

@@ -26,7 +26,7 @@ namespace tensorflow {
 namespace data {
 namespace {
 
-static absl::Status OptionalDeviceCopy(
+static Status OptionalDeviceCopy(
     const OptionalVariant& from, OptionalVariant* to,
     const UnaryVariantOpRegistry::AsyncTensorDeviceCopyFn& copy) {
   if (from.has_value()) {
@@ -50,7 +50,7 @@ static absl::Status OptionalDeviceCopy(
   } else {
     *to = from;
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 #define REGISTER_OPTIONAL_COPY(DIRECTION)               \
@@ -135,9 +135,8 @@ void OptionalGetValueOp::Compute(OpKernelContext* ctx) {
   }
 }
 
-absl::Status WriteOptionalWithValueToOutput(OpKernelContext* ctx,
-                                            int output_index,
-                                            std::vector<Tensor> value) {
+Status WriteOptionalWithValueToOutput(OpKernelContext* ctx, int output_index,
+                                      std::vector<Tensor> value) {
   OptionalVariant v(std::move(value));
   Tensor* variant_t;
   AllocatorAttributes cpu_alloc;
@@ -145,10 +144,10 @@ absl::Status WriteOptionalWithValueToOutput(OpKernelContext* ctx,
   TF_RETURN_IF_ERROR(ctx->allocate_output(output_index, TensorShape({}),
                                           &variant_t, cpu_alloc));
   variant_t->scalar<Variant>()() = v;
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status WriteOptionalNoneToOutput(OpKernelContext* ctx, int output_index) {
+Status WriteOptionalNoneToOutput(OpKernelContext* ctx, int output_index) {
   OptionalVariant v;
   Tensor* variant_t;
   AllocatorAttributes cpu_alloc;
@@ -156,7 +155,7 @@ absl::Status WriteOptionalNoneToOutput(OpKernelContext* ctx, int output_index) {
   TF_RETURN_IF_ERROR(ctx->allocate_output(output_index, TensorShape({}),
                                           &variant_t, cpu_alloc));
   variant_t->scalar<Variant>()() = v;
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 namespace {

@@ -14,15 +14,12 @@ limitations under the License.
 ==============================================================================*/
 #include "tensorflow/tools/proto_splitter/cc/saved_model_splitter.h"
 
-#include <cstdint>
 #include <memory>
-#include <string>
 #include <variant>
 #include <vector>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include "xla/tsl/lib/core/status_test_util.h"
 #include "tensorflow/core/framework/attr_value.pb.h"
 #include "tensorflow/core/framework/graph.pb.h"
 #include "tensorflow/core/framework/node_def.pb.h"
@@ -32,10 +29,10 @@ limitations under the License.
 #include "tensorflow/core/platform/test.h"
 #include "tensorflow/core/protobuf/saved_model.pb.h"
 #include "tensorflow/tools/proto_splitter/cc/max_size.h"
-#include "tensorflow/tools/proto_splitter/cc/util.h"
 #include "tensorflow/tools/proto_splitter/testdata/test_message.pb.h"
-#include "tsl/platform/protobuf.h"
-#include "tsl/platform/statusor.h"
+#include "tensorflow/tsl/lib/core/status_test_util.h"
+#include "tensorflow/tsl/platform/protobuf.h"
+#include "tensorflow/tsl/platform/statusor.h"
 
 namespace tensorflow {
 namespace tools::proto_splitter {
@@ -58,7 +55,7 @@ namespace {
     }                                                                       \
   } while (0)
 
-std::string NonChunkedSavedModel() {
+string NonChunkedSavedModel() {
   return io::JoinPath(testing::TensorFlowSrcRoot(), "cc", "saved_model",
                       "testdata", "chunked_saved_model", "non_chunked_model",
                       "saved_model.pb");
@@ -71,13 +68,12 @@ TEST(SavedModelSplitterTest, TestSplit) {
 
   TF_EXPECT_OK(tensorflow::ReadBinaryProto(tensorflow::Env::Default(),
                                            NonChunkedSavedModel(), &proto));
-  EXPECT_GE(proto.ByteSizeLong(), GetMaxSize());
+  EXPECT_GE(proto.ByteSize(), GetMaxSize());
 
   SavedModelSplitter splitter(&proto);
 
   TF_ASSERT_OK_AND_ASSIGN(auto x, splitter.Split());
-  std::vector<MessageBytes>* chunks = x.chunks;
-  ASSERT_NE(chunks, nullptr);
+  auto chunks = x.first;
 
   // Should create a new chunk with the single large constant.
   EXPECT_EQ(2, chunks->size());

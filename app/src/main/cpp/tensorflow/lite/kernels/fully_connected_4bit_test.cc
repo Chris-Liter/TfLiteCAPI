@@ -22,7 +22,6 @@ limitations under the License.
 #include <gtest/gtest.h>
 #include "tensorflow/lite/kernels/fully_connected.h"
 #include "tensorflow/lite/kernels/test_util.h"
-#include "tensorflow/lite/schema/schema_generated.h"
 
 namespace tflite {
 
@@ -106,7 +105,7 @@ TEST(Hybrid4BitFullyConnectedOpTest, SimpleTestHybridInt4) {
   FullyConnected4BitOpModel m(
       units, batches,
       /*input=*/{TensorType_FLOAT32, {batches, cols}},
-      /*weights=*/{TensorType_INT4, {units, cols}, 0.0, 0.0, 1.0},
+      /*weights=*/{TensorType_INT4, {units, cols}, 0.0, 7.0, 1.0},
       /*output=*/{TensorType_FLOAT32, {units, batches}},
       {
           -1, 2, 3, 4, 5, 6, 7, 1, 2, 3,  -1, 2, 3, 4, 5, 6, 7, 1, 2, 3,
@@ -139,7 +138,7 @@ TEST(Hybrid4BitFullyConnectedOpTest, SimpleTestHybridInt4) {
               ElementsAreArray(ArrayFloatNear(
                   {393., 456., 457., 455., 394., 413., 476., 477., 475., 414.,
                    393., 456., 457., 455., 394., 393., 456., 457., 455., 394},
-                  /*max_abs_err=*/1.3f)));
+                  /*max_abs_error=*/1.3f)));
 }
 
 TEST(Hybrid4BitFullyConnectedOpTest, TestHybridInt4AllZeroBatch) {
@@ -149,7 +148,7 @@ TEST(Hybrid4BitFullyConnectedOpTest, TestHybridInt4AllZeroBatch) {
   FullyConnected4BitOpModel m(
       units, batches,
       /*input=*/{TensorType_FLOAT32, {batches, cols}},
-      /*weights=*/{TensorType_INT4, {units, cols}, 0.0, 0.0, 1.0},
+      /*weights=*/{TensorType_INT4, {units, cols}, 0.0, 7.0, 1.0},
       /*output=*/{TensorType_FLOAT32, {units, batches}},
       {
           -1, 2, 3, 4, 5, 6, 7, 1, 2, 3,  -1, 2, 3, 4, 5, 6, 7, 1, 2, 3,
@@ -182,7 +181,7 @@ TEST(Hybrid4BitFullyConnectedOpTest, TestHybridInt4AllZeroBatch) {
               ElementsAreArray(ArrayFloatNear(
                   {393., 456., 457., 455., 394., 413., 476., 477., 475., 414.,
                    393., 456., 457., 455., 394., 1,    2,    3,    1,    2},
-                  /*max_abs_err=*/1.3f)));
+                  /*max_abs_error=*/1.3f)));
 }
 
 std::mt19937 random_engine(2023);
@@ -212,7 +211,7 @@ TEST_P(Hybrid4BitFullyConnectedVsReferenceOpTests, TestHybridInt4) {
   FullyConnected4BitOpModel test(
       units, batches,
       /*input=*/{TensorType_FLOAT32, {batches, cols}},
-      /*weights=*/{TensorType_INT4, {units, cols}, 0.0, 0.0, 1.0},
+      /*weights=*/{TensorType_INT4, {units, cols}, 0.0, 7.0, 1.0},
       /*output=*/{TensorType_FLOAT32, {units, batches}}, weight_data,
       ops::builtin::Register_FULLY_CONNECTED_GENERIC_OPT(),
       ActivationFunctionType_RELU);
@@ -223,7 +222,7 @@ TEST_P(Hybrid4BitFullyConnectedVsReferenceOpTests, TestHybridInt4) {
   FullyConnected4BitOpModel expected(
       units, batches,
       /*input=*/{TensorType_FLOAT32, {batches, cols}},
-      /*weights=*/{TensorType_INT4, {units, cols}, 0.0, 0.0, 1.0},
+      /*weights=*/{TensorType_INT4, {units, cols}, 0.0, 7.0, 1.0},
       /*output=*/{TensorType_FLOAT32, {units, batches}}, weight_data,
       ops::builtin::Register_FULLY_CONNECTED_REF(),
       ActivationFunctionType_RELU);
@@ -232,7 +231,7 @@ TEST_P(Hybrid4BitFullyConnectedVsReferenceOpTests, TestHybridInt4) {
   expected.Invoke();
   std::vector<float> expected_data = expected.GetOutput();
   EXPECT_THAT(test_data, ElementsAreArray(ArrayFloatNear(
-                             expected_data, /*max_abs_err=*/1e-3f)));
+                             expected_data, /*max_abs_error=*/1e-3f)));
 }
 
 INSTANTIATE_TEST_SUITE_P(Hybrid4BitFullyConnectedVsReferenceOpTests,
@@ -246,8 +245,5 @@ INSTANTIATE_TEST_SUITE_P(Hybrid4BitFullyConnectedVsReferenceOpTests,
                              std::make_tuple(5, 1, 38),
                              std::make_tuple(5, 4, 72),
                              std::make_tuple(5, 6, 130),
-                             std::make_tuple(4, 1, 56),
-                             std::make_tuple(4, 1, 48),
-                             std::make_tuple(4, 1, 120),
                          }));
 }  // namespace tflite

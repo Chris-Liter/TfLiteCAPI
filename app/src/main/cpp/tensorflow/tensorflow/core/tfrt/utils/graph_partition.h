@@ -54,7 +54,7 @@ namespace tfrt_stub {
 //                                    /
 //              PartitionedCall_2 ----
 //
-absl::StatusOr<std::unique_ptr<Graph>> InsertTransferOps(
+StatusOr<std::unique_ptr<Graph>> InsertTransferOps(
     const std::string& graph_func_name, const DeviceSet& device_set,
     const Device* host_device, const std::vector<std::string>& inputs,
     const std::vector<std::string>& outputs,

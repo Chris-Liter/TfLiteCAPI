@@ -22,7 +22,7 @@ limitations under the License.
 
 #include "absl/container/flat_hash_set.h"
 #include "absl/synchronization/notification.h"
-#include "unsupported/Eigen/CXX11/Tensor"  // from @eigen_archive
+#include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 #include "tensorflow/core/util/work_sharder.h"
 
 namespace tensorflow {
@@ -34,13 +34,14 @@ DeviceBase::~DeviceBase() {
   eigen_cpu_devices_.clear();
 }
 
-absl::Status DeviceContext::CopyDeviceTensorToCPUSync(
-    const Tensor* device_tensor, StringPiece tensor_name, Device* device,
-    Tensor* cpu_tensor) {
+Status DeviceContext::CopyDeviceTensorToCPUSync(const Tensor* device_tensor,
+                                                StringPiece tensor_name,
+                                                Device* device,
+                                                Tensor* cpu_tensor) {
   absl::Notification n;
-  absl::Status status;
+  Status status;
   CopyDeviceTensorToCPU(device_tensor, tensor_name, device, cpu_tensor,
-                        [&](const absl::Status& s) {
+                        [&](const Status& s) {
                           status = s;
                           n.Notify();
                         });
@@ -48,12 +49,13 @@ absl::Status DeviceContext::CopyDeviceTensorToCPUSync(
   return status;
 }
 
-absl::Status DeviceContext::CopyCPUTensorToDeviceSync(
-    const Tensor* cpu_tensor, Device* device, Tensor* device_tensor) const {
+Status DeviceContext::CopyCPUTensorToDeviceSync(const Tensor* cpu_tensor,
+                                                Device* device,
+                                                Tensor* device_tensor) const {
   absl::Notification n;
-  absl::Status status;
+  Status status;
   CopyCPUTensorToDevice(cpu_tensor, device, device_tensor,
-                        [&](const absl::Status& s) {
+                        [&](const Status& s) {
                           status = s;
                           n.Notify();
                         });
@@ -73,11 +75,6 @@ const string& DeviceBase::name() const {
 
 const DeviceNameUtils::ParsedName& DeviceBase::parsed_name() const {
   LOG(FATAL) << "DeviceBase does not implement parsed_name()";  // Crash OK
-  std::abort();
-}
-
-const std::string& DeviceBase::device_type() const {
-  LOG(FATAL) << "DeviceBase does not implement device_type()";  // Crash OK
   std::abort();
 }
 

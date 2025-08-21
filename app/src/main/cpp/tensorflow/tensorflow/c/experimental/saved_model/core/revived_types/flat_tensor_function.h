@@ -21,14 +21,10 @@ limitations under the License.
 #include <string>
 #include <vector>
 
-#include "absl/status/status.h"
-#include "absl/types/span.h"
-#include "tensorflow/c/eager/abstract_tensor_handle.h"
 #include "tensorflow/c/eager/immediate_execution_context.h"
 #include "tensorflow/c/eager/immediate_execution_operation.h"
 #include "tensorflow/c/eager/immediate_execution_tensor_handle.h"
 #include "tensorflow/core/framework/function.pb.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/core/protobuf/saved_object_graph.pb.h"
 
 namespace tensorflow {
@@ -60,14 +56,14 @@ class FlatTensorFunction {
   //  ctx      - A handle to the Tensorflow runtime. This MUST be non-null and
   //             outlive TFConcreteFunction.
   //  out      - The output FlatTensorFunction.
-  static absl::Status Create(
-      const FunctionDef* function_def,
-      std::vector<ImmediateExecutionTensorHandle*> captures,
-      ImmediateExecutionContext* ctx, std::unique_ptr<FlatTensorFunction>* out);
+  static Status Create(const FunctionDef* function_def,
+                       std::vector<ImmediateExecutionTensorHandle*> captures,
+                       ImmediateExecutionContext* ctx,
+                       std::unique_ptr<FlatTensorFunction>* out);
 
   // This method creates a "Call" Op used to execute the function.
-  absl::Status MakeCallOp(absl::Span<AbstractTensorHandle* const> inputs,
-                          ImmediateOpPtr* out) const;
+  Status MakeCallOp(absl::Span<AbstractTensorHandle* const> inputs,
+                    ImmediateOpPtr* out) const;
 
   ~FlatTensorFunction();
 

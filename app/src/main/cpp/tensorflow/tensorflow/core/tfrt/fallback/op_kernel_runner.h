@@ -41,20 +41,18 @@ namespace tfrt_stub {
 
 class OpKernelRunner {
  public:
-  static absl::StatusOr<OpKernelRunner> Create(
+  static StatusOr<OpKernelRunner> Create(
       absl::string_view op_name, absl::string_view node_name,
       absl::string_view device_name, int num_args,
-      const std::function<absl::Status(tensorflow::AttrValueMap*)>&
-          attr_builder,
+      const std::function<Status(tensorflow::AttrValueMap*)>& attr_builder,
       const tensorflow::DeviceMgr& device_manager,
       const tensorflow::ProcessFunctionLibraryRuntime&
           process_function_library_runtime);
 
   ABSL_DEPRECATED("Please use the Create() method that takes node_name.")
-  static absl::StatusOr<OpKernelRunner> Create(
+  static StatusOr<OpKernelRunner> Create(
       absl::string_view op_name, absl::string_view device_name, int num_args,
-      const std::function<absl::Status(tensorflow::AttrValueMap*)>&
-          attr_builder,
+      const std::function<Status(tensorflow::AttrValueMap*)>& attr_builder,
       const tensorflow::DeviceMgr& device_manager,
       const tensorflow::ProcessFunctionLibraryRuntime&
           process_function_library_runtime) {
@@ -63,19 +61,17 @@ class OpKernelRunner {
                   process_function_library_runtime);
   }
 
-  static absl::StatusOr<OpKernelRunner> Create(
+  static StatusOr<OpKernelRunner> Create(
       absl::string_view op_name, absl::string_view node_name, int num_args,
-      const std::function<absl::Status(tensorflow::AttrValueMap*)>&
-          attr_builder,
+      const std::function<Status(tensorflow::AttrValueMap*)>& attr_builder,
       const tensorflow::ProcessFunctionLibraryRuntime&
           process_function_library_runtime,
       tensorflow::Device* device);
 
   ABSL_DEPRECATED("Please use the Create() method that takes node_name.")
-  static absl::StatusOr<OpKernelRunner> Create(
+  static StatusOr<OpKernelRunner> Create(
       absl::string_view op_name, int num_args,
-      const std::function<absl::Status(tensorflow::AttrValueMap*)>&
-          attr_builder,
+      const std::function<Status(tensorflow::AttrValueMap*)>& attr_builder,
       const tensorflow::ProcessFunctionLibraryRuntime&
           process_function_library_runtime,
       tensorflow::Device* device) {
@@ -134,8 +130,8 @@ class OpKernelRunner {
     tensorflow::FunctionLibraryRuntime* function_library_runtime = nullptr;
     tensorflow::ResourceMgr* resource_manager = nullptr;
     bool is_async = false;
-    absl::InlinedVector<AllocatorAttributes, 4UL> input_alloc_attrs;
-    absl::InlinedVector<AllocatorAttributes, 1UL> output_alloc_attrs;
+    gtl::InlinedVector<AllocatorAttributes, 4> input_alloc_attrs;
+    gtl::InlinedVector<AllocatorAttributes, 1> output_alloc_attrs;
   };
   std::unique_ptr<Info> info_;
 };
@@ -145,12 +141,11 @@ struct OpKernelRunState {
   std::vector<const tensorflow::TensorBuffer*> tensor_buffers;
   std::vector<tensorflow::TensorValue> input_tf_tensor_values;
   OpKernelContext::Params params;
-  absl::InlinedVector<tensorflow::Tensor, 4UL> input_tf_tensors;
+  gtl::InlinedVector<tensorflow::Tensor, 4> input_tf_tensors;
 
   OpKernelRunState() = default;
   OpKernelRunState(absl::Span<const tensorflow::TensorValue> tensor_values,
-                   const OpKernelContext::Params& p,
-                   tensorflow::DeviceBase* device = nullptr) {
+                   const OpKernelContext::Params& p) {
     // `input_tf_tensor_values` contains the reference to all tensor used,
     // while `input_tf_tensors` only contains those needs ownership so their
     // sizes may not match. For this copy assignment, we conservatively copy all
@@ -171,7 +166,6 @@ struct OpKernelRunState {
     // Clear eigen_gpu_device to ensure OpKernelContext constructor will make a
     // new eigen GPU device.
     params.eigen_gpu_device = nullptr;
-    if (device != nullptr) params.device = device;
   }
 
   OpKernelRunState(const OpKernelRunState& other) = delete;

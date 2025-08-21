@@ -15,6 +15,7 @@ limitations under the License.
 
 #include "tensorflow/core/transforms/functional_to_region/impl.h"
 
+#include <algorithm>
 #include <tuple>
 #include <utility>
 
@@ -28,7 +29,6 @@ limitations under the License.
 #include "mlir/IR/PatternMatch.h"  // from @llvm-project
 #include "mlir/IR/SymbolTable.h"  // from @llvm-project
 #include "mlir/IR/Value.h"  // from @llvm-project
-#include "mlir/Support/LLVM.h"  // from @llvm-project
 #include "mlir/Support/LogicalResult.h"  // from @llvm-project
 #include "tensorflow/core/ir/dialect.h"
 #include "tensorflow/core/ir/ops.h"
@@ -197,7 +197,7 @@ static DictionaryAttr PreserveFunctionAttributes(GraphFuncOp func) {
   // Propagate tf.* attributes.
   // TODO(jeffniu): `tf` dialect is not loaded.
   for (const NamedAttribute &attr : func->getAttrs())
-    if (attr.getName().getValue().starts_with("tf."))
+    if (attr.getName().getValue().startswith("tf."))
       preserved_attrs.append(attr);
 
   // Certain pipelines (Brella) will split a graph into subgraphs before merging
@@ -383,7 +383,7 @@ LogicalResult ConvertCaseLikeOp<CaseLikeOp, CaseLikeRegionOp>::matchAndRewrite(
   }
   ArrayAttr region_attrs = nullptr;
   if (!llvm::all_of(preserved_attrs, [](Attribute attr) {
-        return AreRegionAttrsEmpty(mlir::cast<RegionAttr>(attr));
+        return AreRegionAttrsEmpty(attr.cast<RegionAttr>());
       }))
     region_attrs = rewriter.getArrayAttr(preserved_attrs);
 

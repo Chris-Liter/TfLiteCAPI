@@ -58,31 +58,31 @@ class SymbolicGradientBuilder {
                           const std::vector<Output>& grad_inputs,
                           std::vector<Output>* grad_outputs);
 
-  absl::Status AddGradients();
+  Status AddGradients();
 
   static Output NoGradient() { return Output(nullptr, -1); }
 
  private:
-  absl::Status Initialize();
+  Status Initialize();
 
   // For each forward edge from `src` to `dst` in the initial/forward graph:
   // propagates gradients `dst_grad` backwards along the edge from `src`
   // to `dst` in the graph. This will add `dst_grad` to the list of pending
   // gradients for the node associated with `src`.
-  absl::Status BackpropAlongEdge(const Output& dst_grad, const Output& src);
+  Status BackpropAlongEdge(const Output& dst_grad, const Output& src);
 
   // Adds a node to the graph (returned in `grad`) that sums the in-bound
   // gradients to `src` (if there are more than one).
-  absl::Status SumGradients(const Output& src, Output* grad);
+  Status SumGradients(const Output& src, Output* grad);
 
   // Returns true if `opname` is registered in `registry_` with no gradient
   // function, false otherwise.
   bool IsPrimitiveOpWithNoGrad(const string& opname);
 
   // Call the gradient function for `op`, storing the result in `grad_outputs`.
-  absl::Status CallGradFunction(const Operation& op,
-                                const std::vector<Output>& grad_inputs,
-                                std::vector<Output>* grad_outputs);
+  Status CallGradFunction(const Operation& op,
+                          const std::vector<Output>& grad_inputs,
+                          std::vector<Output>* grad_outputs);
 
   // Returns a list mapping whether each node in the graph is reachable
   // from outputs_. Keyed by node id.
@@ -93,7 +93,7 @@ class SymbolicGradientBuilder {
   // nodes (which are the first nodes of a loop encountered in the backwards
   // pass) are passed to this function rather than processed normally.
   // `summed_grads` is the sum of `exit_node`s gradients.
-  absl::Status ProcessWhileLoop(Node* exit_node, const Output& summed_grads);
+  Status ProcessWhileLoop(Node* exit_node, const Output& summed_grads);
 
   // Gets the set of node ids at which to stop backprop. These are all elements
   // of `outputs_` that do not get transitively consumed by other `outputs_`.
@@ -138,8 +138,7 @@ class SymbolicGradientBuilder {
   // multiple incoming gradients, but we only store the combined Output here).
   std::map<WhileContext*, std::map<Node*, Output>> while_backprops_;
 
-  SymbolicGradientBuilder(const SymbolicGradientBuilder&) = delete;
-  void operator=(const SymbolicGradientBuilder&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(SymbolicGradientBuilder);
 };
 
 SymbolicGradientBuilder::SymbolicGradientBuilder(
@@ -153,8 +152,8 @@ SymbolicGradientBuilder::SymbolicGradientBuilder(
       grad_inputs_(grad_inputs),
       grad_outputs_(grad_outputs) {}
 
-absl::Status SymbolicGradientBuilder::BackpropAlongEdge(const Output& dst_grad,
-                                                        const Output& src) {
+Status SymbolicGradientBuilder::BackpropAlongEdge(const Output& dst_grad,
+                                                  const Output& src) {
   if (src.node() == nullptr) {
     return errors::Internal("Attempted to backprop along an invalid edge.");
   }
@@ -166,7 +165,7 @@ absl::Status SymbolicGradientBuilder::BackpropAlongEdge(const Output& dst_grad,
       ready_.push_back(src.node());
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 std::vector<bool> SymbolicGradientBuilder::GetReachableNodes() {
@@ -251,7 +250,7 @@ std::unordered_set<int> SymbolicGradientBuilder::GetStopBackpropNodes(
   return stop_backprop_nodes;
 }
 
-absl::Status SymbolicGradientBuilder::Initialize() {
+Status SymbolicGradientBuilder::Initialize() {
   if (outputs_.size() != grad_inputs_.size()) {
     return errors::InvalidArgument(
         "Must specify a gradient input for each output.");
@@ -341,11 +340,10 @@ absl::Status SymbolicGradientBuilder::Initialize() {
       TF_RETURN_IF_ERROR(BackpropAlongEdge(grad_inputs_[i], outputs_[i]));
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status SymbolicGradientBuilder::SumGradients(const Output& src,
-                                                   Output* grad) {
+Status SymbolicGradientBuilder::SumGradients(const Output& src, Output* grad) {
   auto iter = backprops_.find(src);
   if (iter == backprops_.end()) {
     return errors::Internal("Unable to find backprop list for node.id ",
@@ -373,27 +371,27 @@ absl::Status SymbolicGradientBuilder::SumGradients(const Output& src,
     *grad = ops::AddN(scope_, grads_to_keep);
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 bool SymbolicGradientBuilder::IsPrimitiveOpWithNoGrad(const string& opname) {
   ops::GradFunc grad_fn;
-  absl::Status s = registry_->Lookup(opname, &grad_fn);
+  Status s = registry_->Lookup(opname, &grad_fn);
   return s.ok() && (grad_fn == nullptr);
 }
 
-absl::Status SymbolicGradientBuilder::CallGradFunction(
+Status SymbolicGradientBuilder::CallGradFunction(
     const Operation& op, const std::vector<Output>& grad_inputs,
     std::vector<Output>* grad_outputs) {
   ops::GradFunc grad_fn;
   TF_RETURN_IF_ERROR(registry_->Lookup(op.node()->type_string(), &grad_fn));
   TF_RETURN_IF_ERROR(grad_fn(scope_, op, grad_inputs, grad_outputs));
   TF_RETURN_IF_ERROR(scope_.status());
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status SymbolicGradientBuilder::ProcessWhileLoop(
-    Node* exit_node, const Output& summed_grads) {
+Status SymbolicGradientBuilder::ProcessWhileLoop(Node* exit_node,
+                                                 const Output& summed_grads) {
   // TODO(skyewm): detect second-order gradient and return bad status
   // TODO(skyewm): handle (or at least detect) nested while loops
 
@@ -415,8 +413,7 @@ absl::Status SymbolicGradientBuilder::ProcessWhileLoop(
   // Wait until we have all exit nodes' backprops collected before processing
   // the while loop.
   // TODO(skyewm): what if not all the exit nodes are reachable?
-  if (backprops.size() < while_ctx->exit_nodes().size())
-    return absl::OkStatus();
+  if (backprops.size() < while_ctx->exit_nodes().size()) return OkStatus();
 
   // We've seen all the exit nodes for this loop and have collected all the
   // backprops. Create the gradient graph for the while loop.
@@ -437,10 +434,10 @@ absl::Status SymbolicGradientBuilder::ProcessWhileLoop(
       TF_RETURN_IF_ERROR(BackpropAlongEdge(dx[i], {e->src(), e->src_output()}));
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status SymbolicGradientBuilder::AddGradients() {
+Status SymbolicGradientBuilder::AddGradients() {
   // Initialize backprops.
   TF_RETURN_IF_ERROR(Initialize());
 
@@ -555,25 +552,25 @@ absl::Status SymbolicGradientBuilder::AddGradients() {
     int num_requested_inputs = p.first->num_outputs() - pending_[p.first->id()];
     CHECK_EQ(num_requested_inputs, p.second);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace
 
-absl::Status AddSymbolicGradients(const Scope& scope,
-                                  const std::vector<Output>& outputs,
-                                  const std::vector<Output>& inputs,
-                                  const std::vector<Output>& grad_inputs,
-                                  std::vector<Output>* grad_outputs) {
+Status AddSymbolicGradients(const Scope& scope,
+                            const std::vector<Output>& outputs,
+                            const std::vector<Output>& inputs,
+                            const std::vector<Output>& grad_inputs,
+                            std::vector<Output>* grad_outputs) {
   SymbolicGradientBuilder builder(scope, ops::GradOpRegistry::Global(), outputs,
                                   inputs, grad_inputs, grad_outputs);
   return builder.AddGradients();
 }
 
-absl::Status AddSymbolicGradients(const Scope& scope,
-                                  const std::vector<Output>& outputs,
-                                  const std::vector<Output>& inputs,
-                                  std::vector<Output>* grad_outputs) {
+Status AddSymbolicGradients(const Scope& scope,
+                            const std::vector<Output>& outputs,
+                            const std::vector<Output>& inputs,
+                            std::vector<Output>* grad_outputs) {
   std::vector<Output> grad_inputs;
   grad_inputs.reserve(outputs.size());
   for (const Output& output : outputs) {

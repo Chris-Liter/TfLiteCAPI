@@ -18,13 +18,11 @@ limitations under the License.
 #include <unordered_map>
 #include <vector>
 
-#include "absl/status/status.h"
-#include "tensorflow/core/platform/logging.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/lite/toco/graph_transformations/graph_transformations.h"
 #include "tensorflow/lite/toco/model.h"
 #include "tensorflow/lite/toco/runtime/types.h"
 #include "tensorflow/lite/toco/tooling_util.h"
+#include "tensorflow/core/platform/logging.h"
 
 namespace toco {
 
@@ -152,9 +150,9 @@ void FuseMulOrDivParamsIntoFollowingAffine(Model* model, Operator* following_op,
 
 }  // namespace
 
-absl::Status FuseBinaryIntoFollowingAffine::Run(Model* model,
-                                                std::size_t op_index,
-                                                bool* modified) {
+::tensorflow::Status FuseBinaryIntoFollowingAffine::Run(Model* model,
+                                                        std::size_t op_index,
+                                                        bool* modified) {
   *modified = false;
   const auto binary_it = model->operators.begin() + op_index;
   auto* binary_op = binary_it->get();
@@ -162,7 +160,7 @@ absl::Status FuseBinaryIntoFollowingAffine::Run(Model* model,
       binary_op->type != OperatorType::kMul &&
       binary_op->type != OperatorType::kSub &&
       binary_op->type != OperatorType::kDiv) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   CHECK_EQ(binary_op->inputs.size(), 2);
@@ -180,12 +178,12 @@ absl::Status FuseBinaryIntoFollowingAffine::Run(Model* model,
   };
   if (!is_input_constant[0] && !is_input_constant[1]) {
     // Neither input is constant, so nothing we can fuse into a constant.
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   if (is_input_constant[0] && is_input_constant[1]) {
     // Both inputs are constants. That's a job for constants
     // propagation, not for us to handle here.
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   const int index_of_constant_input = is_input_constant[0] ? 0 : 1;
   const int index_of_variable_input = is_input_constant[0] ? 1 : 0;
@@ -197,7 +195,7 @@ absl::Status FuseBinaryIntoFollowingAffine::Run(Model* model,
     if (index_of_constant_input != 1) {
       AddMessageF("Not fusing %s because the denominator is not constant",
                   LogName(*binary_op));
-      return absl::OkStatus();
+      return ::tensorflow::OkStatus();
     }
   }
 
@@ -209,7 +207,7 @@ absl::Status FuseBinaryIntoFollowingAffine::Run(Model* model,
           "Not fusing %s into the following affine op, because we only know "
           "how to do so when the constant operand is a scalar",
           LogName(*binary_op));
-      return absl::OkStatus();
+      return ::tensorflow::OkStatus();
     }
   }
 
@@ -217,13 +215,13 @@ absl::Status FuseBinaryIntoFollowingAffine::Run(Model* model,
       FusedActivationFunctionType::kNone) {
     AddMessageF("Not fusing %s because it has a fused activation function",
                 LogName(*binary_op));
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   if (CountOpsWithInput(*model, binary_op->outputs[0]) != 1) {
     AddMessageF("Not fusing %s because it's consumed by multiple ops",
                 LogName(*binary_op));
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   Operator* following_op = GetOpWithInput(*model, binary_op->outputs[0]);
@@ -231,7 +229,7 @@ absl::Status FuseBinaryIntoFollowingAffine::Run(Model* model,
   if (!following_op) {
     AddMessageF("Not fusing %s because it is not consumed by any op",
                 LogName(*binary_op));
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   if (following_op->type != OperatorType::kConv &&
@@ -241,14 +239,14 @@ absl::Status FuseBinaryIntoFollowingAffine::Run(Model* model,
         "Not fusing %s because the following %s is not of one of the supported "
         "types",
         LogName(*binary_op), LogName(*following_op));
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   if (following_op->inputs.size() < 3) {
     AddMessageF(
         "Not fusing %s because the following %s does not have a bias vector",
         LogName(*following_op), LogName(*binary_op));
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   const auto& weights = model->GetArray(following_op->inputs[1]);
@@ -258,7 +256,7 @@ absl::Status FuseBinaryIntoFollowingAffine::Run(Model* model,
         "Not fusing %s because the following %s has non-constant weights or "
         "bias arrays",
         LogName(*binary_op), LogName(*following_op));
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   // Try to fuse the binary params into the following op's params
@@ -270,7 +268,7 @@ absl::Status FuseBinaryIntoFollowingAffine::Run(Model* model,
         AddMessageF(
             "Not fusing %s because the following %s does not use VALID padding",
             LogName(*binary_op), LogName(*following_op));
-        return absl::OkStatus();
+        return ::tensorflow::OkStatus();
       }
     }
     if (following_op->type == OperatorType::kDepthwiseConv) {
@@ -279,7 +277,7 @@ absl::Status FuseBinaryIntoFollowingAffine::Run(Model* model,
         AddMessageF(
             "Not fusing %s because the following %s does not use VALID padding",
             LogName(*binary_op), LogName(*following_op));
-        return absl::OkStatus();
+        return ::tensorflow::OkStatus();
       }
     }
     FuseAddOrSubParamsIntoFollowingAffine(model, following_op, binary_op,
@@ -300,7 +298,7 @@ absl::Status FuseBinaryIntoFollowingAffine::Run(Model* model,
   following_op->inputs[0] = binary_op->inputs[index_of_variable_input];
   DeleteOpAndArrays(model, binary_op);
   *modified = true;
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 }  // namespace toco

@@ -28,7 +28,7 @@ limitations under the License.
 // TODO(b/31496047): Fix non-standard include order.
 #include <numeric>  // clang-format off
 
-#include "unsupported/Eigen/CXX11/Tensor"  // from @eigen_archive
+#include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 #include "tensorflow/core/framework/bounds_check.h"
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/framework/register_types.h"
@@ -57,8 +57,7 @@ typedef Eigen::GpuDevice GPUDevice;
 
 namespace tensorflow {
 
-absl::Status GetHandle(OpKernelContext* ctx, string* container,
-                       string* ta_handle) {
+Status GetHandle(OpKernelContext* ctx, string* container, string* ta_handle) {
   {
     Tensor tensor;
     // Assuming that handle is the input at index 0.
@@ -76,10 +75,10 @@ absl::Status GetHandle(OpKernelContext* ctx, string* container,
     *container = h(0);
     *ta_handle = h(1);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status GetTensorArray(OpKernelContext* ctx, TensorArray** tensor_array) {
+Status GetTensorArray(OpKernelContext* ctx, TensorArray** tensor_array) {
   string container;
   string ta_handle;
   if (ctx->input_dtype(0) != DT_RESOURCE) {
@@ -89,19 +88,19 @@ absl::Status GetTensorArray(OpKernelContext* ctx, TensorArray** tensor_array) {
     ScopedStepContainer* sc = ctx->step_container();
     if (sc == nullptr) return errors::Internal("No step container.");
     TF_RETURN_IF_ERROR(sc->Lookup(rm, container + ta_handle, tensor_array));
-    return absl::OkStatus();
+    return OkStatus();
   } else {
     return LookupResource(ctx, HandleFromInput(ctx, 0), tensor_array);
   }
 }
 
-absl::Status SetupFlowControlInputs(OpKernelContext* ctx, bool set_output) {
+Status SetupFlowControlInputs(OpKernelContext* ctx, bool set_output) {
   const Tensor* flow_control;
   TF_RETURN_IF_ERROR(ctx->input("flow_in", &flow_control));
   if (set_output) {
     TF_RETURN_IF_ERROR(ctx->set_output("flow_out", *flow_control));
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // CREATION *******************************************************************
@@ -153,9 +152,9 @@ class TensorArrayCreationOp : public OpKernel {
   }
 
  protected:
-  virtual absl::Status CreateTensorArray(OpKernelContext* ctx, ResourceMgr* rm,
-                                         Tensor* tensor_array_output_handle,
-                                         TensorArray** output_tensor_array) = 0;
+  virtual Status CreateTensorArray(OpKernelContext* ctx, ResourceMgr* rm,
+                                   Tensor* tensor_array_output_handle,
+                                   TensorArray** output_tensor_array) = 0;
 
  private:
   const DeviceType device_type_;
@@ -186,9 +185,9 @@ class TensorArrayOp : public TensorArrayCreationOp {
     if (tensor_array_name_.empty()) tensor_array_name_ = name();
   }
 
-  absl::Status CreateTensorArray(OpKernelContext* ctx, ResourceMgr* rm,
-                                 Tensor* tensor_array_output_handle,
-                                 TensorArray** output_tensor_array) override {
+  Status CreateTensorArray(OpKernelContext* ctx, ResourceMgr* rm,
+                           Tensor* tensor_array_output_handle,
+                           TensorArray** output_tensor_array) override {
     const Tensor* tensor_size;
     TF_RETURN_IF_ERROR(ctx->input("size", &tensor_size));
 
@@ -221,7 +220,7 @@ class TensorArrayOp : public TensorArrayCreationOp {
 
     *output_tensor_array = tensor_array;
 
-    return absl::OkStatus();
+    return OkStatus();
   }
 
  private:
@@ -232,8 +231,7 @@ class TensorArrayOp : public TensorArrayCreationOp {
   bool clear_after_read_;
   string tensor_array_name_;  // The name used to create the TensorArray.
 
-  TensorArrayOp(const TensorArrayOp&) = delete;
-  void operator=(const TensorArrayOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(TensorArrayOp);
 };
 
 REGISTER_KERNEL_BUILDER(Name("TensorArray").Device(DEVICE_CPU), TensorArrayOp);
@@ -311,9 +309,9 @@ class TensorArrayGradOp : public TensorArrayCreationOp {
     OP_REQUIRES_OK(context, context->GetAttr("source", &source_));
   }
 
-  absl::Status CreateTensorArray(OpKernelContext* ctx, ResourceMgr* rm,
-                                 Tensor* tensor_array_output_handle,
-                                 TensorArray** output_tensor_array) override {
+  Status CreateTensorArray(OpKernelContext* ctx, ResourceMgr* rm,
+                           Tensor* tensor_array_output_handle,
+                           TensorArray** output_tensor_array) override {
     string container;
     string tensor_array_name;
     if (ctx->input_dtype(0) != DT_RESOURCE) {
@@ -377,7 +375,7 @@ class TensorArrayGradOp : public TensorArrayCreationOp {
           dims.push_back(dim.size);
         }
         TF_RETURN_IF_ERROR(TensorShapeUtils::MakeShape(
-            absl::Span<const int64_t>(dims), &element_shape));
+            gtl::ArraySlice<int64_t>(dims), &element_shape));
       }
     } else {
       element_shape = tensor_array->ElemShape();
@@ -385,8 +383,8 @@ class TensorArrayGradOp : public TensorArrayCreationOp {
 
     const auto key = strings::StrCat(output_handle(0), output_handle(1));
     auto creator = [key, tensor_array, array_size, marked_size, element_shape,
-                    shape_to_prepend, tensor_array_output_handle](
-                       TensorArray** ret) -> absl::Status {
+                    shape_to_prepend,
+                    tensor_array_output_handle](TensorArray** ret) -> Status {
       *ret = new TensorArray(
           key, tensor_array->ElemType(), *tensor_array_output_handle,
           array_size, element_shape, tensor_array->HasIdenticalElementShapes(),
@@ -396,7 +394,7 @@ class TensorArrayGradOp : public TensorArrayCreationOp {
       return (*ret)->CopyShapesFrom(tensor_array, &shape_to_prepend);
     };
 
-    absl::Status s = ctx->step_container()->LookupOrCreate<TensorArray>(
+    Status s = ctx->step_container()->LookupOrCreate<TensorArray>(
         rm, key, output_tensor_array, creator);
     (*output_tensor_array)->Unref();
 
@@ -409,8 +407,7 @@ class TensorArrayGradOp : public TensorArrayCreationOp {
   // call.  Typical values look like "gradients", "gradients_1", ...
   string source_;
 
-  TensorArrayGradOp(const TensorArrayGradOp&) = delete;
-  void operator=(const TensorArrayGradOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(TensorArrayGradOp);
 };
 
 REGISTER_KERNEL_BUILDER(Name("TensorArrayGrad").Device(DEVICE_CPU),
@@ -497,7 +494,7 @@ class TensorArrayWriteOp : public OpKernel {
                                 DataTypeString(tensor_array->ElemType()),
                                 " but Op is trying to write dtype ",
                                 DataTypeString(tensor_value->dtype()), "."));
-    absl::Status s =
+    Status s =
         tensor_array->WriteOrAggregate<Device, T>(ctx, index, tensor_value);
     OP_REQUIRES_OK(ctx, s);
   }
@@ -578,7 +575,7 @@ class TensorArrayReadOp : public OpKernel {
             "TensorArray dtype is ", DataTypeString(tensor_array->ElemType()),
             " but Op requested dtype ", DataTypeString(dtype_), "."));
     Tensor value;
-    absl::Status s = tensor_array->Read<Device, T>(ctx, index, &value);
+    Status s = tensor_array->Read<Device, T>(ctx, index, &value);
     OP_REQUIRES_OK(ctx, s);
     ctx->set_output(0, value);
   }
@@ -707,7 +704,7 @@ class TensorArrayPackOrGatherOp : public OpKernel {
     }
 
     // Read all the Tensors into a vector to keep track of their memory.
-    absl::Status s = tensor_array->ReadMany<Device, T>(ctx, indices, &values);
+    Status s = tensor_array->ReadMany<Device, T>(ctx, indices, &values);
     OP_REQUIRES_OK(ctx, s);
 
     const Tensor* value_0_t = &values[0];
@@ -913,7 +910,7 @@ class TensorArrayConcatOp : public OpKernel {
     std::vector<Tensor> values;
     std::vector<int32> indices(array_size);
     std::iota(indices.begin(), indices.end(), 0);
-    absl::Status s = tensor_array->ReadMany<Device, T>(ctx, indices, &values);
+    Status s = tensor_array->ReadMany<Device, T>(ctx, indices, &values);
     OP_REQUIRES_OK(ctx, s);
 
     Tensor* lengths_tensor = nullptr;
@@ -1212,8 +1209,8 @@ class TensorArrayUnpackOrScatterOp : public OpKernel {
       OP_REQUIRES_OK(ctx, tensor_array->SetMarkedSize(array_size));
     }
 
-    absl::Status s = tensor_array->WriteOrAggregateMany<Device, T>(
-        ctx, write_indices, &write_values);
+    Status s = tensor_array->WriteOrAggregateMany<Device, T>(ctx, write_indices,
+                                                             &write_values);
     OP_REQUIRES_OK(ctx, s);
   }
 };
@@ -1405,8 +1402,8 @@ class TensorArraySplitOp : public OpKernel {
     std::vector<int32> indices(array_size);
     std::iota(indices.begin(), indices.end(), 0);
 
-    absl::Status s = tensor_array->WriteOrAggregateMany<Device, T>(
-        ctx, indices, &write_values);
+    Status s = tensor_array->WriteOrAggregateMany<Device, T>(ctx, indices,
+                                                             &write_values);
     OP_REQUIRES_OK(ctx, s);
   }
 };

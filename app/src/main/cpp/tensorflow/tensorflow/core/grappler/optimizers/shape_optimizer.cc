@@ -36,9 +36,8 @@ namespace grappler {
 // deduce that Div(Size([2,?,2]) Size([1,?,2])) is 2 if the two unknown
 // dimensions are known to be identical. This can be inferred if they share the
 // same symbolic representation (negative integer dimension size).
-absl::Status ShapeOptimizer::Optimize(Cluster* cluster,
-                                      const GrapplerItem& item,
-                                      GraphDef* optimized_graph) {
+Status ShapeOptimizer::Optimize(Cluster* cluster, const GrapplerItem& item,
+                                GraphDef* optimized_graph) {
   // Do a quick check to determine if we can skip this optimizer.
   bool can_optimize = false;
   bool has_div = false;
@@ -131,7 +130,7 @@ absl::Status ShapeOptimizer::Optimize(Cluster* cluster,
 
           // In the unlikely even that "Size" is not registered on the input
           // device, skip the optimization.
-          absl::Status s = IsKernelRegisteredForNode(size_node);
+          Status s = IsKernelRegisteredForNode(size_node);
           if (!s.ok()) {
             continue;
           }
@@ -192,7 +191,7 @@ absl::Status ShapeOptimizer::Optimize(Cluster* cluster,
       }
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // end namespace grappler

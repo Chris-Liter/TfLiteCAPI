@@ -100,9 +100,8 @@ std::vector<int> GenerateEvenSubdivOffsets(int num_devices_per_worker,
                                            int num_subdivs);
 
 // Runs a collective. input and output should be on the host.
-absl::Status RunCollective(CollectiveTestEnv* test_env,
-                           CollectiveParams* col_params, Device* device,
-                           Tensor* input, Tensor* output);
+Status RunCollective(CollectiveTestEnv* test_env, CollectiveParams* col_params,
+                     Device* device, Tensor* input, Tensor* output);
 
 }  // namespace tensorflow
 

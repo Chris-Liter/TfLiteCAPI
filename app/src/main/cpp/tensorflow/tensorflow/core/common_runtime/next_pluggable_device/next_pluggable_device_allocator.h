@@ -16,7 +16,6 @@ limitations under the License.
 #ifndef TENSORFLOW_CORE_COMMON_RUNTIME_NEXT_PLUGGABLE_DEVICE_NEXT_PLUGGABLE_DEVICE_ALLOCATOR_H_
 #define TENSORFLOW_CORE_COMMON_RUNTIME_NEXT_PLUGGABLE_DEVICE_NEXT_PLUGGABLE_DEVICE_ALLOCATOR_H_
 
-#include <cstddef>
 #include <string>
 
 #include "tensorflow/core/common_runtime/next_pluggable_device/c/plugin_c_api.h"

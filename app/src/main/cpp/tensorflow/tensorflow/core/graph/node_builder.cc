@@ -72,7 +72,7 @@ NodeBuilder& NodeBuilder::Input(NodeOut src) {
   return *this;
 }
 
-NodeBuilder& NodeBuilder::Input(absl::Span<const NodeOut> src_list) {
+NodeBuilder& NodeBuilder::Input(gtl::ArraySlice<NodeOut> src_list) {
   std::vector<NodeDefBuilder::NodeOut> srcs;
   srcs.reserve(src_list.size());
   for (const auto& node_out : src_list) {
@@ -83,7 +83,7 @@ NodeBuilder& NodeBuilder::Input(absl::Span<const NodeOut> src_list) {
       inputs_.emplace_back(node_out.node, node_out.index);
     }
   }
-  def_builder_.Input(absl::Span<const NodeDefBuilder::NodeOut>(srcs));
+  def_builder_.Input(gtl::ArraySlice<NodeDefBuilder::NodeOut>(srcs));
   return *this;
 }
 
@@ -93,7 +93,7 @@ NodeBuilder& NodeBuilder::ControlInput(Node* src_node) {
   return *this;
 }
 
-NodeBuilder& NodeBuilder::ControlInputs(absl::Span<Node* const> src_nodes) {
+NodeBuilder& NodeBuilder::ControlInputs(gtl::ArraySlice<Node*> src_nodes) {
   control_inputs_.insert(control_inputs_.end(), src_nodes.begin(),
                          src_nodes.end());
   for (const Node* src_node : src_nodes) {
@@ -117,14 +117,13 @@ NodeBuilder& NodeBuilder::XlaCluster(StringPiece xla_cluster) {
   return *this;
 }
 
-absl::StatusOr<Node*> NodeBuilder::Finalize(Graph* graph, bool consume) {
+StatusOr<Node*> NodeBuilder::Finalize(Graph* graph, bool consume) {
   Node* out;
   TF_RETURN_IF_ERROR(Finalize(graph, &out, consume));
   return out;
 }
 
-absl::Status NodeBuilder::Finalize(Graph* graph, Node** created_node,
-                                   bool consume) {
+Status NodeBuilder::Finalize(Graph* graph, Node** created_node, bool consume) {
   // In case of error, set *created_node to nullptr.
   if (created_node != nullptr) {
     *created_node = nullptr;
@@ -154,7 +153,7 @@ absl::Status NodeBuilder::Finalize(Graph* graph, Node** created_node,
 
   if (created_node != nullptr) *created_node = node;
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 void NodeBuilder::AddIndexError(const Node* node, int i) {

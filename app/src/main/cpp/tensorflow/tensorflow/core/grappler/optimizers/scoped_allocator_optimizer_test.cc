@@ -302,7 +302,7 @@ class ScopedAllocatorOptimizerTest : public ::testing::Test {
 
     std::vector<std::pair<string, Tensor>> inputs;
     std::vector<string> target_nodes = {};
-    absl::Status s = session->Run(inputs, output_names, target_nodes, outputs);
+    Status s = session->Run(inputs, output_names, target_nodes, outputs);
     TF_ASSERT_OK(s);
     ASSERT_EQ(outputs->size(), output_names.size());
   }
@@ -451,7 +451,7 @@ TEST_F(ScopedAllocatorOptimizerTest, Extend) {
   VLOG(0) << "nd: " << nd.DebugString();
   std::vector<int> scoped_allocator_attrs;
   AttrSlice slice(nd);
-  absl::Status sa_status =
+  Status sa_status =
       GetNodeAttr(slice, "_scoped_allocator", &scoped_allocator_attrs);
   for (int i : scoped_allocator_attrs) {
     VLOG(0) << "extracted: " << i;

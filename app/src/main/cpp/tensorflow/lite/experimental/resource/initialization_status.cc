@@ -15,8 +15,6 @@ limitations under the License.
 
 #include "tensorflow/lite/experimental/resource/initialization_status.h"
 
-#include <memory>
-
 namespace tflite {
 namespace resource {
 

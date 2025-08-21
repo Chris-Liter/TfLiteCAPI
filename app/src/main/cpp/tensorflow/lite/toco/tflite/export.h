@@ -17,9 +17,6 @@ limitations under the License.
 
 #include <string>
 
-#include "absl/log/log.h"
-#include "tensorflow/core/platform/status.h"
-#include "tensorflow/lite/schema/schema_generated.h"
 #include "tensorflow/lite/toco/model.h"
 #include "tensorflow/lite/toco/tflite/operator.h"
 #include "tensorflow/lite/util.h"
@@ -42,16 +39,17 @@ struct ExportParams {
 
 // Transform the given tf.mini model into a TF Lite flatbuffer and deposit the
 // result in the given string.
-absl::Status Export(const Model& model, std::string* output_file_contents,
-                    const ExportParams& params);
+tensorflow::Status Export(const Model& model, std::string* output_file_contents,
+                          const ExportParams& params);
 
 // Export API with custom TFLite operator mapping.
-absl::Status Export(
+tensorflow::Status Export(
     const Model& model, std::string* output_file_contents,
     const ExportParams& params,
     const std::map<OperatorType, std::unique_ptr<BaseOperator>>& ops_by_type);
 
 // This is for backward-compatibility.
+// TODO(ycling): Remove the deprecated entry functions.
 inline void Export(const Model& model, bool allow_custom_ops,
                    bool quantize_weights, std::string* output_file_contents) {
   ExportParams params;
@@ -63,6 +61,7 @@ inline void Export(const Model& model, bool allow_custom_ops,
 }
 
 // This is for backward-compatibility.
+// TODO(ycling): Remove the deprecated entry functions.
 inline void Export(
     const Model& model, bool allow_custom_ops, bool quantize_weights,
     std::string* output_file_contents,
@@ -76,6 +75,7 @@ inline void Export(
 }
 
 // This is for backward-compatibility.
+// TODO(ycling): Remove the deprecated entry functions.
 inline void Export(const Model& model, std::string* output_file_contents) {
   ExportParams params;
   params.allow_custom_ops = true;

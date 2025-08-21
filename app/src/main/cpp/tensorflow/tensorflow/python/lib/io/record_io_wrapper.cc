@@ -38,19 +38,19 @@ class PyRecordReader {
  public:
   // NOTE(sethtroisi): At this time PyRecordReader doesn't benefit from taking
   // RecordReaderOptions, if this changes the API can be updated at that time.
-  static absl::Status New(const std::string& filename,
-                          const std::string& compression_type,
-                          PyRecordReader** out) {
+  static tensorflow::Status New(const std::string& filename,
+                                const std::string& compression_type,
+                                PyRecordReader** out) {
     auto tmp = new PyRecordReader(filename, compression_type);
     TF_RETURN_IF_ERROR(tmp->Reopen());
     *out = tmp;
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   PyRecordReader() = delete;
   ~PyRecordReader() { Close(); }
 
-  absl::Status ReadNextRecord(tensorflow::tstring* out) {
+  tensorflow::Status ReadNextRecord(tensorflow::tstring* out) {
     if (IsClosed()) {
       return tensorflow::errors::FailedPrecondition("Reader is closed.");
     }
@@ -72,15 +72,15 @@ class PyRecordReader {
   // that otherwise wouldn't be available via the existing file handle. This
   // allows the file to be polled continuously using the same iterator, even as
   // it grows, which supports use cases such as TensorBoard.
-  absl::Status Reopen() {
+  tensorflow::Status Reopen() {
     if (!IsClosed()) {
       return tensorflow::errors::FailedPrecondition("Reader is not closed.");
     }
     TF_RETURN_IF_ERROR(
         tensorflow::Env::Default()->NewRandomAccessFile(filename_, &file_));
     reader_ =
-        std::make_unique<tensorflow::io::RecordReader>(file_.get(), options_);
-    return absl::OkStatus();
+        absl::make_unique<tensorflow::io::RecordReader>(file_.get(), options_);
+    return ::tensorflow::OkStatus();
   }
 
  private:
@@ -109,14 +109,13 @@ class PyRecordReader {
   std::unique_ptr<tensorflow::RandomAccessFile> file_;
   std::unique_ptr<tensorflow::io::RecordReader> reader_;
 
-  PyRecordReader(const PyRecordReader&) = delete;
-  void operator=(const PyRecordReader&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(PyRecordReader);
 };
 
 class PyRecordRandomReader {
  public:
-  static absl::Status New(const std::string& filename,
-                          PyRecordRandomReader** out) {
+  static tensorflow::Status New(const std::string& filename,
+                                PyRecordRandomReader** out) {
     std::unique_ptr<tensorflow::RandomAccessFile> file;
     TF_RETURN_IF_ERROR(
         tensorflow::Env::Default()->NewRandomAccessFile(filename, &file));
@@ -124,16 +123,16 @@ class PyRecordRandomReader {
         tensorflow::io::RecordReaderOptions::CreateRecordReaderOptions("");
     options.buffer_size = kReaderBufferSize;
     auto reader =
-        std::make_unique<tensorflow::io::RecordReader>(file.get(), options);
+        absl::make_unique<tensorflow::io::RecordReader>(file.get(), options);
     *out = new PyRecordRandomReader(std::move(file), std::move(reader));
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   PyRecordRandomReader() = delete;
   ~PyRecordRandomReader() { Close(); }
 
-  absl::Status ReadRecord(tensorflow::uint64* offset,
-                          tensorflow::tstring* out) {
+  tensorflow::Status ReadRecord(tensorflow::uint64* offset,
+                                tensorflow::tstring* out) {
     if (IsClosed()) {
       return tensorflow::errors::FailedPrecondition(
           "Random TFRecord Reader is closed.");
@@ -158,35 +157,35 @@ class PyRecordRandomReader {
   std::unique_ptr<tensorflow::RandomAccessFile> file_;
   std::unique_ptr<tensorflow::io::RecordReader> reader_;
 
-  PyRecordRandomReader(const PyRecordRandomReader&) = delete;
-  void operator=(const PyRecordRandomReader&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(PyRecordRandomReader);
 };
 
 class PyRecordWriter {
  public:
-  static absl::Status New(const std::string& filename,
-                          const tensorflow::io::RecordWriterOptions& options,
-                          PyRecordWriter** out) {
+  static tensorflow::Status New(
+      const std::string& filename,
+      const tensorflow::io::RecordWriterOptions& options,
+      PyRecordWriter** out) {
     std::unique_ptr<tensorflow::WritableFile> file;
     TF_RETURN_IF_ERROR(
         tensorflow::Env::Default()->NewWritableFile(filename, &file));
     auto writer =
-        std::make_unique<tensorflow::io::RecordWriter>(file.get(), options);
+        absl::make_unique<tensorflow::io::RecordWriter>(file.get(), options);
     *out = new PyRecordWriter(std::move(file), std::move(writer));
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   PyRecordWriter() = delete;
   ~PyRecordWriter() { (void)Close(); }
 
-  absl::Status WriteRecord(tensorflow::StringPiece record) {
+  tensorflow::Status WriteRecord(tensorflow::StringPiece record) {
     if (IsClosed()) {
       return tensorflow::errors::FailedPrecondition("Writer is closed.");
     }
     return writer_->WriteRecord(record);
   }
 
-  absl::Status Flush() {
+  tensorflow::Status Flush() {
     if (IsClosed()) {
       return tensorflow::errors::FailedPrecondition("Writer is closed.");
     }
@@ -202,7 +201,7 @@ class PyRecordWriter {
 
   bool IsClosed() const { return file_ == nullptr && writer_ == nullptr; }
 
-  absl::Status Close() {
+  tensorflow::Status Close() {
     if (writer_ != nullptr) {
       auto status = writer_->Close();
       writer_ = nullptr;
@@ -213,7 +212,7 @@ class PyRecordWriter {
       file_ = nullptr;
       if (!status.ok()) return status;
     }
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
  private:
@@ -224,15 +223,14 @@ class PyRecordWriter {
   std::unique_ptr<tensorflow::WritableFile> file_;
   std::unique_ptr<tensorflow::io::RecordWriter> writer_;
 
-  PyRecordWriter(const PyRecordWriter&) = delete;
-  void operator=(const PyRecordWriter&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(PyRecordWriter);
 };
 
 PYBIND11_MODULE(_pywrap_record_io, m) {
   py::class_<PyRecordReader>(m, "RecordIterator")
       .def(py::init(
           [](const std::string& filename, const std::string& compression_type) {
-            absl::Status status;
+            tensorflow::Status status;
             PyRecordReader* self = nullptr;
             {
               py::gil_scoped_release release;
@@ -249,7 +247,7 @@ PYBIND11_MODULE(_pywrap_record_io, m) {
              }
 
              tensorflow::tstring record;
-             absl::Status status;
+             tensorflow::Status status;
              {
                py::gil_scoped_release release;
                status = self->ReadNextRecord(&record);
@@ -265,7 +263,7 @@ PYBIND11_MODULE(_pywrap_record_io, m) {
            })
       .def("close", [](PyRecordReader* self) { self->Close(); })
       .def("reopen", [](PyRecordReader* self) {
-        absl::Status status;
+        tensorflow::Status status;
         {
           py::gil_scoped_release release;
           status = self->Reopen();
@@ -275,7 +273,7 @@ PYBIND11_MODULE(_pywrap_record_io, m) {
 
   py::class_<PyRecordRandomReader>(m, "RandomRecordReader")
       .def(py::init([](const std::string& filename) {
-        absl::Status status;
+        tensorflow::Status status;
         PyRecordRandomReader* self = nullptr;
         {
           py::gil_scoped_release release;
@@ -288,7 +286,7 @@ PYBIND11_MODULE(_pywrap_record_io, m) {
            [](PyRecordRandomReader* self, tensorflow::uint64 offset) {
              tensorflow::uint64 temp_offset = offset;
              tensorflow::tstring record;
-             absl::Status status;
+             tensorflow::Status status;
              {
                py::gil_scoped_release release;
                status = self->ReadRecord(&temp_offset, &record);
@@ -330,7 +328,7 @@ PYBIND11_MODULE(_pywrap_record_io, m) {
       .def(py::init(
           [](const std::string& filename, const RecordWriterOptions& options) {
             PyRecordWriter* self = nullptr;
-            absl::Status status;
+            tensorflow::Status status;
             {
               py::gil_scoped_release release;
               status = PyRecordWriter::New(filename, options, &self);
@@ -346,7 +344,7 @@ PYBIND11_MODULE(_pywrap_record_io, m) {
       .def(
           "write",
           [](PyRecordWriter* self, tensorflow::StringPiece record) {
-            absl::Status status;
+            tensorflow::Status status;
             {
               py::gil_scoped_release release;
               status = self->WriteRecord(record);

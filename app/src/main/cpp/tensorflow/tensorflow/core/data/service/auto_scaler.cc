@@ -26,12 +26,11 @@ limitations under the License.
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/log.h"
-#include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/time/time.h"
 #include "tensorflow/core/framework/metrics.h"
-#include "tsl/platform/mutex.h"
-#include "tsl/platform/thread_annotations.h"
+#include "tensorflow/tsl/platform/mutex.h"
+#include "tensorflow/tsl/platform/thread_annotations.h"
 
 namespace tensorflow {
 namespace data {
@@ -131,8 +130,8 @@ std::optional<int64_t> AutoScaler::GetOptimalNumberOfWorkers() const
   return std::max(int64_t{1}, optimal_number_of_workers);
 }
 
-absl::Status AutoScaler::ReportProcessingTime(const std::string& worker_address,
-                                              absl::Duration processing_time)
+tsl::Status AutoScaler::ReportProcessingTime(const std::string& worker_address,
+                                             absl::Duration processing_time)
     TF_LOCKS_EXCLUDED(mu_) {
   if (processing_time <= absl::ZeroDuration()) {
     return absl::InvalidArgumentError(absl::StrCat(
@@ -144,10 +143,10 @@ absl::Status AutoScaler::ReportProcessingTime(const std::string& worker_address,
   tsl::mutex_lock l(mu_);
   worker_throughputs_[worker_address] = worker_throughput;
 
-  return absl::OkStatus();
+  return tsl::OkStatus();
 }
 
-absl::Status AutoScaler::ReportTargetProcessingTime(
+tsl::Status AutoScaler::ReportTargetProcessingTime(
     int64_t consumer_id, absl::Duration target_processing_time)
     TF_LOCKS_EXCLUDED(mu_) {
   if (target_processing_time <= absl::ZeroDuration()) {
@@ -161,10 +160,10 @@ absl::Status AutoScaler::ReportTargetProcessingTime(
   tsl::mutex_lock l(mu_);
   consumption_rates_[consumer_id] = consumption_rate;
 
-  return absl::OkStatus();
+  return tsl::OkStatus();
 }
 
-absl::Status AutoScaler::RemoveWorker(const std::string& worker_address)
+tsl::Status AutoScaler::RemoveWorker(const std::string& worker_address)
     TF_LOCKS_EXCLUDED(mu_) {
   tsl::mutex_lock l(mu_);
   if (!worker_throughputs_.contains(worker_address))
@@ -173,10 +172,10 @@ absl::Status AutoScaler::RemoveWorker(const std::string& worker_address)
 
   worker_throughputs_.erase(worker_address);
 
-  return absl::OkStatus();
+  return tsl::OkStatus();
 }
 
-absl::Status AutoScaler::RemoveConsumer(int64_t consumer_id)
+tsl::Status AutoScaler::RemoveConsumer(int64_t consumer_id)
     TF_LOCKS_EXCLUDED(mu_) {
   tsl::mutex_lock l(mu_);
   if (!consumption_rates_.contains(consumer_id))
@@ -185,7 +184,7 @@ absl::Status AutoScaler::RemoveConsumer(int64_t consumer_id)
 
   consumption_rates_.erase(consumer_id);
 
-  return absl::OkStatus();
+  return tsl::OkStatus();
 }
 
 void MultipleIterationsAutoScaler::EnsureIterationIsRegistered(
@@ -195,17 +194,17 @@ void MultipleIterationsAutoScaler::EnsureIterationIsRegistered(
   }
 }
 
-absl::Status MultipleIterationsAutoScaler::UnregisterIteration(
+tsl::Status MultipleIterationsAutoScaler::UnregisterIteration(
     int64_t iteration_id) TF_LOCKS_EXCLUDED(mu_) {
   tsl::mutex_lock l(mu_);
   if (!auto_scalers_.contains(iteration_id))
     return absl::NotFoundError(absl::StrCat("AutoScaler for iteration_id ",
                                             iteration_id, " does not exist"));
   auto_scalers_.erase(iteration_id);
-  return absl::OkStatus();
+  return tsl::OkStatus();
 }
 
-absl::Status MultipleIterationsAutoScaler::UpdateOptimalNumberOfWorkersMetric(
+tsl::Status MultipleIterationsAutoScaler::UpdateOptimalNumberOfWorkersMetric(
     int64_t current_number_of_workers) TF_LOCKS_EXCLUDED(mu_) {
   if (current_number_of_workers <= 0)
     return absl::InvalidArgumentError(
@@ -240,7 +239,7 @@ absl::Status MultipleIterationsAutoScaler::UpdateOptimalNumberOfWorkersMetric(
   metrics::RecordTFDataServiceOptimalNumberOfWorkers(
       bound_optimal_number_of_workers);
 
-  return absl::OkStatus();
+  return tsl::OkStatus();
 }
 
 std::optional<int64_t> MultipleIterationsAutoScaler::GetOptimalNumberOfWorkers()
@@ -264,29 +263,29 @@ std::optional<int64_t> MultipleIterationsAutoScaler::GetOptimalNumberOfWorkers()
     return optimal_number_of_workers;
 }
 
-absl::Status MultipleIterationsAutoScaler::ReportProcessingTime(
+tsl::Status MultipleIterationsAutoScaler::ReportProcessingTime(
     int64_t iteration_id, const std::string& worker_address,
     absl::Duration processing_time) TF_LOCKS_EXCLUDED(mu_) {
   tsl::mutex_lock l(mu_);
   EnsureIterationIsRegistered(iteration_id);
 
-  absl::Status status = auto_scalers_[iteration_id]->ReportProcessingTime(
+  tsl::Status status = auto_scalers_[iteration_id]->ReportProcessingTime(
       worker_address, processing_time);
   return status;
 }
 
-absl::Status MultipleIterationsAutoScaler::ReportTargetProcessingTime(
+tsl::Status MultipleIterationsAutoScaler::ReportTargetProcessingTime(
     int64_t iteration_id, int64_t consumer_id,
     absl::Duration target_processing_time) TF_LOCKS_EXCLUDED(mu_) {
   tsl::mutex_lock l(mu_);
   EnsureIterationIsRegistered(iteration_id);
 
-  absl::Status status = auto_scalers_[iteration_id]->ReportTargetProcessingTime(
+  tsl::Status status = auto_scalers_[iteration_id]->ReportTargetProcessingTime(
       consumer_id, target_processing_time);
   return status;
 }
 
-absl::Status MultipleIterationsAutoScaler::RemoveWorker(
+tsl::Status MultipleIterationsAutoScaler::RemoveWorker(
     int64_t iteration_id, const std::string& worker_address)
     TF_LOCKS_EXCLUDED(mu_) {
   tsl::tf_shared_lock l(mu_);
@@ -294,21 +293,20 @@ absl::Status MultipleIterationsAutoScaler::RemoveWorker(
     return absl::NotFoundError(absl::StrCat(
         "There are no reported times for iteration_id ", iteration_id));
 
-  absl::Status status =
+  tsl::Status status =
       auto_scalers_[iteration_id]->RemoveWorker(worker_address);
   return status;
 }
 
-absl::Status MultipleIterationsAutoScaler::RemoveConsumer(int64_t iteration_id,
-                                                          int64_t consumer_id)
+tsl::Status MultipleIterationsAutoScaler::RemoveConsumer(int64_t iteration_id,
+                                                         int64_t consumer_id)
     TF_LOCKS_EXCLUDED(mu_) {
   tsl::tf_shared_lock l(mu_);
   if (!auto_scalers_.contains(iteration_id))
     return absl::NotFoundError(absl::StrCat(
         "There are no reported times for iteration_id ", iteration_id));
 
-  absl::Status status =
-      auto_scalers_[iteration_id]->RemoveConsumer(consumer_id);
+  tsl::Status status = auto_scalers_[iteration_id]->RemoveConsumer(consumer_id);
   return status;
 }
 

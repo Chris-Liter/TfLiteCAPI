@@ -29,6 +29,7 @@ limitations under the License.
 #include "mlir/Transforms/Passes.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_executor.h"
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_ops.h"
+#include "tensorflow/compiler/mlir/tensorflow/transforms/bridge.h"
 #include "tensorflow/compiler/mlir/tensorflow/transforms/passes.h"
 #include "tensorflow/compiler/mlir/tensorflow/utils/error_util.h"
 
@@ -56,8 +57,7 @@ void ExecutorTPUV1IslandInliningPass::runOnOperation() {
 
   InlinerInterface inliner(&getContext());
   auto walk_result = getOperation().walk([&](TF::PartitionedCallOp call_op) {
-    if (!call_op.getF().getRootReference().getValue().starts_with(
-            kNestedModule))
+    if (!call_op.getF().getRootReference().getValue().startswith(kNestedModule))
       return WalkResult::advance();
     // This is a call we need to inline!
     LLVM_DEBUG(llvm::dbgs()

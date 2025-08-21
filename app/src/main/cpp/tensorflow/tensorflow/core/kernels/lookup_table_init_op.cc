@@ -178,7 +178,7 @@ class InitializeTableFromTextFileOp : public OpKernel {
                   .WithAttr("delimiter", delimiter_string));
           *out = ops::UnaryOp("Identity", table,
                               builder->opts().WithControlInput(import_table));
-          return absl::OkStatus();
+          return OkStatus();
         });
   }
 
@@ -189,8 +189,7 @@ class InitializeTableFromTextFileOp : public OpKernel {
   int64_t value_index_;
   int64_t offset_ = 0;
 
-  InitializeTableFromTextFileOp(const InitializeTableFromTextFileOp&) = delete;
-  void operator=(const InitializeTableFromTextFileOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(InitializeTableFromTextFileOp);
 };
 
 REGISTER_KERNEL_BUILDER(Name("InitializeTableFromTextFile").Device(DEVICE_CPU),

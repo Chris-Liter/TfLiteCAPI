@@ -38,8 +38,11 @@ rocblas_Xtrsm   //    ----           //     ----                   / / Ungqr //
 #include <unordered_map>
 #include <vector>
 
-#include "xla/stream_executor/rocm/rocblas_wrapper.h"
-#include "xla/stream_executor/stream_executor.h"
+#include "tensorflow/compiler/xla/stream_executor/gpu/gpu_activation.h"
+#include "tensorflow/compiler/xla/stream_executor/gpu/gpu_executor.h"
+#include "tensorflow/compiler/xla/stream_executor/platform/default/dso_loader.h"
+#include "tensorflow/compiler/xla/stream_executor/platform/port.h"
+#include "tensorflow/compiler/xla/stream_executor/rocm/rocblas_wrapper.h"
 #include "tensorflow/core/common_runtime/gpu/gpu_event_mgr.h"
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/framework/types.h"
@@ -55,19 +58,20 @@ rocblas_Xtrsm   //    ----           //     ----                   / / Ungqr //
 namespace tensorflow {
 namespace {
 
-using stream_executor::StreamExecutor;
+using stream_executor::gpu::GpuExecutor;
+using stream_executor::gpu::ScopedActivateExecutorContext;
 
 inline bool CopyHostToDevice(OpKernelContext* context, void* dst,
                              const void* src, uint64 bytes) {
   auto stream = context->op_device_context()->stream();
   se::DeviceMemoryBase wrapped_dst(dst);
-  return stream->Memcpy(&wrapped_dst, src, bytes).ok();
+  return stream->ThenMemcpy(&wrapped_dst, src, bytes).ok();
 }
 
 struct GpuSolverHandles {
-  explicit GpuSolverHandles(StreamExecutor* parent, hipStream_t stream) {
+  explicit GpuSolverHandles(GpuExecutor* parent, hipStream_t stream) {
     parent_ = parent;
-    std::unique_ptr<stream_executor::ActivateContext> sac = parent_->Activate();
+    ScopedActivateExecutorContext sac{parent_};
 #if TF_ROCM_VERSION >= 40500
     CHECK(se::wrap::hipsolverCreate(&hipsolver_handle) ==
           rocblas_status_success)
@@ -82,7 +86,7 @@ struct GpuSolverHandles {
   }
 
   ~GpuSolverHandles() {
-    std::unique_ptr<stream_executor::ActivateContext> sac = parent_->Activate();
+    ScopedActivateExecutorContext sac{parent_};
     CHECK(se::wrap::rocblas_destroy_handle(rocm_blas_handle) ==
           rocblas_status_success)
         << "Failed to destroy rocBlas instance.";
@@ -92,7 +96,7 @@ struct GpuSolverHandles {
         << "Failed to destroy hipsolver instance.";
 #endif
   }
-  StreamExecutor* parent_;
+  GpuExecutor* parent_;
   rocblas_handle rocm_blas_handle;
 #if TF_ROCM_VERSION >= 40500
   hipsolverHandle_t hipsolver_handle;
@@ -115,14 +119,15 @@ static mutex handle_map_mutex(LINKER_INITIALIZED);
 
 GpuSolver::GpuSolver(OpKernelContext* context) : context_(context) {
   mutex_lock lock(handle_map_mutex);
-  StreamExecutor* gpu_executor =
-      context->op_device_context()->stream()->parent();
-  hip_stream_ = reinterpret_cast<hipStream_t>(
-      CHECK_NOTNULL(context->op_device_context()
-                        ->stream()
-                        ->platform_specific_handle()
-                        .stream));
+  GpuExecutor* gpu_executor = static_cast<GpuExecutor*>(
+      context->op_device_context()->stream()->parent()->implementation());
+  const hipStream_t* hip_stream_ptr = CHECK_NOTNULL(
+      reinterpret_cast<const hipStream_t*>(context->op_device_context()
+                                               ->stream()
+                                               ->implementation()
+                                               ->GpuStreamMemberHack()));
 
+  hip_stream_ = *hip_stream_ptr;
   HandleMap* handle_map = CHECK_NOTNULL(GetHandleMapSingleton());
   auto it = handle_map->find(hip_stream_);
   if (it == handle_map->end()) {
@@ -180,8 +185,7 @@ void GpuSolver::CheckLapackInfoAndDeleteSolverAsync(
           std::function<void(const Status&, const std::vector<HostLapackInfo>&)>
               info_checker_callback,
           std::vector<HostLapackInfo> host_lapack_infos) {
-        std::unique_ptr<stream_executor::ActivateContext> scoped_activation =
-            stream->parent()->Activate();
+        ScopedActivateExecutorContext scoped_activation{stream->parent()};
         Status status;
         for (const auto& host_lapack_info : host_lapack_infos) {
           for (int i = 0; i < host_lapack_info.size() && status.ok(); ++i) {
@@ -320,7 +324,7 @@ Status GpuSolver::forward_input_or_allocate_scoped_tensor(
     TF_RETURN_IF_ROCBLAS_ERROR(BUFSIZE_FN(getrf, type_prefix)(             \
         hipsolver_handle_, m, n, AsHipComplex(A), lda, &lwork));           \
     auto dev_work =                                                        \
-        this -> GetScratchSpace<Scalar>(lwork, "", /*on_host*/ false);     \
+        this->GetScratchSpace<Scalar>(lwork, "", /*on_host*/ false);       \
     TF_RETURN_IF_ROCBLAS_ERROR(SOLVER_FN(getrf, type_prefix)(              \
         hipsolver_handle_, m, n, AsHipComplex(A), lda,                     \
         AsHipComplex(dev_work.mutable_data()), lwork, dev_pivots,          \
@@ -339,7 +343,7 @@ TF_CALL_LAPACK_TYPES(GETRF_INSTANCE);
     TF_RETURN_IF_ROCBLAS_ERROR(BUFSIZE_FN(geqrf, type_prefix)(               \
         hipsolver_handle_, m, n, AsHipComplex(dev_A), lda, &lwork));         \
     auto dev_work =                                                          \
-        this -> GetScratchSpace<Scalar>(lwork, "", /*on_host*/ false);       \
+        this->GetScratchSpace<Scalar>(lwork, "", /*on_host*/ false);         \
     TF_RETURN_IF_ROCBLAS_ERROR(SOLVER_FN(geqrf, type_prefix)(                \
         hipsolver_handle_, m, n, AsHipComplex(dev_A), lda,                   \
         AsHipComplex(dev_tau), AsHipComplex(dev_work.mutable_data()), lwork, \
@@ -376,7 +380,7 @@ TF_CALL_LAPACK_TYPES(GEQRF_INSTANCE);
         reinterpret_cast<HipScalar*>(dev_tau_copy.mutable_data()),             \
         AsHipComplex(dev_c), ldc, &lwork));                                    \
     auto dev_work =                                                            \
-        this -> GetScratchSpace<Scalar>(lwork, "", /*on_host*/ false);         \
+        this->GetScratchSpace<Scalar>(lwork, "", /*on_host*/ false);           \
     TF_RETURN_IF_ROCBLAS_ERROR(SOLVER_FN(unmqr, type_prefix)(                  \
         hipsolver_handle_, side, trans, m, n, k,                               \
         reinterpret_cast<HipScalar*>(dev_a_copy.mutable_data()), lda,          \
@@ -405,7 +409,7 @@ TF_CALL_LAPACK_TYPES_NO_REAL(UNMQR_INSTANCE);
         hipsolver_handle_, m, n, k, AsHipComplex(dev_a), lda,                \
         reinterpret_cast<HipScalar*>(dev_tau_copy.mutable_data()), &lwork)); \
     auto dev_work =                                                          \
-        this -> GetScratchSpace<Scalar>(lwork, "", /*on_host*/ false);       \
+        this->GetScratchSpace<Scalar>(lwork, "", /*on_host*/ false);         \
     TF_RETURN_IF_ROCBLAS_ERROR(SOLVER_FN(ungqr, type_prefix)(                \
         hipsolver_handle_, m, n, k, AsHipComplex(dev_a), lda,                \
         reinterpret_cast<HipScalar*>(dev_tau_copy.mutable_data()),           \
@@ -426,7 +430,7 @@ TF_CALL_LAPACK_TYPES_NO_REAL(UNGQR_INSTANCE);
     TF_RETURN_IF_ROCBLAS_ERROR(BUFSIZE_FN(potrf, type_prefix)(           \
         hipsolver_handle_, uplo, n, AsHipComplex(dev_A), lda, &lwork));  \
     auto dev_work =                                                      \
-        this -> GetScratchSpace<Scalar>(lwork, "", /*on_host*/ false);   \
+        this->GetScratchSpace<Scalar>(lwork, "", /*on_host*/ false);     \
     TF_RETURN_IF_ROCBLAS_ERROR(SOLVER_FN(potrf, type_prefix)(            \
         hipsolver_handle_, uplo, n, AsHipComplex(dev_A), lda,            \
         AsHipComplex(dev_work.mutable_data()), lwork, dev_lapack_info)); \
@@ -446,7 +450,7 @@ TF_CALL_LAPACK_TYPES(POTRF_INSTANCE);
         hipsolver_handle_, trans, n, nrhs, AsHipComplex(A), lda, dev_pivots,   \
         AsHipComplex(B), ldb, &lwork));                                        \
     auto dev_work =                                                            \
-        this -> GetScratchSpace<Scalar>(lwork, "", /*on_host*/ false);         \
+        this->GetScratchSpace<Scalar>(lwork, "", /*on_host*/ false);           \
     TF_RETURN_IF_ROCBLAS_ERROR(SOLVER_FN(getrs, type_prefix)(                  \
         hipsolver_handle_, trans, n, nrhs, AsHipComplex(A), lda, dev_pivots,   \
         AsHipComplex(B), ldb, AsHipComplex(dev_work.mutable_data()), lwork,    \
@@ -476,7 +480,7 @@ TF_CALL_LAPACK_TYPES(GETRS_INSTANCE);
         reinterpret_cast<HipScalar**>(dev_a.mutable_data()), lda, &lwork,     \
         batch_size));                                                         \
     auto dev_work =                                                           \
-        this -> GetScratchSpace<Scalar>(lwork, "", /*on_host*/ false);        \
+        this->GetScratchSpace<Scalar>(lwork, "", /*on_host*/ false);          \
     TF_RETURN_IF_ROCBLAS_ERROR(SOLVER_FN(potrfBatched, type_prefix)(          \
         hipsolver_handle_, uplo, n,                                           \
         reinterpret_cast<HipScalar**>(dev_a.mutable_data()), lda,             \
@@ -500,7 +504,7 @@ TF_CALL_LAPACK_TYPES(POTRF_BATCHED_INSTANCE);
         hipsolver_handle_, jobz, uplo, n, AsHipComplex(dev_A), lda, dev_W,     \
         &lwork));                                                              \
     auto dev_workspace =                                                       \
-        this -> GetScratchSpace<Scalar>(lwork, "", /*on host */ false);        \
+        this->GetScratchSpace<Scalar>(lwork, "", /*on host */ false);          \
     TF_RETURN_IF_ROCBLAS_ERROR(SOLVER_FN(heevd, type_prefix)(                  \
         hipsolver_handle_, jobz, uplo, n, AsHipComplex(dev_A), lda, dev_W,     \
         AsHipComplex(dev_workspace.mutable_data()), lwork, dev_lapack_info));  \
@@ -777,7 +781,7 @@ TF_CALL_HIP_LAPACK_TYPES_NO_COMPLEX(GESVD_INSTANCE);
 TF_CALL_LAPACK_TYPES_NO_COMPLEX(TRSV_INSTANCE);
 
 template <typename Scalar, typename SolverFnT>
-static inline Status TrsmImpl(StreamExecutor* gpu_executor, SolverFnT solver,
+static inline Status TrsmImpl(GpuExecutor* gpu_executor, SolverFnT solver,
                               rocblas_handle rocm_blas_handle,
                               rocblas_side side, rocblas_fill uplo,
                               rocblas_operation trans, rocblas_diagonal diag,
@@ -787,8 +791,7 @@ static inline Status TrsmImpl(StreamExecutor* gpu_executor, SolverFnT solver,
   mutex_lock lock(handle_map_mutex);
   using ROCmScalar = typename ROCmComplexT<Scalar>::type;
 
-  std::unique_ptr<stream_executor::ActivateContext> sac =
-      gpu_executor->Activate();
+  ScopedActivateExecutorContext sac{gpu_executor};
   TF_RETURN_IF_ROCBLAS_ERROR(solver(rocm_blas_handle, side, uplo, trans, diag,
                                     m, n,
                                     reinterpret_cast<const ROCmScalar*>(alpha),
@@ -798,24 +801,24 @@ static inline Status TrsmImpl(StreamExecutor* gpu_executor, SolverFnT solver,
   return OkStatus();
 }
 
-#define TRSM_INSTANCE(Scalar, type_prefix)                                   \
-  template <>                                                                \
-  Status GpuSolver::Trsm<Scalar>(                                            \
-      rocblas_side side, rocblas_fill uplo, rocblas_operation trans,         \
-      rocblas_diagonal diag, int m, int n,                                   \
-      const Scalar* alpha, /* host or device pointer */                      \
-      const Scalar* A, int lda, Scalar* B, int ldb) {                        \
-    StreamExecutor* gpu_executor =                                           \
-        context_->op_device_context()->stream()->parent();                   \
-    return TrsmImpl(gpu_executor, BLAS_SOLVER_FN(trsm, type_prefix),         \
-                    rocm_blas_handle_, side, uplo, trans, diag, m, n, alpha, \
-                    A, lda, B, ldb);                                         \
+#define TRSM_INSTANCE(Scalar, type_prefix)                                    \
+  template <>                                                                 \
+  Status GpuSolver::Trsm<Scalar>(                                             \
+      rocblas_side side, rocblas_fill uplo, rocblas_operation trans,          \
+      rocblas_diagonal diag, int m, int n,                                    \
+      const Scalar* alpha, /* host or device pointer */                       \
+      const Scalar* A, int lda, Scalar* B, int ldb) {                         \
+    GpuExecutor* gpu_executor = static_cast<GpuExecutor*>(                    \
+        context_->op_device_context()->stream()->parent()->implementation()); \
+    return TrsmImpl(gpu_executor, BLAS_SOLVER_FN(trsm, type_prefix),          \
+                    rocm_blas_handle_, side, uplo, trans, diag, m, n, alpha,  \
+                    A, lda, B, ldb);                                          \
   }
 
 TF_CALL_LAPACK_TYPES_NO_COMPLEX(TRSM_INSTANCE);
 
 template <typename Scalar, typename SolverFnT>
-Status MatInvBatchedImpl(StreamExecutor* gpu_executor, SolverFnT solver,
+Status MatInvBatchedImpl(GpuExecutor* gpu_executor, SolverFnT solver,
                          rocblas_handle rocm_blas_handle, int n,
                          const Scalar* const host_a_dev_ptrs[], int lda,
                          int* dev_pivots,
@@ -824,8 +827,7 @@ Status MatInvBatchedImpl(StreamExecutor* gpu_executor, SolverFnT solver,
                          int batch_size) {
   mutex_lock lock(handle_map_mutex);
   using ROCmScalar = typename ROCmComplexT<Scalar>::type;
-  std::unique_ptr<stream_executor::ActivateContext> sac =
-      gpu_executor->Activate();
+  ScopedActivateExecutorContext sac{gpu_executor};
 
   GetrfBatched(n, host_a_dev_ptrs, lda, dev_pivots, dev_lapack_info,
                batch_size);
@@ -836,23 +838,23 @@ Status MatInvBatchedImpl(StreamExecutor* gpu_executor, SolverFnT solver,
   return OkStatus();
 }
 
-#define MATINVBATCHED_INSTANCE(Scalar, type_prefix)                        \
-  template <>                                                              \
-  Status GpuSolver::MatInvBatched<Scalar>(                                 \
-      int n, const Scalar* const host_a_dev_ptrs[], int lda,               \
-      const Scalar* const host_a_inverse_dev_ptrs[], int ldainv,           \
-      DeviceLapackInfo* dev_lapack_info, int batch_size) {                 \
-    StreamExecutor* gpu_executor =                                         \
-        context_->op_device_context()->stream()->parent();                 \
-    Tensor pivots;                                                         \
-    context_->allocate_scoped_tensor(DataTypeToEnum<int>::value,           \
-                                     TensorShape{batch_size, n}, &pivots); \
-    auto pivots_mat = pivots.template matrix<int>();                       \
-    int* dev_pivots = pivots_mat.data();                                   \
-    return MatInvBatchedImpl(                                              \
-        gpu_executor, BLAS_SOLVER_FN(matinvbatched, type_prefix),          \
-        rocm_blas_handle_, n, host_a_dev_ptrs, lda, dev_pivots,            \
-        host_a_inverse_dev_ptrs, ldainv, dev_lapack_info, batch_size);     \
+#define MATINVBATCHED_INSTANCE(Scalar, type_prefix)                           \
+  template <>                                                                 \
+  Status GpuSolver::MatInvBatched<Scalar>(                                    \
+      int n, const Scalar* const host_a_dev_ptrs[], int lda,                  \
+      const Scalar* const host_a_inverse_dev_ptrs[], int ldainv,              \
+      DeviceLapackInfo* dev_lapack_info, int batch_size) {                    \
+    GpuExecutor* gpu_executor = static_cast<GpuExecutor*>(                    \
+        context_->op_device_context()->stream()->parent()->implementation()); \
+    Tensor pivots;                                                            \
+    context_->allocate_scoped_tensor(DataTypeToEnum<int>::value,              \
+                                     TensorShape{batch_size, n}, &pivots);    \
+    auto pivots_mat = pivots.template matrix<int>();                          \
+    int* dev_pivots = pivots_mat.data();                                      \
+    return MatInvBatchedImpl(                                                 \
+        gpu_executor, BLAS_SOLVER_FN(matinvbatched, type_prefix),             \
+        rocm_blas_handle_, n, host_a_dev_ptrs, lda, dev_pivots,               \
+        host_a_inverse_dev_ptrs, ldainv, dev_lapack_info, batch_size);        \
   }
 
 #define TRSM_BATCHED_INSTANCE(Scalar, type_prefix)                            \
@@ -889,7 +891,7 @@ Status MatInvBatchedImpl(StreamExecutor* gpu_executor, SolverFnT solver,
 TF_CALL_LAPACK_TYPES_NO_COMPLEX(TRSM_BATCHED_INSTANCE);
 
 template <typename Scalar, typename SolverFnT>
-Status GeamImpl(StreamExecutor* gpu_executor, SolverFnT solver,
+Status GeamImpl(GpuExecutor* gpu_executor, SolverFnT solver,
                 rocblas_handle rocm_blas_handle, rocblas_operation transa,
                 rocblas_operation transb, int m, int n, const Scalar* alpha,
                 /* host or device pointer */ const Scalar* A, int lda,
@@ -899,8 +901,7 @@ Status GeamImpl(StreamExecutor* gpu_executor, SolverFnT solver,
   mutex_lock lock(handle_map_mutex);
   using ROCmScalar = typename ROCmComplexT<Scalar>::type;
 
-  std::unique_ptr<stream_executor::ActivateContext> sac =
-      gpu_executor->Activate();
+  ScopedActivateExecutorContext sac{gpu_executor};
   TF_RETURN_IF_ROCBLAS_ERROR(solver(rocm_blas_handle, transa, transb, m, n,
                                     reinterpret_cast<const ROCmScalar*>(alpha),
                                     reinterpret_cast<const ROCmScalar*>(A), lda,
@@ -910,17 +911,17 @@ Status GeamImpl(StreamExecutor* gpu_executor, SolverFnT solver,
   return OkStatus();
 }
 
-#define GEAM_INSTANCE(Scalar, type_prefix)                                  \
-  template <>                                                               \
-  Status GpuSolver::Geam<Scalar>(                                           \
-      rocblas_operation transa, rocblas_operation transb, int m, int n,     \
-      const Scalar* alpha, const Scalar* A, int lda, const Scalar* beta,    \
-      const Scalar* B, int ldb, Scalar* C, int ldc) {                       \
-    StreamExecutor* gpu_executor =                                          \
-        context_->op_device_context()->stream()->parent();                  \
-    return GeamImpl(gpu_executor, BLAS_SOLVER_FN(geam, type_prefix),        \
-                    rocm_blas_handle_, transa, transb, m, n, alpha, A, lda, \
-                    beta, B, ldb, C, ldc);                                  \
+#define GEAM_INSTANCE(Scalar, type_prefix)                                    \
+  template <>                                                                 \
+  Status GpuSolver::Geam<Scalar>(                                             \
+      rocblas_operation transa, rocblas_operation transb, int m, int n,       \
+      const Scalar* alpha, const Scalar* A, int lda, const Scalar* beta,      \
+      const Scalar* B, int ldb, Scalar* C, int ldc) {                         \
+    GpuExecutor* gpu_executor = static_cast<GpuExecutor*>(                    \
+        context_->op_device_context()->stream()->parent()->implementation()); \
+    return GeamImpl(gpu_executor, BLAS_SOLVER_FN(geam, type_prefix),          \
+                    rocm_blas_handle_, transa, transb, m, n, alpha, A, lda,   \
+                    beta, B, ldb, C, ldc);                                    \
   }
 
 TF_CALL_LAPACK_TYPES_NO_COMPLEX(GEAM_INSTANCE);

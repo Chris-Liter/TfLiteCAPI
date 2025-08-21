@@ -26,6 +26,7 @@ limitations under the License.
 
 using std::vector;
 using tensorflow::ops::BiasAddGrad;
+using tensorflow::ops::Mul;
 using tensorflow::ops::ReluGrad;
 
 namespace tensorflow {
@@ -43,9 +44,9 @@ class ReluGradientFunction : public GradientFunction {
     }
   }
 
-  absl::Status Compute(AbstractContext* ctx,
-                       absl::Span<AbstractTensorHandle* const> grad_outputs,
-                       absl::Span<AbstractTensorHandle*> grad_inputs) override {
+  Status Compute(AbstractContext* ctx,
+                 absl::Span<AbstractTensorHandle* const> grad_outputs,
+                 absl::Span<AbstractTensorHandle*> grad_inputs) override {
     AbstractTensorHandle* upstream_grad = grad_outputs[0];
     AbstractTensorHandle* activations = forward_outputs_[0];
 
@@ -53,7 +54,7 @@ class ReluGradientFunction : public GradientFunction {
     std::string name = "relu_grad";
     TF_RETURN_IF_ERROR(ReluGrad(ctx, upstream_grad, activations,
                                 &grad_inputs[0], name.c_str()));
-    return absl::OkStatus();
+    return OkStatus();
   }
   ~ReluGradientFunction() override {
     for (auto output : forward_outputs_) {
@@ -68,9 +69,9 @@ class ReluGradientFunction : public GradientFunction {
   vector<AbstractTensorHandle*> forward_outputs_;
 };
 
-absl::Status BroadcastMul(AbstractContext* ctx, AbstractTensorHandle* vec,
-                          AbstractTensorHandle* mat,
-                          absl::Span<AbstractTensorHandle*> outputs) {
+Status BroadcastMul(AbstractContext* ctx, AbstractTensorHandle* vec,
+                    AbstractTensorHandle* mat,
+                    absl::Span<AbstractTensorHandle*> outputs) {
   if (!isa<ImmediateExecutionContext>(ctx)) {
     // TODO(b/168850692): Fix this.
     return errors::Unimplemented(
@@ -85,7 +86,7 @@ absl::Status BroadcastMul(AbstractContext* ctx, AbstractTensorHandle* vec,
   TF_RETURN_IF_ERROR(
       ops::Mul(ctx, expand_dims_outputs, mat, &outputs[0], "Mul"));
   expand_dims_outputs->Unref();
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 class SparseSoftmaxCrossEntropyWithLogitsGradientFunction
@@ -95,9 +96,9 @@ class SparseSoftmaxCrossEntropyWithLogitsGradientFunction
       vector<AbstractTensorHandle*> f_outputs)
       : forward_outputs_(f_outputs) {}
 
-  absl::Status Compute(AbstractContext* ctx,
-                       absl::Span<AbstractTensorHandle* const> grad_outputs,
-                       absl::Span<AbstractTensorHandle*> grad_inputs) override {
+  Status Compute(AbstractContext* ctx,
+                 absl::Span<AbstractTensorHandle* const> grad_outputs,
+                 absl::Span<AbstractTensorHandle*> grad_inputs) override {
     // Grad for Softmax Input
     TF_RETURN_IF_ERROR(BroadcastMul(
         ctx, grad_outputs[0], forward_outputs_[1],
@@ -105,7 +106,7 @@ class SparseSoftmaxCrossEntropyWithLogitsGradientFunction
 
     // Grad for labels is null
     grad_inputs[1] = nullptr;
-    return absl::OkStatus();
+    return OkStatus();
   }
   ~SparseSoftmaxCrossEntropyWithLogitsGradientFunction() override {}
 
@@ -119,9 +120,9 @@ class BiasAddGradientFunction : public GradientFunction {
   explicit BiasAddGradientFunction(AttrBuilder f_attrs)
       : forward_attrs_(f_attrs) {}
 
-  absl::Status Compute(AbstractContext* ctx,
-                       absl::Span<AbstractTensorHandle* const> grad_outputs,
-                       absl::Span<AbstractTensorHandle*> grad_inputs) override {
+  Status Compute(AbstractContext* ctx,
+                 absl::Span<AbstractTensorHandle* const> grad_outputs,
+                 absl::Span<AbstractTensorHandle*> grad_inputs) override {
     /* Given upstream grad U and a BiasAdd: A + bias, the gradients are:
      *
      *    dA = U
@@ -144,7 +145,7 @@ class BiasAddGradientFunction : public GradientFunction {
     TF_RETURN_IF_ERROR(BiasAddGrad(ctx, upstream_grad, &grad_inputs[1],
                                    data_format.c_str(), name.c_str()));
 
-    return absl::OkStatus();
+    return OkStatus();
   }
   ~BiasAddGradientFunction() override {}
 

@@ -22,11 +22,8 @@ limitations under the License.
 #include <utility>
 #include <vector>
 
-#include "absl/base/attributes.h"
 #include "absl/container/flat_hash_map.h"
-#include "absl/log/check.h"
-#include "tensorflow/core/platform/stack_frame.h"
-#include "tensorflow/core/util/managed_stack_trace.h"
+#include "tensorflow/core/platform/status.h"
 
 namespace {
 

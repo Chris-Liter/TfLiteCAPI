@@ -24,7 +24,6 @@ limitations under the License.
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/platform/status.h"
 #include "tensorflow/core/platform/stringpiece.h"
-#include "tensorflow/core/platform/types.h"
 #include "tensorflow/core/runtime_fallback/util/attr_util.h"
 #include "tensorflow/core/util/padding.h"
 #include "tfrt/core_runtime/op_attrs.h"  // from @tf_runtime
@@ -36,18 +35,17 @@ namespace tensorflow {
 typedef llvm::StringMap<std::string> AttrMap;
 
 // Parse value from the given string input.
-absl::Status ParseValue(StringPiece input, bool* value);
-absl::Status ParseValue(StringPiece input, int32* value);
-absl::Status ParseValue(StringPiece input, DataType* value);
-absl::Status ParseValue(StringPiece input, std::string* value);
-absl::Status ParseValue(StringPiece input, std::vector<int32>* value);
-absl::Status ParseValue(StringPiece input, Padding* value);
+Status ParseValue(StringPiece input, bool* value);
+Status ParseValue(StringPiece input, int32* value);
+Status ParseValue(StringPiece input, DataType* value);
+Status ParseValue(StringPiece input, std::string* value);
+Status ParseValue(StringPiece input, std::vector<int32>* value);
+Status ParseValue(StringPiece input, Padding* value);
 
-absl::Status AddOpAttr(const std::string& name, const std::string& attr_value,
-                       tfrt::OpAttrs* opattrs);
+Status AddOpAttr(const std::string& name, const std::string& attr_value,
+                 tfrt::OpAttrs* opattrs);
 
-absl::Status FillOpAttrs(tfrt::RemainingAttributes attrs,
-                         tfrt::OpAttrs* opattrs);
+Status FillOpAttrs(tfrt::RemainingAttributes attrs, tfrt::OpAttrs* opattrs);
 }  // namespace tensorflow
 
 #endif  // TENSORFLOW_CORE_RUNTIME_FALLBACK_KERNEL_ATTR_UTIL_H_

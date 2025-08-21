@@ -16,10 +16,6 @@ tf_class {
     mtype: "<type \'property\'>"
   }
   member {
-    name: "initial_parallelism"
-    mtype: "<type \'property\'>"
-  }
-  member {
     name: "ram_budget"
     mtype: "<type \'property\'>"
   }

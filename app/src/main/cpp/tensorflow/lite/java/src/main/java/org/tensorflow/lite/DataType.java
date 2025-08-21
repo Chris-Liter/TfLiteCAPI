@@ -74,4 +74,7 @@ public enum DataType {
   int c() {
     return value;
   }
+
+  // Cached to avoid copying it
+  private static final DataType[] values = values();
 }

@@ -46,7 +46,7 @@ limitations under the License.
 #include "tensorflow/core/tfrt/utils/fallback_tensor.h"
 #include "tensorflow/core/tfrt/utils/tensor_util.h"
 #include "tensorflow/core/tfrt/utils/utils.h"
-#include "tsl/platform/errors.h"
+#include "tensorflow/tsl/platform/errors.h"
 #include "tfrt/host_context/async_dispatch.h"  // from @tf_runtime
 #include "tfrt/host_context/async_value_ref.h"  // from @tf_runtime
 #include "tfrt/host_context/attribute_utils.h"  // from @tf_runtime
@@ -80,7 +80,7 @@ void KernelFallbackEmitError(
     const KernelFallbackCompatRequestState* fallback_request_state,
     tfrt::string_view op_name, tfrt::AsyncValueRef<tfrt::Chain>* op_chain,
     llvm::MutableArrayRef<tfrt::RCReference<tfrt::AsyncValue>> results,
-    const absl::Status& status) {
+    const tensorflow::Status& status) {
   // Set all results to error, with the correct TFRT error code according to the
   // error propagated from runtime fallback execution.
   auto model_info =
@@ -101,9 +101,9 @@ void KernelFallbackEmitError(
 
 }  // namespace
 
-static llvm::Expected<absl::InlinedVector<tensorflow::Tensor, 4UL>>
+static llvm::Expected<gtl::InlinedVector<tensorflow::Tensor, 4>>
 ConvertInputTensors(llvm::ArrayRef<tfrt::Tensor*> arguments) {
-  absl::InlinedVector<tensorflow::Tensor, 4UL> input_tf_tensors;
+  gtl::InlinedVector<tensorflow::Tensor, 4> input_tf_tensors;
   input_tf_tensors.reserve(arguments.size());
   for (tfrt::Tensor* argument : arguments) {
     auto expected_tf_tensor = tfrt::TFRTTensorToTFTensor(*argument);
@@ -117,9 +117,9 @@ ConvertInputTensors(llvm::ArrayRef<tfrt::Tensor*> arguments) {
   return input_tf_tensors;
 }
 
-static absl::Status ValidateInputTypes(
+static Status ValidateInputTypes(
     tfrt::string_view op_name,
-    const absl::InlinedVector<tensorflow::Tensor, 4UL>& input_tf_tensors,
+    const gtl::InlinedVector<tensorflow::Tensor, 4>& input_tf_tensors,
     const DataTypeVector& input_types) {
   const size_t n_inputs = input_tf_tensors.size();
 
@@ -138,7 +138,7 @@ static absl::Status ValidateInputTypes(
     }
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 namespace {
@@ -261,7 +261,7 @@ tfrt::AsyncValueRef<tfrt::Chain> KernelFallbackExecuteCompatCoreRuntimeDispatch(
     const KernelFallbackCompatRequestState& fallback_request_state,
     const OpKernelRunner& op_kernel_runner) {
   auto op_chain = tfrt::GetReadyChain();
-  absl::Status status;
+  tensorflow::Status status;
 
   auto expected_input_tf_tensors = ConvertInputTensors(arguments);
   if (!expected_input_tf_tensors) {
@@ -286,7 +286,7 @@ tfrt::AsyncValueRef<tfrt::Chain> KernelFallbackExecuteCompatCoreRuntimeDispatch(
   // TODO(b/176997538): Skip checking dtypes for tf._BatchFunctionFallback op
   // due to b/176997538. Remove the skipping once the SavedModel lowering
   // problem is fixed.
-  if (!status.ok() && op_name != "_BatchFunctionFallback") {
+  if (!status.ok() && !op_name.equals("_BatchFunctionFallback")) {
     KernelFallbackEmitError(exec_ctx, &fallback_request_state, op_name,
                             &op_chain, results, status);
     return op_chain;
@@ -328,8 +328,8 @@ std::string GetTracingMetadata(llvm::ArrayRef<tfrt::AsyncValue*> args,
   auto debug_info = exec_ctx.location().GetDebugInfo();
   auto long_name = debug_info.has_value() ? debug_info.value().info : "";
 
-  if (!tsl::profiler::TfOpDetailsEnabled()) {
-    return tsl::profiler::TraceMeEncode(
+  if (!profiler::TfOpDetailsEnabled()) {
+    return profiler::TraceMeEncode(
         {{"id", request_id}, {"long_name", ToAbslStringView(long_name)}});
   }
 
@@ -356,7 +356,7 @@ std::string GetTracingMetadata(llvm::ArrayRef<tfrt::AsyncValue*> args,
     attr_string_stream << ";\n";
   }
 
-  return tsl::profiler::TraceMeEncode({
+  return profiler::TraceMeEncode({
       {"id", request_id},
       {"long_name", ToAbslStringView(long_name)},
       {"inputs", input_string},
@@ -414,9 +414,9 @@ TF_ATTRIBUTE_ALWAYS_INLINE static void KernelFallbackExecuteOpInternal(
     const KernelFallbackCompatRequestState& fallback_request_state,
     const OpKernelRunner& kernel_runner, bool is_async,
     tensorflow::Device* device) {
-  tsl::profiler::TraceMe trace_me([&]() -> std::string {
+  tensorflow::profiler::TraceMe trace_me([&]() -> std::string {
     if (kernel_runner.op_kernel()) {
-      return tsl::profiler::TraceMeOp(
+      return tensorflow::profiler::TraceMeOp(
           kernel_runner.op_kernel()->name_view(),
           kernel_runner.op_kernel()->type_string_view());
     }
@@ -608,9 +608,9 @@ void FallbackGetResource(tfrt::Argument<tfrt::Chain> in_ch,
                          tfrt::RemainingResults results,
                          tfrt::StringAttr device, tfrt::ArrayAttr indices_attr,
                          const tfrt::ExecutionContext& exec_ctx) {
-  tsl::profiler::TraceMe trace_me("tfrt_fallback_async.get_resource");
+  tensorflow::profiler::TraceMe trace_me("tfrt_fallback_async.get_resource");
   trace_me.AppendMetadata([request_id = exec_ctx.request_ctx()->id()]() {
-    return tsl::profiler::TraceMeEncode({{"id", request_id}});
+    return tensorflow::profiler::TraceMeEncode({{"id", request_id}});
   });
 
   const auto* fallback_request_state =
@@ -915,7 +915,7 @@ void BatchFunction(
     // Pass in a BEF function pointer with a I64 attribute.
     int64_t ptr_value = absl::bit_cast<int64_t>(&f.get());
     (*attr_value_map)["opaque_function_handle"].set_i(ptr_value);
-    return absl::OkStatus();
+    return OkStatus();
   };
   auto kernel_runner_or_status = runner_cache->GetOrCreate(
       exec_ctx.location(), kTfKernelNameToFallback,

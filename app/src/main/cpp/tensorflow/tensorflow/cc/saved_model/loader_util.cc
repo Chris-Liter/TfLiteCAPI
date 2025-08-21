@@ -28,9 +28,8 @@ namespace internal {
 // A SavedModel may store the name of the initialization op to run in the
 // in the SignatureDef (v2) or a collection (v1). If an init_op collection
 // exists, then the collection must contain exactly one op.
-absl::Status GetInitOp(const string& export_dir,
-                       const MetaGraphDef& meta_graph_def,
-                       string* init_op_name) {
+Status GetInitOp(const string& export_dir, const MetaGraphDef& meta_graph_def,
+                 string* init_op_name) {
   const auto& sig_def_map = meta_graph_def.signature_def();
   const auto& init_op_sig_it =
       meta_graph_def.signature_def().find(kSavedModelInitOpSignatureKey);
@@ -43,7 +42,7 @@ absl::Status GetInitOp(const string& export_dir,
                                         kSavedModelInitOpSignatureKey);
     }
     *init_op_name = sig_def_outputs_it->second.name();
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   const auto& collection_def_map = meta_graph_def.collection_def();
@@ -63,24 +62,24 @@ absl::Status GetInitOp(const string& export_dir,
     }
     *init_op_name = init_op_it->second.node_list().value(0);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status GetAssetFileDefs(const MetaGraphDef& meta_graph_def,
-                              std::vector<AssetFileDef>* asset_file_defs) {
+Status GetAssetFileDefs(const MetaGraphDef& meta_graph_def,
+                        std::vector<AssetFileDef>* asset_file_defs) {
   // With SavedModel v2, we write asset file def into metagraph instead of
   // collection, so read from metagraph first.
   if (meta_graph_def.asset_file_def_size() > 0) {
     for (const auto& asset : meta_graph_def.asset_file_def()) {
       asset_file_defs->push_back(asset);
     }
-    return absl::OkStatus();
+    return OkStatus();
   }
   // Fall back to read from collection to be backward compatible with v1.
   const auto& collection_def_map = meta_graph_def.collection_def();
   const auto assets_it = collection_def_map.find(kSavedModelAssetsKey);
   if (assets_it == collection_def_map.end()) {
-    return absl::OkStatus();
+    return OkStatus();
   }
   const auto& any_assets = assets_it->second.any_list().value();
   for (const auto& any_asset : any_assets) {
@@ -89,7 +88,7 @@ absl::Status GetAssetFileDefs(const MetaGraphDef& meta_graph_def,
         ParseAny(any_asset, &asset_file_def, "tensorflow.AssetFileDef"));
     asset_file_defs->push_back(asset_file_def);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace internal

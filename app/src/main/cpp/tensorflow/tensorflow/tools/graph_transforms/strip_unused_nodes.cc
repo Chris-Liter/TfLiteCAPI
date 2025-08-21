@@ -27,8 +27,8 @@ namespace graph_transforms {
 
 namespace {
 
-absl::Status TypeForPlaceholder(const TransformFuncContext& context,
-                                const string& node_name, DataType* result) {
+Status TypeForPlaceholder(const TransformFuncContext& context,
+                          const string& node_name, DataType* result) {
   // If we don't find anything else, return float.
   *result = DT_FLOAT;
 
@@ -69,11 +69,11 @@ absl::Status TypeForPlaceholder(const TransformFuncContext& context,
     }
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status ShapeForPlaceholder(const TransformFuncContext& context,
-                                 const string& node_name, TensorShape* result) {
+Status ShapeForPlaceholder(const TransformFuncContext& context,
+                           const string& node_name, TensorShape* result) {
   // If we don't find anything else, return scalar.
   *result = {};
 
@@ -108,14 +108,14 @@ absl::Status ShapeForPlaceholder(const TransformFuncContext& context,
     }
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 }  // namespace
 
 // Delete any nodes that don't contribute to the inference result.
-absl::Status StripUnusedNodes(const GraphDef& input_graph_def,
-                              const TransformFuncContext& context,
-                              GraphDef* output_graph_def) {
+Status StripUnusedNodes(const GraphDef& input_graph_def,
+                        const TransformFuncContext& context,
+                        GraphDef* output_graph_def) {
   std::set<string> required_nodes;
   std::set<string> input_nodes;
   for (const string& input : context.input_names) {
@@ -186,7 +186,7 @@ absl::Status StripUnusedNodes(const GraphDef& input_graph_def,
       *(output_graph_def->mutable_node()->Add()) = node;
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 REGISTER_GRAPH_TRANSFORM("strip_unused_nodes", StripUnusedNodes);

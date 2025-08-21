@@ -19,8 +19,9 @@ symbols through this python script.
   * `VS140COMNTOOLS`
 """
 
+load("@bazel_tools//tools/cpp:windows_cc_configure.bzl", "find_vc_path")
+load("@bazel_tools//tools/cpp:windows_cc_configure.bzl", "find_msvc_tool")
 load("@bazel_tools//tools/cpp:lib_cc_configure.bzl", "auto_configure_fail")
-load("@bazel_tools//tools/cpp:windows_cc_configure.bzl", "find_msvc_tool", "find_vc_path")
 
 def _def_file_filter_configure_impl(repository_ctx):
     if repository_ctx.os.name.lower().find("windows") == -1:

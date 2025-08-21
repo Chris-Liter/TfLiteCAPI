@@ -15,7 +15,6 @@ limitations under the License.
 #include "tensorflow/compiler/tf2xla/sharding_util.h"
 
 #include "absl/strings/match.h"
-#include "tensorflow/compiler/mlir/tensorflow/utils/xla_sharding_util.h"
 #include "tensorflow/core/framework/node_def.pb.h"
 #include "tensorflow/core/lib/core/errors.h"
 #include "tensorflow/core/util/device_name_utils.h"
@@ -48,14 +47,14 @@ void AssignOpMetadataToSharding(xla::OpSharding& sharding,
   }
 }
 
-absl::Status CoreOutOfRangeError(int core, int num_cores_per_replica) {
+Status CoreOutOfRangeError(int core, int num_cores_per_replica) {
   return errors::InvalidArgument(
       "Invalid replicated core id: ", core,
       "; num_cores_per_replica=", num_cores_per_replica);
 }
 }  // namespace
 
-absl::StatusOr<std::optional<xla::OpSharding>> ParseShardingFromDevice(
+StatusOr<std::optional<xla::OpSharding>> ParseShardingFromDevice(
     const string& device_name, int num_cores_per_replica,
     std::optional<xla::OpSharding> explicit_sharding,
     std::optional<xla::OpMetadata> metadata) {
@@ -87,7 +86,7 @@ absl::StatusOr<std::optional<xla::OpSharding>> ParseShardingFromDevice(
   }
 }
 
-absl::StatusOr<std::optional<xla::OpSharding>> ParseShardingFromDevice(
+StatusOr<std::optional<xla::OpSharding>> ParseShardingFromDevice(
     const NodeDef& node_def, int num_cores_per_replica, bool add_metadata) {
   const string& device_name = node_def.device();
   TF_ASSIGN_OR_RETURN(std::optional<xla::OpSharding> sharding,
@@ -99,7 +98,7 @@ absl::StatusOr<std::optional<xla::OpSharding>> ParseShardingFromDevice(
                    : std::nullopt);
 }
 
-absl::StatusOr<std::optional<xla::OpSharding>> ParseShardingFromDevice(
+StatusOr<std::optional<xla::OpSharding>> ParseShardingFromDevice(
     const Node& node, int num_cores_per_replica, bool add_metadata) {
   string device_name = node.assigned_device_name();
   if (device_name.empty()) {
@@ -114,7 +113,7 @@ absl::StatusOr<std::optional<xla::OpSharding>> ParseShardingFromDevice(
                    : std::nullopt);
 }
 
-absl::StatusOr<std::optional<xla::OpSharding>> ParseShardingFromEdgeSource(
+StatusOr<std::optional<xla::OpSharding>> ParseShardingFromEdgeSource(
     const Edge& edge, int num_cores_per_replica, bool add_metadata) {
   if (edge.src() == nullptr) {
     return tensorflow::errors::InvalidArgument(
@@ -151,7 +150,7 @@ void SetShardingDeviceAssignmentFromNode(const Node& src, Node* dst) {
 
 namespace {
 
-absl::StatusOr<std::optional<xla::OpSharding>> GetShardingFromNodeDefInternal(
+StatusOr<std::optional<xla::OpSharding>> GetShardingFromNodeDefInternal(
     const NodeDef& node_def, bool add_metadata, const char* attribute) {
   if (!HasNodeAttr(node_def, attribute)) {
     return std::optional<xla::OpSharding>();
@@ -159,7 +158,7 @@ absl::StatusOr<std::optional<xla::OpSharding>> GetShardingFromNodeDefInternal(
   string value;
   xla::OpSharding sharding;
   TF_RETURN_IF_ERROR(GetNodeAttr(node_def, attribute, &value));
-  if (tensorflow::DecodeShardingAttribute(value, sharding).failed()) {
+  if (!sharding.ParseFromString(value)) {
     return xla::InvalidArgument(
         "Experimental %s attribute was not a valid encoded xla::OpSharding "
         "proto.",
@@ -173,7 +172,7 @@ absl::StatusOr<std::optional<xla::OpSharding>> GetShardingFromNodeDefInternal(
 
 }  // namespace
 
-absl::StatusOr<std::optional<xla::OpSharding>> GetShardingFromNodeDef(
+xla::StatusOr<std::optional<xla::OpSharding>> GetShardingFromNodeDef(
     const NodeDef& node_def, bool add_metadata) {
   if (node_def.op() == "XlaSharding") {
     TF_ASSIGN_OR_RETURN(auto sharding,

@@ -15,17 +15,13 @@ limitations under the License.
 
 #include "tensorflow/compiler/tf2xla/lib/data_format.h"
 
-#include "absl/status/statusor.h"
-#include "xla/hlo/builder/xla_builder.h"
-#include "xla/shape.h"
-#include "xla/util.h"
+#include "tensorflow/compiler/xla/util.h"
 #include "tensorflow/core/lib/core/errors.h"
-#include "tsl/platform/statusor.h"
 
 namespace tensorflow {
 namespace {
 
-absl::StatusOr<xla::XlaOp> Contract(xla::XlaOp input, int64_t dim) {
+StatusOr<xla::XlaOp> Contract(xla::XlaOp input, int64_t dim) {
   xla::XlaBuilder* builder = input.builder();
   TF_ASSIGN_OR_RETURN(xla::Shape input_shape, builder->GetShape(input));
 
@@ -53,7 +49,7 @@ absl::StatusOr<xla::XlaOp> Contract(xla::XlaOp input, int64_t dim) {
   return xla::Reshape(xla::Transpose(input, permutation), contracted_shape);
 }
 
-absl::StatusOr<xla::XlaOp> Expand(xla::XlaOp input, int64_t dim) {
+StatusOr<xla::XlaOp> Expand(xla::XlaOp input, int64_t dim) {
   xla::XlaBuilder* builder = input.builder();
   TF_ASSIGN_OR_RETURN(xla::Shape input_shape, builder->GetShape(input));
 
@@ -87,11 +83,11 @@ absl::StatusOr<xla::XlaOp> Expand(xla::XlaOp input, int64_t dim) {
 
 }  // namespace
 
-absl::StatusOr<xla::XlaOp> NCHW_VECT_CToNCHW(xla::XlaOp input) {
+StatusOr<xla::XlaOp> NCHW_VECT_CToNCHW(xla::XlaOp input) {
   return Contract(input, 1);
 }
 
-absl::StatusOr<xla::XlaOp> NCHWToNCHW_VECT_C(xla::XlaOp input) {
+StatusOr<xla::XlaOp> NCHWToNCHW_VECT_C(xla::XlaOp input) {
   return Expand(input, 1);
 }
 

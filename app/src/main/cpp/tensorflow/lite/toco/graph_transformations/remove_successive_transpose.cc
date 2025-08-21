@@ -15,8 +15,7 @@ limitations under the License.
 #include <string>
 #include <vector>
 
-#include "absl/status/status.h"
-#include "tensorflow/core/platform/status.h"
+#include "tensorflow/core/platform/logging.h"
 #include "tensorflow/lite/toco/graph_transformations/graph_transformations.h"
 #include "tensorflow/lite/toco/model.h"
 #include "tensorflow/lite/toco/tooling_util.h"
@@ -58,26 +57,27 @@ void ReplaceOpInputsWith(Model* model, const std::string& lookfor,
 
 }  // namespace
 
-absl::Status RemoveSuccessiveTranspose::Run(Model* model, std::size_t op_index,
-                                            bool* modified) {
+::tensorflow::Status RemoveSuccessiveTranspose::Run(Model* model,
+                                                    std::size_t op_index,
+                                                    bool* modified) {
   *modified = false;
   auto op = model->operators.begin() + op_index;
   if (op->get()->type != OperatorType::kTranspose) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   TransposeOperator* t_op = static_cast<TransposeOperator*>(op->get());
   if (CountOpsWithInput(*model, t_op->outputs[0]) != 1) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   Operator* next = GetOpWithInput(*model, t_op->outputs[0]);
   if (!next || next->type != OperatorType::kTranspose) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   TransposeOperator* t_next = static_cast<TransposeOperator*>(next);
   if (!CountOpsWithInput(*model, t_next->outputs[0])) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   if (TransformsToIdentity(t_op->perm, t_next->perm)) {
@@ -90,7 +90,7 @@ absl::Status RemoveSuccessiveTranspose::Run(Model* model, std::size_t op_index,
     *modified = true;
   }
 
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 }  // namespace toco

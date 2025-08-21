@@ -44,15 +44,15 @@ MeasuringCostEstimator::MeasuringCostEstimator(Cluster* cluster,
   cluster_ = cluster;
 }
 
-absl::Status MeasuringCostEstimator::Initialize(const GrapplerItem& item) {
+Status MeasuringCostEstimator::Initialize(const GrapplerItem& item) {
   feed_ = item.feed;
   fetch_ = item.fetch;
   return cluster_->Initialize(item);
 }
 
-absl::Status MeasuringCostEstimator::PredictCosts(
-    const GraphDef& optimized_graph, RunMetadata* run_metadata,
-    Costs* costs) const {
+Status MeasuringCostEstimator::PredictCosts(const GraphDef& optimized_graph,
+                                            RunMetadata* run_metadata,
+                                            Costs* costs) const {
   CostGraphDef* cost_graph = nullptr;
   if (run_metadata) {
     cost_graph = run_metadata->mutable_cost_graph();
@@ -63,13 +63,13 @@ absl::Status MeasuringCostEstimator::PredictCosts(
   BlockingCounter barrier(measurement_steps_);
 
   mutex status_mu;
-  absl::Status status;
+  Status status;
 
   auto measurement_fn = [&](const int step) {
     const Costs::MicroSeconds start = Env::Default()->NowMicros();
 
     RunMetadata metadata;
-    const absl::Status local_status =
+    const Status local_status =
         cluster_->Run(optimized_graph, feed_, fetch_, &metadata);
     {
       mutex_lock lock(status_mu);
@@ -144,7 +144,7 @@ absl::Status MeasuringCostEstimator::PredictCosts(
   RobustStats stats(times);
   costs->execution_time = Costs::Duration(stats.mean());
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 }  // end namespace grappler
 }  // end namespace tensorflow

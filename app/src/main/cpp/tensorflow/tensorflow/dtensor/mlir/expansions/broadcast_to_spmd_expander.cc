@@ -18,17 +18,11 @@ limitations under the License.
 #include <string>
 #include <utility>
 
-#include "llvm/ADT/ArrayRef.h"
-#include "llvm/ADT/DenseMap.h"
-#include "llvm/ADT/SmallPtrSet.h"
-#include "llvm/ADT/SmallVector.h"
-#include "llvm/Support/Casting.h"
-#include "mlir/IR/Builders.h"  // from @llvm-project
-#include "mlir/IR/Operation.h"  // from @llvm-project
-#include "mlir/IR/Value.h"  // from @llvm-project
+#include "mlir/IR/BuiltinTypes.h"  // from @llvm-project
+#include "tensorflow/compiler/mlir/tensorflow/ir/tf_device.h"
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_ops_a_m.h"
-#include "tensorflow/core/platform/errors.h"
-#include "tensorflow/dtensor/cc/dstatus.h"
+#include "tensorflow/compiler/mlir/tensorflow/utils/convert_tensor.h"
+#include "tensorflow/dtensor/cc/constants.h"
 #include "tensorflow/dtensor/cc/tensor_layout.h"
 #include "tensorflow/dtensor/mlir/collectives.h"
 #include "tensorflow/dtensor/mlir/layout_parsing.h"

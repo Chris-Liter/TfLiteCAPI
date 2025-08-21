@@ -14,13 +14,13 @@ limitations under the License.
 ==============================================================================*/
 #include "tensorflow/core/tfrt/run_handler_thread_pool/run_handler_concurrent_work_queue.h"
 
+#include <cstdio>
 #include <memory>
 #include <utility>
 
-#include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include "absl/strings/match.h"
-#include "xla/tsl/protobuf/error_codes.pb.h"
+#include "absl/strings/str_cat.h"
+#include "absl/time/time.h"
 #include "tensorflow/core/platform/errors.h"
 #include "tensorflow/core/platform/mutex.h"
 #include "tensorflow/core/platform/status_matchers.h"
@@ -161,16 +161,16 @@ TEST_F(RunHandlerThreadWorkQueueTest, RunningMixedTask) {
 }
 
 TEST_F(RunHandlerThreadWorkQueueTest, NameReturnsValidString) {
-  EXPECT_TRUE(absl::StrContains(pool_->name(), "RunHandlerThreadWorkQueue"));
+  EXPECT_EQ(queue_->name(), "run_handler");
 }
 
 TEST_F(RunHandlerThreadWorkQueueTest, GetParallelismLevelOk) {
-  EXPECT_EQ(pool_->GetParallelismLevel(),
+  EXPECT_EQ(queue_->GetParallelismLevel(),
             kNumComplementaryThreads + kNumMainThreads);
 }
 
 TEST_F(RunHandlerThreadWorkQueueTest, IsWorkerThreadOk) {
-  EXPECT_TRUE(pool_->IsInWorkerThread());
+  EXPECT_TRUE(queue_->IsInWorkerThread());
 }
 
 TEST_F(RunHandlerThreadWorkQueueTest, NoHandlerReturnsError) {

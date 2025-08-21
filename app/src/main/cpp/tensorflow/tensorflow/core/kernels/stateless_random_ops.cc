@@ -30,8 +30,8 @@ namespace tensorflow {
 using CPUDevice = Eigen::ThreadPoolDevice;
 using GPUDevice = Eigen::GpuDevice;
 
-absl::Status GenerateKey(Tensor seed, random::PhiloxRandom::Key* out_key,
-                         random::PhiloxRandom::ResultType* out_counter) {
+Status GenerateKey(Tensor seed, random::PhiloxRandom::Key* out_key,
+                   random::PhiloxRandom::ResultType* out_counter) {
   // Grab the two seeds
   uint64 seed0;
   uint64 seed1;
@@ -62,7 +62,7 @@ absl::Status GenerateKey(Tensor seed, random::PhiloxRandom::Key* out_key,
   (*out_counter)[0] = (*out_counter)[1] = 0;
   (*out_counter)[2] = mix[2];
   (*out_counter)[3] = mix[3];
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 StatelessRandomOpBase::StatelessRandomOpBase(OpKernelConstruction* context)
@@ -196,8 +196,7 @@ class StatelessRandomPoissonOp : public StatelessRandomOpBase {
   }
 
  private:
-  StatelessRandomPoissonOp(const StatelessRandomPoissonOp&) = delete;
-  void operator=(const StatelessRandomPoissonOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(StatelessRandomPoissonOp);
 };
 
 #define REGISTER(DEVICE, TYPE)                                              \

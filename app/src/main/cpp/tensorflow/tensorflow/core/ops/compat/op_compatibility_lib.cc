@@ -51,13 +51,13 @@ static void AddNewOpToHistory(const OpDef& op,
   }
 }
 
-static absl::Status ReadOpHistory(Env* env, const string& file,
-                                  const string& directory,
-                                  OpCompatibilityLib::OpHistory* out) {
+static Status ReadOpHistory(Env* env, const string& file,
+                            const string& directory,
+                            OpCompatibilityLib::OpHistory* out) {
   // Read op history form `directory` if it exists there.
   std::vector<string> matching_files;
-  absl::Status status = env->GetMatchingPaths(
-      io::JoinPath(directory, "*.pbtxt"), &matching_files);
+  Status status = env->GetMatchingPaths(io::JoinPath(directory, "*.pbtxt"),
+                                        &matching_files);
   if (status.ok() && !matching_files.empty()) {
     printf("Reading op history from %s/*.pbtxt...\n", directory.c_str());
     std::sort(matching_files.begin(), matching_files.end());
@@ -95,7 +95,7 @@ static absl::Status ReadOpHistory(Env* env, const string& file,
       }
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 OpCompatibilityLib::OpCompatibilityLib(const string& ops_prefix,
@@ -110,9 +110,9 @@ OpCompatibilityLib::OpCompatibilityLib(const string& ops_prefix,
   OpRegistry::Global()->Export(false, &op_list_);
 }
 
-absl::Status OpCompatibilityLib::ValidateCompatible(Env* env, int* changed_ops,
-                                                    int* added_ops,
-                                                    OpHistory* out_op_history) {
+Status OpCompatibilityLib::ValidateCompatible(Env* env, int* changed_ops,
+                                              int* added_ops,
+                                              OpHistory* out_op_history) {
   *changed_ops = 0;
   *added_ops = 0;
 
@@ -241,7 +241,7 @@ absl::Status OpCompatibilityLib::ValidateCompatible(Env* env, int* changed_ops,
     }
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace tensorflow

@@ -148,9 +148,8 @@ namespace {
 
 // Ensures indices, values, shape are all of the proper ranks and are
 // compatible.
-absl::Status ValidateSparseTensorShape(const Tensor& indices,
-                                       const Tensor& values,
-                                       const Tensor& shape) {
+Status ValidateSparseTensorShape(const Tensor& indices, const Tensor& values,
+                                 const Tensor& shape) {
   // Indices must be a matrix, and values/shape must be a vector.
   if (!TensorShapeUtils::IsMatrix(indices.shape())) {
     return errors::InvalidArgument("Sparse indices must be rank 2 but is rank ",
@@ -177,7 +176,7 @@ absl::Status ValidateSparseTensorShape(const Tensor& indices,
                                    shape.NumElements(), ") do not match");
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Creates a debug string for the index tuple in indices(row, :).
@@ -197,8 +196,8 @@ string CreateIndexString(const IndexTensor& indices, int64_t row) {
 
 // Ensures all sparse indices are within correct bounds.
 template <typename Tindices>
-absl::Status ValidateSparseTensorIndicesUnordered(const Tensor& indices,
-                                                  const Tensor& shape) {
+Status ValidateSparseTensorIndicesUnordered(const Tensor& indices,
+                                            const Tensor& shape) {
   // Ensure no index is out-of-bounds.
   const auto indices_mat = indices.flat_inner_dims<Tindices>();
   const auto shape_vec = shape.flat<Tindices>();
@@ -216,21 +215,21 @@ absl::Status ValidateSparseTensorIndicesUnordered(const Tensor& indices,
     }
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Ensures all sparse indices are within correct bounds and are
 // lexicographically ordered.
 template <typename Tindices>
-absl::Status ValidateSparseTensorIndicesOrdered(const Tensor& indices,
-                                                const Tensor& shape) {
+Status ValidateSparseTensorIndicesOrdered(const Tensor& indices,
+                                          const Tensor& shape) {
   const auto indices_mat = indices.flat_inner_dims<Tindices>();
   const auto shape_vec = shape.flat<Tindices>();
   int64_t nnz = indices.dim_size(0);
   int64_t ndims = indices.dim_size(1);
 
   if (nnz == 0) {
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   // First set of indices must be within range.
@@ -283,15 +282,15 @@ absl::Status ValidateSparseTensorIndicesOrdered(const Tensor& indices,
     }
   }  // for i in [1, nnz)
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace
 
 template <typename Tindices>
-absl::Status ValidateSparseTensor(const Tensor& indices, const Tensor& values,
-                                  const Tensor& shape,
-                                  IndexValidation index_validation) {
+Status ValidateSparseTensor(const Tensor& indices, const Tensor& values,
+                            const Tensor& shape,
+                            IndexValidation index_validation) {
   TF_RETURN_IF_ERROR(ValidateSparseTensorShape(indices, values, shape));
   switch (index_validation) {
     case IndexValidation::kOrdered:
@@ -301,7 +300,7 @@ absl::Status ValidateSparseTensor(const Tensor& indices, const Tensor& values,
     case IndexValidation::kNone: {
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 #define REGISTER_SPARSE_UTIL_FUNCTIONS(TypeIndex)                           \

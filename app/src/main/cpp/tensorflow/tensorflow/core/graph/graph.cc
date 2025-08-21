@@ -162,7 +162,7 @@ void Node::Clear() {
 void Node::UpdateProperties() {
   DataTypeVector inputs;
   DataTypeVector outputs;
-  absl::Status status =
+  Status status =
       InOutTypesForNode(props_->node_def, *(props_->op_def), &inputs, &outputs);
   if (!status.ok()) {
     LOG(ERROR) << "Failed at updating node: " << status;
@@ -188,9 +188,9 @@ void Node::ClearTypeInfo() {
   }
 }
 
-absl::Status Node::ShrinkTypeInfo(
-    const absl::flat_hash_map<int, int>& index_mapping,
-    const string& type_attr_name, bool update_full_type) {
+Status Node::ShrinkTypeInfo(const absl::flat_hash_map<int, int>& index_mapping,
+                            const string& type_attr_name,
+                            bool update_full_type) {
   std::vector<DataType> dtypes;
   TF_RETURN_IF_ERROR(GetNodeAttr(def(), type_attr_name, &dtypes));
 
@@ -206,7 +206,7 @@ absl::Status Node::ShrinkTypeInfo(
   AddAttr(type_attr_name, new_dtypes);
 
   if (!update_full_type || !def().has_experimental_type()) {
-    return absl::OkStatus();
+    return OkStatus();
   }
   FullTypeDef ft = def().experimental_type();
   if (ft.type_id() != TFT_PRODUCT) {
@@ -229,7 +229,7 @@ absl::Status Node::ShrinkTypeInfo(
   }
   MaybeCopyOnWrite();
   *(mutable_def()->mutable_experimental_type()) = new_ft;
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 const std::string& Node::name() const { return props_->node_def.name(); }
@@ -270,8 +270,7 @@ gtl::iterator_range<NeighborIter> Node::in_nodes() const {
 void Node::MaybeCopyOnWrite() {
   // TODO(mdan): As nodes become more dynamic, this may not be worth the cost.
   // NodeProperties may be shared between Nodes. Make a copy if so.
-  // TODO(b/338453606): use_count() == 1 has a race condition.
-  if (!(props_.use_count() == 1)) {
+  if (!props_.unique()) {
     props_ = std::make_shared<NodeProperties>(*props_);
   }
 }
@@ -316,7 +315,7 @@ void Node::set_original_func_names(const std::vector<std::string>& names) {
   }
 }
 
-absl::Status Node::input_edge(int idx, const Edge** e) const {
+Status Node::input_edge(int idx, const Edge** e) const {
   if (idx < 0 || idx >= num_inputs()) {
     return errors::InvalidArgument("Invalid input_edge index: ", idx, ", Node ",
                                    name(), " only has ", num_inputs(),
@@ -335,7 +334,7 @@ absl::Status Node::input_edge(int idx, const Edge** e) const {
   for (const Edge* edge : in_edges()) {
     if (edge->dst_input() == idx) {
       *e = edge;
-      return absl::OkStatus();
+      return OkStatus();
     }
   }
 
@@ -343,7 +342,7 @@ absl::Status Node::input_edge(int idx, const Edge** e) const {
 }
 
 // Returns a vector of the non-control input edges to a node, indexed by ID.
-absl::Status Node::input_edges(std::vector<const Edge*>* input_edges) const {
+Status Node::input_edges(std::vector<const Edge*>* input_edges) const {
   input_edges->clear();
   input_edges->resize(num_inputs(), nullptr);
 
@@ -364,10 +363,10 @@ absl::Status Node::input_edges(std::vector<const Edge*>* input_edges) const {
       return errors::InvalidArgument("Missing edge input number: ", i);
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status Node::input_node(int idx, Node** n) const {
+Status Node::input_node(int idx, Node** n) const {
   const Edge* e;
   TF_RETURN_IF_ERROR(input_edge(idx, &e));
   if (e == nullptr) {
@@ -375,22 +374,22 @@ absl::Status Node::input_node(int idx, Node** n) const {
   } else {
     *n = e->src();
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status Node::input_node(int idx, const Node** const_n) const {
+Status Node::input_node(int idx, const Node** const_n) const {
   Node* n;
   TF_RETURN_IF_ERROR(input_node(idx, &n));
   *const_n = n;
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status Node::input_tensor(int idx, OutputTensor* t) const {
+Status Node::input_tensor(int idx, OutputTensor* t) const {
   const Edge* e;
   TF_RETURN_IF_ERROR(input_edge(idx, &e));
   DCHECK(e != nullptr);
   *t = OutputTensor(e->src(), e->src_output());
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // NodeDebugInfo
@@ -449,7 +448,7 @@ Graph::Graph(const OpRegistryInterface* ops)
   NodeDef def;
   def.set_name("_SOURCE");
   def.set_op("NoOp");
-  absl::Status status;
+  Status status;
   Node* source = AddNode(def, &status);
   TF_CHECK_OK(status);
   CHECK_EQ(source->id(), kSourceId);
@@ -468,7 +467,7 @@ Graph::Graph(const FunctionLibraryDefinition& flib_def)
   if (flib_def.num_functions() > 0 && versions_->min_consumer() < 12) {
     versions_->set_min_consumer(12);
   }
-  absl::Status s = ops_.AddLibrary(flib_def);
+  Status s = ops_.AddLibrary(flib_def);
   CHECK(s.ok()) << s.message();
 }
 
@@ -536,14 +535,14 @@ void Graph::Copy(const Graph& src) {
   }
 }
 
-absl::StatusOr<Node*> Graph::AddNode(NodeDef node_def) {
-  absl::Status s;
+StatusOr<Node*> Graph::AddNode(NodeDef node_def) {
+  Status s;
   Node* out = AddNode(std::move(node_def), &s);
   TF_RETURN_IF_ERROR(s);
   return out;
 }
 
-Node* Graph::AddNode(NodeDef node_def, absl::Status* status) {
+Node* Graph::AddNode(NodeDef node_def, Status* status) {
   const OpRegistrationData* op_reg_data;
   status->Update(ops_.LookUp(node_def.op(), &op_reg_data));
   if (!status->ok()) return nullptr;
@@ -567,7 +566,7 @@ Node* Graph::AddNode(NodeDef node_def, absl::Status* status) {
   } else {
     if (op_reg_data->type_ctor != nullptr) {
       VLOG(3) << "AddNode: found type constructor for " << node_def.name();
-      absl::Status s =
+      Status s =
           full_type::SpecializeType(AttrSlice(node_def), op_reg_data->op_def,
                                     *(node_def.mutable_experimental_type()));
       if (!s.ok()) {
@@ -733,8 +732,8 @@ const Edge* FindEdge(const Node* dst, int index) {
 }
 }  // namespace
 
-absl::Status Graph::UpdateEdge(Node* new_src, int new_src_index, Node* dst,
-                               int dst_index) {
+Status Graph::UpdateEdge(Node* new_src, int new_src_index, Node* dst,
+                         int dst_index) {
   TF_RETURN_IF_ERROR(IsValidOutputTensor(new_src, new_src_index));
   TF_RETURN_IF_ERROR(IsValidInputTensor(dst, dst_index));
   const Edge* e = FindEdge(dst, dst_index);
@@ -747,7 +746,7 @@ absl::Status Graph::UpdateEdge(Node* new_src, int new_src_index, Node* dst,
   dst->MaybeCopyOnWrite();
   (*dst->props_->node_def.mutable_input())[dst_index] =
       strings::StrCat(new_src->name(), ":", new_src_index);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 void Graph::AddInput(NodeDef* dst, StringPiece src_name, int src_slot) {
@@ -760,8 +759,7 @@ void Graph::AddInput(NodeDef* dst, StringPiece src_name, int src_slot) {
   }
 }
 
-absl::Status Graph::AddWhileInputHack(Node* new_src, int new_src_index,
-                                      Node* dst) {
+Status Graph::AddWhileInputHack(Node* new_src, int new_src_index, Node* dst) {
   if (!dst->IsWhileNode()) {
     return errors::Internal(
         "dst argument to AddWhileEdgeHack should be a While op, got: ",
@@ -780,16 +778,16 @@ absl::Status Graph::AddWhileInputHack(Node* new_src, int new_src_index,
   dst->MaybeCopyOnWrite();
   dst->props_->node_def.add_input(
       strings::StrCat(new_src->name(), ":", new_src_index));
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status Graph::AddFunctionLibrary(
+Status Graph::AddFunctionLibrary(
     const FunctionDefLibrary& fdef_lib,
     const FunctionDefLibraryStackTraces& library_traces) {
   return AddFunctionLibrary(FunctionDefLibrary(fdef_lib), library_traces);
 }
 
-absl::Status Graph::AddFunctionLibrary(
+Status Graph::AddFunctionLibrary(
     FunctionDefLibrary&& fdef_lib,
     const FunctionDefLibraryStackTraces& library_traces) {
   // Need a new-enough consumer to support the functions we add to the graph.
@@ -799,16 +797,16 @@ absl::Status Graph::AddFunctionLibrary(
   return ops_.AddLibrary(std::move(fdef_lib), library_traces);
 }
 
-absl::Status Graph::AddFunctionLibrary(const FunctionDefLibrary& fdef_lib) {
+Status Graph::AddFunctionLibrary(const FunctionDefLibrary& fdef_lib) {
   return AddFunctionLibrary(fdef_lib, /*library_traces=*/{});
 }
 
-absl::Status Graph::AddFunctionLibrary(FunctionDefLibrary&& fdef_lib) {
+Status Graph::AddFunctionLibrary(FunctionDefLibrary&& fdef_lib) {
   return AddFunctionLibrary(std::move(fdef_lib), /*library_traces=*/{});
 }
 
-absl::Status Graph::AddFunctionDef(const FunctionDef& fdef,
-                                   const StackTracesMap& stack_traces) {
+Status Graph::AddFunctionDef(const FunctionDef& fdef,
+                             const StackTracesMap& stack_traces) {
   // Need a new-enough consumer to support the functions we add to the graph.
   if (versions_->min_consumer() < 12) {
     versions_->set_min_consumer(12);
@@ -816,7 +814,7 @@ absl::Status Graph::AddFunctionDef(const FunctionDef& fdef,
   return ops_.AddFunctionDef(fdef, stack_traces);
 }
 
-absl::Status Graph::AddGradientDef(const GradientDef& gdef) {
+Status Graph::AddGradientDef(const GradientDef& gdef) {
   // Need a new-enough consumer to support the functions we add to the graph.
   if (versions_->min_consumer() < 12) {
     versions_->set_min_consumer(12);
@@ -915,7 +913,7 @@ std::string Graph::NewName(StringPiece prefix) {
   return strings::StrCat(prefix, "/_", name_counter_++);
 }
 
-absl::Status Graph::IsValidNode(const Node* node) const {
+Status Graph::IsValidNode(const Node* node) const {
   if (node == nullptr) {
     return errors::InvalidArgument("Node is null");
   }
@@ -932,10 +930,10 @@ absl::Status Graph::IsValidNode(const Node* node) const {
                                    " is different from the passed in node. "
                                    "Does it belong to a different graph?");
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status Graph::IsValidOutputTensor(const Node* node, int idx) const {
+Status Graph::IsValidOutputTensor(const Node* node, int idx) const {
   TF_RETURN_IF_ERROR(IsValidNode(node));
   if (idx >= node->num_outputs() || idx < 0) {
     return errors::OutOfRange("Node '", node->name(), "' (type: '",
@@ -943,10 +941,10 @@ absl::Status Graph::IsValidOutputTensor(const Node* node, int idx) const {
                               "', num of outputs: ", node->num_outputs(),
                               ") does not have ", "output ", idx);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status Graph::IsValidInputTensor(const Node* node, int idx) const {
+Status Graph::IsValidInputTensor(const Node* node, int idx) const {
   TF_RETURN_IF_ERROR(IsValidNode(node));
   if (idx >= node->num_inputs() || idx < 0) {
     return errors::OutOfRange("Node '", node->name(), "' (type: '",
@@ -954,7 +952,7 @@ absl::Status Graph::IsValidInputTensor(const Node* node, int idx) const {
                               "', num of inputs: ", node->num_inputs(),
                               ") does not have ", "input ", idx);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 Node* Graph::AllocateNode(std::shared_ptr<NodeProperties> props,
@@ -1005,13 +1003,13 @@ int Graph::InternDeviceName(const std::string& device_name) {
   return index;
 }
 
-absl::Status Graph::AddWhileContext(StringPiece frame_name,
-                                    std::vector<Node*> enter_nodes,
-                                    std::vector<Node*> exit_nodes,
-                                    OutputTensor cond_output,
-                                    std::vector<OutputTensor> body_inputs,
-                                    std::vector<OutputTensor> body_outputs,
-                                    WhileContext** result) {
+Status Graph::AddWhileContext(StringPiece frame_name,
+                              std::vector<Node*> enter_nodes,
+                              std::vector<Node*> exit_nodes,
+                              OutputTensor cond_output,
+                              std::vector<OutputTensor> body_inputs,
+                              std::vector<OutputTensor> body_outputs,
+                              WhileContext** result) {
   auto pair = while_ctxs_.insert(std::pair<std::string, WhileContext>(
       std::string(frame_name),
       WhileContext(frame_name, std::move(enter_nodes), std::move(exit_nodes),
@@ -1023,7 +1021,7 @@ absl::Status Graph::AddWhileContext(StringPiece frame_name,
                                    "' already exists");
   }
   *result = &pair.first->second;
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 std::unordered_map<std::string, Node*> Graph::BuildNodeNameIndex() const {
@@ -1058,7 +1056,7 @@ void Graph::NodeType(StringPiece name, const FullTypeDef** result) {
 
 GraphDebugInfo Graph::BuildDebugInfo() const {
   // Gather stack traces for all nodes associated with function definitions.
-  // Give these a key of <node_name> '@' <function_name>.
+  // Give these a map key in `traces` of <node_name> '@' <function_name>.
   GraphDebugInfoBuilder builder;
   for (const std::string& function_name : flib_def().ListFunctionNames()) {
     if (core::RefCountPtr<FunctionRecord> function_record =

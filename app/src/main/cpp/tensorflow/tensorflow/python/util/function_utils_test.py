@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for function args retrieval utils."""
+"""Tests for Estimator related util."""
 
 import functools
 

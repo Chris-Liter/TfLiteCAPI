@@ -24,7 +24,6 @@ limitations under the License.
 #include "mlir/IR/OwningOpRef.h"  // from @llvm-project
 #include "mlir/IR/SymbolTable.h"  // from @llvm-project
 #include "mlir/Pass/PassManager.h"  // from @llvm-project
-#include "mlir/Support/LLVM.h"  // from @llvm-project
 #include "stablehlo/api/PortableApi.h"  // from @stablehlo
 #include "stablehlo/dialect/Serialization.h"  // from @stablehlo
 #include "stablehlo/dialect/StablehloOps.h"  // from @stablehlo  // IWYU pragma: keep
@@ -67,8 +66,8 @@ FailureOr<ArrayAttr> DesymbolizeCustomCallCalledIndex(ModuleOp module) {
                         << "'";
       return WalkResult::interrupt();
     }
-    auto called_func = mlir::dyn_cast_or_null<SymbolRefAttr>(
-        backend_config.get(kCalledFuncAttrName));
+    auto called_func = backend_config.get(kCalledFuncAttrName)
+                           .dyn_cast_or_null<SymbolRefAttr>();
     if (!called_func) {
       op->emitOpError() << "is missing attribute '" << kCalledFuncAttrName
                         << "'";
@@ -177,12 +176,11 @@ FailureOr<OwningOpRef<ModuleOp>> PruneStablehloModule(
 }
 
 // Serializes the stablehlo module into bytecode.
-FailureOr<std::string> SerializeStablehlo(ModuleOp stablehlo_module,
-                                          StringRef target_version) {
+FailureOr<std::string> SerializeStablehlo(ModuleOp stablehlo_module) {
   std::string bytecode;
   llvm::raw_string_ostream os(bytecode);
-  if (mlir::failed(stablehlo::serializePortableArtifact(stablehlo_module,
-                                                        target_version, os))) {
+  if (mlir::failed(stablehlo::serializePortableArtifact(
+          stablehlo_module, stablehlo::getCurrentVersion(), os))) {
     return stablehlo_module.emitError()
            << "failed to serialize the pruned stablehlo module";
   }
@@ -202,23 +200,13 @@ LogicalResult SerializeXlaCallModule(SymbolTableCollection& symbol_table,
     return failure();
   }
 
-  // Use the StableHLO version set during deserialization.
-  auto stablehlo_version =
-      op->getAttrOfType<StringAttr>(kStablehloVersionAttrName);
-  if (!stablehlo_version) {
-    return op->emitError() << "does not have " << kStablehloVersionAttrName
-                           << " attribute";
-  }
-
-  StringRef target_version = stablehlo_version.getValue();
-  auto bytecode = SerializeStablehlo(**stablehlo_module, target_version);
+  auto bytecode = SerializeStablehlo(**stablehlo_module);
   if (failed(bytecode)) {
     return failure();
   }
 
   op.setModule(*bytecode);
   op->removeAttr(kStablehloEntryFunctionAttrName);
-  op->removeAttr(kStablehloVersionAttrName);
 
   return success();
 }

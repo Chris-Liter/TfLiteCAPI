@@ -26,7 +26,6 @@ enum class CompilerOptions {
   kClDisableOptimizations,
   kCl20,
   kCl30,
-  kClRegisterAllocation64,
 };
 
 }  // namespace gpu

@@ -13,12 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include <cstdint>
-
-#include "absl/status/status.h"
 #include "tensorflow/core/framework/op.h"
 #include "tensorflow/core/framework/shape_inference.h"
-#include "tsl/platform/errors.h"
+#include "tensorflow/core/lib/core/status.h"
 
 namespace tensorflow {
 
@@ -35,7 +32,7 @@ REGISTER_OP("KthOrderStatistic")
       ShapeHandle s;
       TF_RETURN_IF_ERROR(c->Subshape(input, 0, -1, &s));
       c->set_output(0, s);
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 REGISTER_OP("TopKUnique")
@@ -54,7 +51,7 @@ REGISTER_OP("TopKUnique")
       TF_RETURN_IF_ERROR(c->ReplaceDim(input, 1, c->MakeDim(k), &s));
       c->set_output(0, s);
       c->set_output(1, s);
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 REGISTER_OP("MakeUnique")
@@ -64,7 +61,7 @@ REGISTER_OP("MakeUnique")
       ShapeHandle input;
       TF_RETURN_IF_ERROR(c->WithRank(c->input(0), 2, &input));
       c->set_output(0, input);
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 REGISTER_OP("TopKWithUnique")
@@ -83,6 +80,6 @@ REGISTER_OP("TopKWithUnique")
       TF_RETURN_IF_ERROR(c->ReplaceDim(input, 1, c->MakeDim(k), &s));
       c->set_output(0, s);
       c->set_output(1, s);
-      return absl::OkStatus();
+      return OkStatus();
     });
 }  // namespace tensorflow

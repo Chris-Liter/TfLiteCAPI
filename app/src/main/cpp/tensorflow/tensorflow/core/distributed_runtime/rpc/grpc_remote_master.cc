@@ -27,10 +27,9 @@ limitations under the License.
 #include "tensorflow/core/lib/core/status.h"
 #include "tensorflow/core/lib/strings/strcat.h"
 #include "tensorflow/core/platform/env.h"
+#include "tensorflow/core/platform/tracing.h"
 #include "tensorflow/core/profiler/lib/traceme.h"
 #include "tensorflow/core/protobuf/master.pb.h"
-#include "tsl/platform/retrying_utils.h"
-#include "tsl/platform/tracing.h"
 
 namespace tensorflow {
 
@@ -45,100 +44,98 @@ class GrpcRemoteMaster : public MasterInterface {
 
   ~GrpcRemoteMaster() override {}
 
-  absl::Status CreateSession(CallOptions* call_options,
-                             const CreateSessionRequest* request,
-                             CreateSessionResponse* response) override {
+  Status CreateSession(CallOptions* call_options,
+                       const CreateSessionRequest* request,
+                       CreateSessionResponse* response) override {
     return CallWithRetry(call_options, request, response,
                          &MasterServiceStub::CreateSession);
   }
 
-  absl::Status ExtendSession(CallOptions* call_options,
-                             const ExtendSessionRequest* request,
-                             ExtendSessionResponse* response) override {
+  Status ExtendSession(CallOptions* call_options,
+                       const ExtendSessionRequest* request,
+                       ExtendSessionResponse* response) override {
     return CallWithRetry(call_options, request, response,
                          &MasterServiceStub::ExtendSession);
   }
 
-  absl::Status PartialRunSetup(CallOptions* call_options,
-                               const PartialRunSetupRequest* request,
-                               PartialRunSetupResponse* response) override {
+  Status PartialRunSetup(CallOptions* call_options,
+                         const PartialRunSetupRequest* request,
+                         PartialRunSetupResponse* response) override {
     return CallWithRetry(call_options, request, response,
                          &MasterServiceStub::PartialRunSetup);
   }
 
-  absl::Status RunStep(CallOptions* call_options,
-                       RunStepRequestWrapper* request,
-                       MutableRunStepResponseWrapper* response) override {
+  Status RunStep(CallOptions* call_options, RunStepRequestWrapper* request,
+                 MutableRunStepResponseWrapper* response) override {
     return CallWithRetry(call_options, &request->ToProto(),
                          get_proto_from_wrapper(response),
                          &MasterServiceStub::RunStep, "RunStep/Client");
   }
 
-  absl::Status CloseSession(CallOptions* call_options,
-                            const CloseSessionRequest* request,
-                            CloseSessionResponse* response) override {
+  Status CloseSession(CallOptions* call_options,
+                      const CloseSessionRequest* request,
+                      CloseSessionResponse* response) override {
     return CallWithRetry(call_options, request, response,
                          &MasterServiceStub::CloseSession);
   }
 
-  absl::Status ListDevices(CallOptions* call_options,
-                           const ListDevicesRequest* request,
-                           ListDevicesResponse* response) override {
+  Status ListDevices(CallOptions* call_options,
+                     const ListDevicesRequest* request,
+                     ListDevicesResponse* response) override {
     return CallWithRetry(call_options, request, response,
                          &MasterServiceStub::ListDevices);
   }
 
-  absl::Status Reset(CallOptions* call_options, const ResetRequest* request,
-                     ResetResponse* response) override {
+  Status Reset(CallOptions* call_options, const ResetRequest* request,
+               ResetResponse* response) override {
     return CallWithRetry(call_options, request, response,
                          &MasterServiceStub::Reset);
   }
 
-  absl::Status MakeCallable(CallOptions* call_options,
-                            const MakeCallableRequest* request,
-                            MakeCallableResponse* response) override {
+  Status MakeCallable(CallOptions* call_options,
+                      const MakeCallableRequest* request,
+                      MakeCallableResponse* response) override {
     return CallWithRetry(call_options, request, response,
                          &MasterServiceStub::MakeCallable);
   }
-  absl::Status RunCallable(CallOptions* call_options,
-                           const RunCallableRequest* request,
-                           RunCallableResponse* response) override {
+  Status RunCallable(CallOptions* call_options,
+                     const RunCallableRequest* request,
+                     RunCallableResponse* response) override {
     return CallWithRetry(call_options, request, response,
                          &MasterServiceStub::RunCallable);
   }
-  absl::Status ReleaseCallable(CallOptions* call_options,
-                               const ReleaseCallableRequest* request,
-                               ReleaseCallableResponse* response) override {
+  Status ReleaseCallable(CallOptions* call_options,
+                         const ReleaseCallableRequest* request,
+                         ReleaseCallableResponse* response) override {
     return CallWithRetry(call_options, request, response,
                          &MasterServiceStub::ReleaseCallable);
   }
 
  private:
   // Start tracing, attaching a unique ID to both the trace and the RPC.
-  tsl::profiler::TraceMe* NewTraceRpc(absl::string_view name,
-                                      ::grpc::ClientContext* ctx) {
-    string trace_id = strings::StrCat(tsl::tracing::GetUniqueArg());
+  profiler::TraceMe* NewTraceRpc(StringPiece name, ::grpc::ClientContext* ctx) {
+    string trace_id = strings::StrCat(tracing::GetUniqueArg());
     ctx->AddMetadata(GrpcIdKey(), trace_id);
-    return new tsl::profiler::TraceMe(
+    return new profiler::TraceMe(
         [&] { return strings::StrCat(name, ":", trace_id); },
-        tsl::profiler::TraceMeLevel::kInfo);
+        profiler::TraceMeLevel::kInfo);
   }
 
   template <typename Request, typename Response>
-  absl::Status CallWithRetry(
-      CallOptions* call_options, const Request* request, Response* response,
-      ::grpc::Status (MasterServiceStub::*pfunc)(::grpc::ClientContext*,
-                                                 const Request&, Response*),
-      string trace_string = {}) {
+  Status CallWithRetry(CallOptions* call_options, const Request* request,
+                       Response* response,
+                       ::grpc::Status (MasterServiceStub::*pfunc)(
+                           ::grpc::ClientContext*, const Request&, Response*),
+                       string trace_string = {}) {
     absl::Duration timeout = absl::Milliseconds(call_options->GetTimeout());
     absl::Time expired_time = absl::FromUnixMicros(Env::Default()->NowMicros());
     if (timeout > absl::ZeroDuration()) {
       expired_time += timeout;
     }
-    absl::Status s;
+    Status s;
     for (int num_retries = 0;; ++num_retries) {
       ::grpc::ClientContext ctx;
-      std::unique_ptr<tsl::profiler::TraceMe> trace;
+      std::unique_ptr<profiler::TraceMe> trace;
       if (!trace_string.empty()) {
         trace.reset(NewTraceRpc(trace_string, &ctx));
       }
@@ -166,7 +163,7 @@ class GrpcRemoteMaster : public MasterInterface {
       }
       absl::Time now = absl::FromUnixMicros(Env::Default()->NowMicros());
       const absl::Time deadline_with_backoff =
-          now + tsl::ComputeRetryBackoff(num_retries);
+          now + absl::Microseconds(ComputeBackoffMicroseconds(num_retries));
       // Wait for a short period of time before retrying the RPC.  If our
       // backoff would put us past the RPC deadline, we truncate it to ensure
       // our RPC starts before the deadline.

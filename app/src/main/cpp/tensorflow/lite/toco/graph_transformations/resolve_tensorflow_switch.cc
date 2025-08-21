@@ -17,10 +17,8 @@ limitations under the License.
 #include <unordered_map>
 #include <vector>
 
-#include "absl/status/status.h"
-#include "absl/strings/str_cat.h"
+#include "tensorflow/core/lib/core/errors.h"
 #include "tensorflow/core/platform/logging.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/lite/toco/graph_transformations/graph_transformations.h"
 #include "tensorflow/lite/toco/model.h"
 #include "tensorflow/lite/toco/tooling_util.h"
@@ -34,7 +32,7 @@ namespace toco {
   const auto switch_it = model->operators.begin() + op_index;
   const auto* switch_op = switch_it->get();
   if (switch_op->type != OperatorType::kSwitch) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   CHECK_EQ(switch_op->inputs.size(), 2);
@@ -46,7 +44,7 @@ namespace toco {
     AddMessageF(
         "Waiting for the boolean predicate of %s to be resolved to a constant",
         LogName(*switch_op));
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   // The predicate should be boolean, and should consist of a single value.
@@ -134,7 +132,7 @@ namespace toco {
   AddMessageF("Removing already-resolved %s", LogName(*switch_op));
   DeleteOpAndArrays(model, switch_op);
   *modified = true;
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 }  // namespace toco

@@ -24,7 +24,6 @@ limitations under the License.
 
 #include <algorithm>
 #include <cinttypes>
-#include <cstdint>
 #include <tuple>
 #include <vector>
 

@@ -15,15 +15,9 @@ limitations under the License.
 
 #include "tensorflow/lite/tools/benchmark/profiling_listener.h"
 
-#include <cstdint>
-#include <memory>
+#include <fstream>
 #include <string>
 
-#include "tensorflow/lite/interpreter.h"
-#include "tensorflow/lite/profiling/profile_summarizer.h"
-#include "tensorflow/lite/profiling/profile_summary_formatter.h"
-#include "tensorflow/lite/tools/benchmark/benchmark_model.h"
-#include "tensorflow/lite/tools/benchmark/benchmark_params.h"
 #include "tensorflow/lite/tools/logging.h"
 
 namespace tflite {
@@ -31,14 +25,13 @@ namespace benchmark {
 
 ProfilingListener::ProfilingListener(
     Interpreter* interpreter, uint32_t max_num_initial_entries,
-    bool allow_dynamic_buffer_increase, const std::string& output_file_path,
+    bool allow_dynamic_buffer_increase, const std::string& csv_file_path,
     std::shared_ptr<profiling::ProfileSummaryFormatter> summarizer_formatter)
     : run_summarizer_(summarizer_formatter),
       init_summarizer_(summarizer_formatter),
-      output_file_path_(output_file_path),
+      csv_file_path_(csv_file_path),
       interpreter_(interpreter),
-      profiler_(max_num_initial_entries, allow_dynamic_buffer_increase),
-      summarizer_formatter_(summarizer_formatter) {
+      profiler_(max_num_initial_entries, allow_dynamic_buffer_increase) {
   TFLITE_TOOLS_CHECK(interpreter);
   interpreter_->SetProfiler(&profiler_);
 
@@ -73,9 +66,27 @@ void ProfilingListener::OnSingleRunEnd() {
 }
 
 void ProfilingListener::OnBenchmarkEnd(const BenchmarkResults& results) {
-  summarizer_formatter_->HandleOutput(init_summarizer_.GetOutputString(),
-                                      run_summarizer_.GetOutputString(),
-                                      output_file_path_);
+  std::ofstream output_file(csv_file_path_);
+  std::ostream* output_stream = nullptr;
+  if (output_file.good()) {
+    output_stream = &output_file;
+  }
+  if (init_summarizer_.HasProfiles()) {
+    WriteOutput("Profiling Info for Benchmark Initialization:",
+                init_summarizer_.GetOutputString(),
+                output_stream == nullptr ? &TFLITE_LOG(INFO) : output_stream);
+  }
+  if (run_summarizer_.HasProfiles()) {
+    WriteOutput("Operator-wise Profiling Info for Regular Benchmark Runs:",
+                run_summarizer_.GetOutputString(),
+                output_stream == nullptr ? &TFLITE_LOG(INFO) : output_stream);
+  }
+}
+
+void ProfilingListener::WriteOutput(const std::string& header,
+                                    const string& data, std::ostream* stream) {
+  (*stream) << header << std::endl;
+  (*stream) << data << std::endl;
 }
 
 }  // namespace benchmark

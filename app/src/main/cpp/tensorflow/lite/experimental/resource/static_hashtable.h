@@ -15,7 +15,6 @@ limitations under the License.
 #ifndef TENSORFLOW_LITE_EXPERIMENTAL_RESOURCE_STATIC_HASHTABLE_H_
 #define TENSORFLOW_LITE_EXPERIMENTAL_RESOURCE_STATIC_HASHTABLE_H_
 
-#include <cstddef>
 #include <unordered_map>
 
 #include "tensorflow/lite/core/c/common.h"

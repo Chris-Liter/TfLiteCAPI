@@ -15,13 +15,9 @@ limitations under the License.
 
 #include "tensorflow/c/tf_buffer.h"
 
-#include <cstddef>
-#include <cstdint>
-#include <cstring>
-
 #include "tensorflow/core/platform/errors.h"
 #include "tensorflow/core/platform/mem.h"
-#include "tensorflow/core/platform/protobuf.h"  // IWYU pragma: keep
+#include "tensorflow/core/platform/protobuf.h"
 #include "tensorflow/core/platform/status.h"
 
 extern "C" {
@@ -30,7 +26,7 @@ TF_Buffer* TF_NewBuffer() { return new TF_Buffer{nullptr, 0, nullptr}; }
 
 TF_Buffer* TF_NewBufferFromString(const void* proto, size_t proto_len) {
   void* copy = tensorflow::port::Malloc(proto_len);
-  std::memcpy(copy, proto, proto_len);
+  memcpy(copy, proto, proto_len);
 
   TF_Buffer* buf = new TF_Buffer;
   buf->data = copy;
@@ -56,8 +52,8 @@ TF_Buffer TF_GetBuffer(TF_Buffer* buffer) { return *buffer; }
 
 namespace tensorflow {
 
-absl::Status MessageToBuffer(const tensorflow::protobuf::MessageLite& in,
-                             TF_Buffer* out) {
+Status MessageToBuffer(const tensorflow::protobuf::MessageLite& in,
+                       TF_Buffer* out) {
   if (out->data != nullptr) {
     return errors::InvalidArgument("Passing non-empty TF_Buffer is invalid.");
   }
@@ -68,7 +64,7 @@ absl::Status MessageToBuffer(const tensorflow::protobuf::MessageLite& in,
         "Failed to allocate memory to serialize message of type '",
         in.GetTypeName(), "' and size ", proto_size);
   }
-  if (!in.SerializeWithCachedSizesToArray(static_cast<uint8_t*>(buf))) {
+  if (!in.SerializeWithCachedSizesToArray(static_cast<uint8*>(buf))) {
     port::Free(buf);
     return errors::InvalidArgument(
         "Unable to serialize ", in.GetTypeName(),
@@ -78,16 +74,16 @@ absl::Status MessageToBuffer(const tensorflow::protobuf::MessageLite& in,
   out->data = buf;
   out->length = proto_size;
   out->data_deallocator = [](void* data, size_t length) { port::Free(data); };
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status BufferToMessage(const TF_Buffer* in,
-                             tensorflow::protobuf::MessageLite* out) {
+Status BufferToMessage(const TF_Buffer* in,
+                       tensorflow::protobuf::MessageLite* out) {
   if (in == nullptr || !out->ParseFromArray(in->data, in->length)) {
     return errors::InvalidArgument("Unparseable ", out->GetTypeName(),
                                    " proto");
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace tensorflow

@@ -43,7 +43,7 @@ void WorkerCachePartial::GetDeviceLocalityAsync(const string& device_name,
   if (!GetDeviceLocalityNonBlocking(device_name, locality)) {
     // If cache entry was empty, make one try to fill it by RPC.
     SchedClosure([this, &device_name, locality, done]() {
-      absl::Status s = RefreshDeviceStatus(device_name);
+      Status s = RefreshDeviceStatus(device_name);
       if (s.ok() && !GetDeviceLocalityNonBlocking(device_name, locality)) {
         s = errors::Unavailable("No known remote device: ", device_name);
       }
@@ -51,14 +51,13 @@ void WorkerCachePartial::GetDeviceLocalityAsync(const string& device_name,
     });
     return;
   }
-  done(absl::OkStatus());
+  done(OkStatus());
 }
 
-absl::Status WorkerCachePartial::RefreshDeviceStatus(
-    const string& device_name) {
+Status WorkerCachePartial::RefreshDeviceStatus(const string& device_name) {
   string task;
   string device;
-  absl::Status s;
+  Status s;
   if (!DeviceNameUtils::SplitDeviceName(device_name, &task, &device)) {
     s = errors::InvalidArgument("Bad device name to RefreshDeviceStatus: ",
                                 device_name);

@@ -16,7 +16,6 @@ limitations under the License.
 #include "tensorflow/lite/kernels/gradient/gradient_ops.h"
 
 #include "tensorflow/lite/kernels/gradient/bcast_grad_args.h"
-#include "tensorflow/lite/mutable_op_resolver.h"
 
 namespace tflite {
 namespace ops {

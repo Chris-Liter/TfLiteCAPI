@@ -15,7 +15,6 @@ limitations under the License.
 #ifndef TENSORFLOW_CORE_COMMON_RUNTIME_PLUGGABLE_DEVICE_PLUGGABLE_DEVICE_SIMPLE_ALLOCATOR_H_
 #define TENSORFLOW_CORE_COMMON_RUNTIME_PLUGGABLE_DEVICE_PLUGGABLE_DEVICE_SIMPLE_ALLOCATOR_H_
 
-#include <cstddef>
 #include <memory>
 #include <optional>
 #include <string>
@@ -23,7 +22,6 @@ limitations under the License.
 #include <vector>
 
 #include "tensorflow/core/common_runtime/device/device_mem_allocator.h"
-#include "tensorflow/core/framework/allocator.h"
 #include "tensorflow/core/platform/thread_annotations.h"
 #include "tensorflow/core/platform/types.h"
 #include "tensorflow/core/protobuf/config.pb.h"
@@ -47,9 +45,7 @@ class PluggableDeviceSimpleAllocator : public Allocator {
   }
 
  private:
-  PluggableDeviceSimpleAllocator(const PluggableDeviceSimpleAllocator&) =
-      delete;
-  void operator=(const PluggableDeviceSimpleAllocator&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(PluggableDeviceSimpleAllocator);
   std::unique_ptr<SubAllocator> sub_allocator_;
 };
 

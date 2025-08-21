@@ -45,16 +45,17 @@ using ::tensorflow::serving::BatchOpRewriteConfig;
 // allocating batch threads per batch-op.
 class BatchOpRewriter : public ::tensorflow::grappler::CustomGraphOptimizer {
  public:
-  absl::Status Init(
+  ::tensorflow::Status Init(
       const ::tensorflow::RewriterConfig_CustomGraphOptimizer* config) override;
 
   std::string name() const override { return "batch_op_rewriter"; }
 
   bool UsesFunctionLibrary() const override { return false; }
 
-  absl::Status Optimize(::tensorflow::grappler::Cluster* cluster,
-                        const ::tensorflow::grappler::GrapplerItem& item,
-                        ::tensorflow::GraphDef* optimized_graph) override;
+  ::tensorflow::Status Optimize(
+      ::tensorflow::grappler::Cluster* cluster,
+      const ::tensorflow::grappler::GrapplerItem& item,
+      ::tensorflow::GraphDef* optimized_graph) override;
 
  private:
   BatchOpRewriteConfig config_;

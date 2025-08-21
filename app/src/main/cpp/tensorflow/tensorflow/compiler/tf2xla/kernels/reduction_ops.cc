@@ -21,17 +21,13 @@ limitations under the License.
 #include <limits>
 #include <vector>
 
-#include "absl/status/status.h"
+#include "tensorflow/compiler/tf2xla/type_util.h"
 #include "tensorflow/compiler/tf2xla/xla_helpers.h"
 #include "tensorflow/compiler/tf2xla/xla_op_registry.h"
-#include "xla/hlo/builder/lib/constants.h"
-#include "xla/hlo/builder/xla_builder.h"
-#include "xla/shape.h"
-#include "xla/xla_data.pb.h"
-#include "tensorflow/core/framework/op_kernel.h"
-#include "tensorflow/core/framework/op_requires.h"
-#include "tensorflow/core/platform/errors.h"
-#include "tensorflow/core/platform/status.h"
+#include "tensorflow/compiler/xla/client/lib/constants.h"
+#include "tensorflow/compiler/xla/client/xla_builder.h"
+#include "tensorflow/compiler/xla/literal.h"
+#include "tensorflow/core/framework/kernel_def_builder.h"
 
 namespace tensorflow {
 namespace {
@@ -97,8 +93,7 @@ class MaxOp : public XlaReductionOp {
     OP_REQUIRES_OK(ctx, PrimitiveTypeCheck(xla_reduction_type_));
   }
 
-  static absl::Status PrimitiveTypeCheck(
-      xla::PrimitiveType xla_reduction_type) {
+  static Status PrimitiveTypeCheck(xla::PrimitiveType xla_reduction_type) {
     if (xla_reduction_type == xla::C64 || xla_reduction_type == xla::C128 ||
         xla_reduction_type == xla::TUPLE ||
         xla_reduction_type == xla::OPAQUE_TYPE) {
@@ -106,7 +101,7 @@ class MaxOp : public XlaReductionOp {
           "Unsupported PrimitiveType in MaxOp: '",
           xla::PrimitiveType_Name(xla_reduction_type), "'");
     } else {
-      return absl::OkStatus();
+      return OkStatus();
     }
   }
 

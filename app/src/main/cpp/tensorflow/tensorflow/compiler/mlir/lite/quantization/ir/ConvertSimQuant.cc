@@ -13,26 +13,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include <cassert>
-#include <memory>
-#include <utility>
-
 #include "mlir/Dialect/Func/IR/FuncOps.h"  // from @llvm-project
-#include "mlir/Dialect/Quant/IR/QuantTypes.h"  // from @llvm-project
-#include "mlir/IR/BuiltinAttributes.h"  // from @llvm-project
-#include "mlir/IR/MLIRContext.h"  // from @llvm-project
-#include "mlir/IR/PatternMatch.h"  // from @llvm-project
-#include "mlir/IR/Types.h"  // from @llvm-project
-#include "mlir/Pass/Pass.h"  // from @llvm-project
-#include "mlir/Support/LLVM.h"  // from @llvm-project
-#include "mlir/Support/LogicalResult.h"  // from @llvm-project
+#include "mlir/IR/BuiltinTypes.h"  // from @llvm-project
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"  // from @llvm-project
+#include "tensorflow/compiler/mlir/lite/quantization/ir/FakeQuantSupport.h"
 #include "tensorflow/compiler/mlir/lite/quantization/ir/Passes.h"
 #include "tensorflow/compiler/mlir/lite/quantization/ir/QuantOps.h"
-#include "tensorflow/compiler/mlir/quantization/common/ir/FakeQuantSupport.h"
-#include "tensorflow/compiler/mlir/quantization/common/ir/UniformSupport.h"
+#include "tensorflow/compiler/mlir/lite/quantization/ir/UniformSupport.h"
 
-namespace mlir::quantfork {
+using namespace mlir;
+using namespace mlir::quantfork;
+
+namespace {
 
 #define GEN_PASS_DEF_QUANTCONVERTSIMULATEDQUANT
 #include "tensorflow/compiler/mlir/lite/quantization/ir/Passes.h.inc"
@@ -59,6 +51,7 @@ class FakeQuantRewrite : public OpRewritePattern<FakeQuantOp> {
       *hadFailure = true;
       return failure();
     }
+
     return success();
   }
 
@@ -73,7 +66,7 @@ class FakeQuantRewrite : public OpRewritePattern<FakeQuantOp> {
 
     quant::QuantizedType elementType =
         static_cast<const ConcreteRewriteClass *>(this)
-            ->convertFakeQuantAttrsToType(op, converter.expressed_type);
+            ->convertFakeQuantAttrsToType(op, converter.expressedType);
 
     if (!elementType) {
       // Note that the fakeQuantAttrsToType will have emitted the error.
@@ -88,7 +81,7 @@ class FakeQuantRewrite : public OpRewritePattern<FakeQuantOp> {
     // this is a forced/hard-coded constraint.
     auto qbarrier = rewriter.create<QuantizeCastOp>(op.getLoc(), quantizedType,
                                                     op.getInputs());
-    rewriter.replaceOpWithNewOp<DequantizeCastOp>(op, converter.input_type,
+    rewriter.replaceOpWithNewOp<DequantizeCastOp>(op, converter.inputType,
                                                   qbarrier.getResult());
 
     return false;
@@ -128,15 +121,17 @@ class ConstFakeQuantPerAxisRewrite
     min.reserve(fqOp.getMin().size());
     max.reserve(fqOp.getMax().size());
     for (auto m : fqOp.getMin())
-      min.push_back(cast<FloatAttr>(m).getValueAsDouble());
+      min.push_back(m.cast<FloatAttr>().getValueAsDouble());
     for (auto m : fqOp.getMax())
-      max.push_back(cast<FloatAttr>(m).getValueAsDouble());
+      max.push_back(m.cast<FloatAttr>().getValueAsDouble());
 
     return fakeQuantAttrsToType(fqOp.getLoc(), fqOp.getNumBits(),
                                 fqOp.getAxis(), min, max, fqOp.getNarrowRange(),
                                 expressedType, fqOp.getIsSigned());
   }
 };
+
+}  // namespace
 
 void ConvertSimulatedQuantPass::runOnOperation() {
   bool hadFailure = false;
@@ -149,8 +144,7 @@ void ConvertSimulatedQuantPass::runOnOperation() {
   if (hadFailure) signalPassFailure();
 }
 
-std::unique_ptr<OperationPass<func::FuncOp>> createConvertSimulatedQuantPass() {
+std::unique_ptr<OperationPass<func::FuncOp>>
+mlir::quantfork::createConvertSimulatedQuantPass() {
   return std::make_unique<ConvertSimulatedQuantPass>();
 }
-
-}  // namespace mlir::quantfork

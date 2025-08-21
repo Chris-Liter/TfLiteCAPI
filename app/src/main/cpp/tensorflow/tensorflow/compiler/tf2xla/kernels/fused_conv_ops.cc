@@ -21,8 +21,8 @@ limitations under the License.
 #include "tensorflow/compiler/tf2xla/kernels/conv_op_helpers.h"
 #include "tensorflow/compiler/tf2xla/xla_op_kernel.h"
 #include "tensorflow/compiler/tf2xla/xla_op_registry.h"
-#include "xla/hlo/builder/lib/constants.h"
-#include "xla/hlo/builder/lib/math.h"
+#include "tensorflow/compiler/xla/client/lib/constants.h"
+#include "tensorflow/compiler/xla/client/lib/math.h"
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/platform/errors.h"
 #include "tensorflow/core/util/tensor_format.h"
@@ -88,7 +88,7 @@ class FusedConv2DInt8Op : public XlaOpKernel {
         ctx, ctx->num_inputs() == 6,
         errors::InvalidArgument("_FusedConv2D must have 6 inputs but has ",
                                 ctx->num_inputs()));
-    absl::StatusOr<ConvOpAttrs> conv_attrs =
+    StatusOr<ConvOpAttrs> conv_attrs =
         ConvOpAttrs::Create(/*num_spatial_dims=*/2, /*depthwise=*/false, ctx);
     OP_REQUIRES_OK(ctx, conv_attrs.status());
     conv_attrs_ = conv_attrs.value();
@@ -116,7 +116,7 @@ class FusedConv2DInt8Op : public XlaOpKernel {
                                                  : ActivationMode::kRelu;
   }
 
-  absl::Status DoCompile(XlaOpKernelContext* ctx) {
+  Status DoCompile(XlaOpKernelContext* ctx) {
     XlaOp conv_input = ctx->Input(0);
     XlaOp filter = ctx->Input(1);
     XlaOp bias = ctx->Input(2);
@@ -277,7 +277,7 @@ class FusedConv2DInt8Op : public XlaOpKernel {
     }
 
     ctx->SetOutput(0, result);
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   void Compile(XlaOpKernelContext* ctx) override {

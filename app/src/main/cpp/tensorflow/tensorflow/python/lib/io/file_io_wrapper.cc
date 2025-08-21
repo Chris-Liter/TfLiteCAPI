@@ -59,7 +59,7 @@ PYBIND11_MODULE(_pywrap_file_io, m) {
   m.def(
       "FileExists",
       [](const std::string& filename, PyTransactionToken* token) {
-        absl::Status status;
+        tensorflow::Status status;
         {
           py::gil_scoped_release release;
           status = tensorflow::Env::Default()->FileExists(filename);
@@ -71,7 +71,8 @@ PYBIND11_MODULE(_pywrap_file_io, m) {
       "DeleteFile",
       [](const std::string& filename, PyTransactionToken* token) {
         py::gil_scoped_release release;
-        absl::Status status = tensorflow::Env::Default()->DeleteFile(filename);
+        tensorflow::Status status =
+            tensorflow::Env::Default()->DeleteFile(filename);
         tensorflow::MaybeRaiseRegisteredFromStatusWithGIL(status);
       },
       py::arg("filename"), py::arg("token") = (PyTransactionToken*)nullptr);
@@ -148,7 +149,7 @@ PYBIND11_MODULE(_pywrap_file_io, m) {
          PyTransactionToken* token) {
         py::gil_scoped_release release;
         auto* env = tensorflow::Env::Default();
-        absl::Status status;
+        tensorflow::Status status;
         if (!overwrite && env->FileExists(target).ok()) {
           status = tensorflow::errors::AlreadyExists("file already exists");
         } else {
@@ -164,7 +165,7 @@ PYBIND11_MODULE(_pywrap_file_io, m) {
          PyTransactionToken* token) {
         py::gil_scoped_release release;
         auto* env = tensorflow::Env::Default();
-        absl::Status status;
+        tensorflow::Status status;
         if (!overwrite && env->FileExists(target).ok()) {
           status = tensorflow::errors::AlreadyExists("file already exists");
         } else {

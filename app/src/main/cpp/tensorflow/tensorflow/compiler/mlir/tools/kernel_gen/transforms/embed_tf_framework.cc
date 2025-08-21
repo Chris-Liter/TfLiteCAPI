@@ -21,7 +21,6 @@ limitations under the License.
 #include "mlir/IR/BuiltinOps.h"  // from @llvm-project
 #include "mlir/IR/BuiltinTypes.h"  // from @llvm-project
 #include "mlir/IR/TypeRange.h"  // from @llvm-project
-#include "mlir/Support/LLVM.h"  // from @llvm-project
 #include "mlir/Transforms/DialectConversion.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/tools/kernel_gen/ir/tf_framework_ops.h"
 #include "tensorflow/compiler/mlir/tools/kernel_gen/transforms/rewriters.h"
@@ -48,10 +47,10 @@ class FuncOpConverter : public OpConversionPattern<func::FuncOp> {
       conversion.addInputs(arg_type.index(), arg_type.value());
     }
 
-    rewriter.applySignatureConversion(&func.getBody().front(), conversion);
+    rewriter.applySignatureConversion(&func.getBody(), conversion);
 
     // Update the signature of the function.
-    rewriter.modifyOpInPlace(func, [&] {
+    rewriter.updateRootInPlace(func, [&] {
       func.setType(rewriter.getFunctionType(conversion.getConvertedTypes(),
                                             func_type.getResults()));
     });
@@ -65,7 +64,7 @@ std::optional<Value> FindOpKernelContext(Operation *op) {
     return std::nullopt;
   }
   Value ctx = func.getArgument(0);
-  if (!mlir::isa<OpKernelContextType>(ctx.getType())) {
+  if (!ctx.getType().isa<OpKernelContextType>()) {
     return std::nullopt;
   }
   return ctx;
@@ -115,8 +114,7 @@ struct DeallocOpConverter : public OpConversionPattern<memref::DeallocOp> {
     if (!ctx) return failure();
 
     // Operand with no layout is expected.
-    auto operand_memref_type =
-        mlir::cast<MemRefType>(dealloc.getMemref().getType());
+    auto operand_memref_type = dealloc.getMemref().getType().cast<MemRefType>();
     if (!operand_memref_type.getLayout().isIdentity()) {
       return failure();
     }

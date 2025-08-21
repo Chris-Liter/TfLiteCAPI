@@ -21,14 +21,11 @@ limitations under the License.
 #include <unordered_map>
 #include <vector>
 
-#include "absl/status/status.h"
 #include "absl/strings/str_join.h"
 #include "tensorflow/core/platform/logging.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/lite/kernels/internal/strided_slice_logic.h"
 #include "tensorflow/lite/toco/graph_transformations/graph_transformations.h"
 #include "tensorflow/lite/toco/model.h"
-#include "tensorflow/lite/toco/toco_types.h"
 #include "tensorflow/lite/toco/tooling_util.h"
 
 namespace toco {
@@ -2147,8 +2144,9 @@ void ProcessScatterNdOperator(Model* model, ScatterNdOperator* op) {
 
 }  // namespace
 
-absl::Status PropagateFixedSizes::Run(Model* model, std::size_t op_index,
-                                      bool* modified) {
+::tensorflow::Status PropagateFixedSizes::Run(Model* model,
+                                              std::size_t op_index,
+                                              bool* modified) {
   *modified = false;
   auto it = model->operators.begin() + op_index;
   auto* op = it->get();
@@ -2400,7 +2398,7 @@ absl::Status PropagateFixedSizes::Run(Model* model, std::size_t op_index,
           static_cast<TensorFlowUnsupportedOperator*>(op);
       // Attribute can be not specified, ignore it.
       if (unsupported_op->output_shapes.size() < op->outputs.size()) {
-        return absl::OkStatus();
+        return ::tensorflow::OkStatus();
       }
       for (size_t i = 0; i < op->outputs.size(); ++i) {
         const std::string& output = op->outputs[i];
@@ -2494,10 +2492,10 @@ absl::Status PropagateFixedSizes::Run(Model* model, std::size_t op_index,
       AddMessageF("Set shape of %s to [%s]", output,
                   absl::StrJoin(model->GetArray(output).shape().dims(), ","));
       *modified = true;
-      return absl::OkStatus();
+      return ::tensorflow::OkStatus();
     }
   }
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 }  // namespace toco

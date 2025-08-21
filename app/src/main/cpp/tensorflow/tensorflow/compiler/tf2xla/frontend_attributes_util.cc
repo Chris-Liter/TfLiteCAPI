@@ -21,11 +21,11 @@ limitations under the License.
 
 namespace tensorflow {
 
-absl::StatusOr<std::optional<xla::FrontendAttributes>>
+StatusOr<std::optional<xla::FrontendAttributes>>
 GetFrontendAttributesFromAttrSlice(const AttrSlice& attrs) {
   const AttrValue* attr = attrs.Find(kXlaFrontendAttributesAttrName);
   if (attr == nullptr) {
-    return absl::StatusOr<std::optional<xla::FrontendAttributes>>(std::nullopt);
+    return StatusOr<std::optional<xla::FrontendAttributes>>(std::nullopt);
   }
   xla::FrontendAttributes attributes;
   if (!attributes.ParseFromString(attr->s())) {

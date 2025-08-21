@@ -17,12 +17,12 @@ limitations under the License.
 
 #include "tensorflow/compiler/tf2xla/tf2xla_util.h"
 #include "tensorflow/core/framework/types.pb.h"
-#include "tensorflow/core/platform/stringpiece.h"
+#include "tensorflow/core/lib/core/stringpiece.h"
 
 namespace tensorflow {
 
 bool TpuOpFilter(KernelDef* kdef) {
-  absl::string_view op(kdef->op());
+  StringPiece op(kdef->op());
   VLOG(2) << "TpuOpFilter " << op;
   // Enable const string operands to Assert op (b/69167214).
   if (op == "Const") {

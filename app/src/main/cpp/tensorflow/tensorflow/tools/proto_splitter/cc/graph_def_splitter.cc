@@ -14,7 +14,6 @@ limitations under the License.
 ==============================================================================*/
 #include "tensorflow/tools/proto_splitter/cc/graph_def_splitter.h"
 
-#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -31,18 +30,18 @@ limitations under the License.
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor.pb.h"
 #include "tensorflow/core/framework/tensor_shape.pb.h"
-#include "tensorflow/tools/proto_splitter/cc/composable_splitter.h"
-#include "tensorflow/tools/proto_splitter/cc/composable_splitter_base.h"
 #include "tensorflow/tools/proto_splitter/cc/large_node_splitter.h"
 #include "tensorflow/tools/proto_splitter/cc/max_size.h"
 #include "tensorflow/tools/proto_splitter/cc/repeated_field_splitter.h"
 #include "tensorflow/tools/proto_splitter/cc/size_splitter.h"
+#include "tensorflow/tools/proto_splitter/cc/split.h"
 #include "tensorflow/tools/proto_splitter/cc/util.h"
-#include "tsl/platform/errors.h"
-#include "tsl/platform/protobuf.h"
-#include "tsl/platform/statusor.h"
+#include "tensorflow/tsl/platform/errors.h"
+#include "tensorflow/tsl/platform/protobuf.h"
+#include "tensorflow/tsl/platform/statusor.h"
 
-namespace tensorflow::tools::proto_splitter {
+namespace tensorflow {
+namespace tools::proto_splitter {
 
 namespace {
 
@@ -144,7 +143,7 @@ class FunctionDefSplitter : public SizeSplitter {
       LargeNodeSplitterFactory<NodeDef> large_node_splitter_factory;
       std::vector<SizeSplitterFactory*> factories = {
           &constant_splitter_factory, &large_node_splitter_factory};
-      auto ret = RepeatedFieldSplitter<FunctionDef, NodeDef>::Create(
+      auto ret = RepeatedFieldSplitters<FunctionDef, NodeDef>::Create(
           message(), this, &fields, "node_def"s, &factories);
       if (!ret.ok()) return ret.status();
       auto splitter = ret.value();
@@ -184,7 +183,7 @@ absl::Status GraphDefSplitter::BuildChunks() {
   LargeNodeSplitterFactory<NodeDef> large_node_splitter_factory;
   std::vector<SizeSplitterFactory*> factories = {&constant_splitter_factory,
                                                  &large_node_splitter_factory};
-  auto node_splitter_ret = RepeatedFieldSplitter<GraphDef, NodeDef>::Create(
+  auto node_splitter_ret = RepeatedFieldSplitters<GraphDef, NodeDef>::Create(
       g, this, &field_in_parent, "node"s, &factories);
   if (!node_splitter_ret.ok()) return node_splitter_ret.status();
   auto node_splitter = node_splitter_ret.value();
@@ -193,12 +192,12 @@ absl::Status GraphDefSplitter::BuildChunks() {
   std::vector<FieldType> library_field = {"library"s};
   std::vector<SizeSplitterFactory*> fn_factories = {&function_splitter_factory};
   auto library_splitter_ret =
-      RepeatedFieldSplitter<FunctionDefLibrary, FunctionDef>::Create(
+      RepeatedFieldSplitters<FunctionDefLibrary, FunctionDef>::Create(
           g->mutable_library(), this, &library_field, "function"s,
           &fn_factories);
   if (!library_splitter_ret.ok()) return library_splitter_ret.status();
   auto library_splitter = library_splitter_ret.value();
-  size_t library_size = g->library().ByteSizeLong();
+  int library_size = g->library().GetCachedSize();
   library_splitter.SetInitialSize(library_size);
 
   size_t approx_node_size = graph_size - library_size;
@@ -238,4 +237,5 @@ absl::Status GraphDefSplitter::BuildChunks() {
   return absl::OkStatus();
 }
 
-}  // namespace tensorflow::tools::proto_splitter
+}  // namespace tools::proto_splitter
+}  // namespace tensorflow

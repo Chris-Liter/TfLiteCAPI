@@ -47,8 +47,7 @@ class RandomShuffleQueue : public TypedQueue<std::vector<Tensor> > {
                      const std::vector<TensorShape>& component_shapes,
                      const string& name);
 
-  absl::Status Initialize()
-      override;  // Must be called before any other method.
+  Status Initialize() override;  // Must be called before any other method.
 
   // Implementations of QueueInterface methods --------------------------------
   void TryEnqueue(const Tuple& tuple, OpKernelContext* ctx,
@@ -59,7 +58,7 @@ class RandomShuffleQueue : public TypedQueue<std::vector<Tensor> > {
   void TryDequeueMany(int num_elements, OpKernelContext* ctx,
                       bool allow_small_batch,
                       CallbackWithTuple callback) override;
-  absl::Status MatchesNodeDef(const NodeDef& node_def) override;
+  Status MatchesNodeDef(const NodeDef& node_def) override;
 
   int32 size() const override {
     mutex_lock lock(mu_);
@@ -73,10 +72,10 @@ class RandomShuffleQueue : public TypedQueue<std::vector<Tensor> > {
   void DequeueLocked(OpKernelContext* ctx, Tuple* tuple)
       TF_EXCLUSIVE_LOCKS_REQUIRED(mu_);
 
-  static absl::Status GetElementComponentFromBatch(const Tuple& tuple,
-                                                   int64_t index, int component,
-                                                   OpKernelContext* ctx,
-                                                   Tensor* out_tensor);
+  static Status GetElementComponentFromBatch(const Tuple& tuple, int64_t index,
+                                             int component,
+                                             OpKernelContext* ctx,
+                                             Tensor* out_tensor);
 
   const int32 min_after_dequeue_;
   const int64_t original_seed_;
@@ -86,8 +85,7 @@ class RandomShuffleQueue : public TypedQueue<std::vector<Tensor> > {
   random::SingleSampleAdapter<random::PhiloxRandom> generator_
       TF_GUARDED_BY(mu_);
 
-  RandomShuffleQueue(const RandomShuffleQueue&) = delete;
-  void operator=(const RandomShuffleQueue&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(RandomShuffleQueue);
 };
 
 RandomShuffleQueue::RandomShuffleQueue(
@@ -107,14 +105,14 @@ RandomShuffleQueue::RandomShuffleQueue(
   parent_generator_ = random::PhiloxRandom(seed, seed2);
 }
 
-absl::Status RandomShuffleQueue::Initialize() {
+Status RandomShuffleQueue::Initialize() {
   TF_RETURN_IF_ERROR(TypedQueue::Initialize());
 
   mutex_lock lock(mu_);
   for (int i = 0; i < num_components(); ++i) {
     queues_[i].reserve(min_after_dequeue_);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 void RandomShuffleQueue::DequeueLocked(OpKernelContext* ctx, Tuple* tuple) {
@@ -166,16 +164,18 @@ void RandomShuffleQueue::TryEnqueue(const Tuple& tuple, OpKernelContext* ctx,
 }
 
 /* static */
-absl::Status RandomShuffleQueue::GetElementComponentFromBatch(
-    const Tuple& tuple, int64_t index, int component, OpKernelContext* ctx,
-    Tensor* out_tensor) {
+Status RandomShuffleQueue::GetElementComponentFromBatch(const Tuple& tuple,
+                                                        int64_t index,
+                                                        int component,
+                                                        OpKernelContext* ctx,
+                                                        Tensor* out_tensor) {
   TensorShape element_shape(tuple[component].shape());
   element_shape.RemoveDim(0);
   TF_RETURN_IF_ERROR(
       ctx->allocate_temp(tuple[component].dtype(), element_shape, out_tensor));
   TF_RETURN_IF_ERROR(
       batch_util::CopySliceToElement(tuple[component], out_tensor, index));
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 void RandomShuffleQueue::TryEnqueueMany(const Tuple& tuple,
@@ -313,8 +313,8 @@ void RandomShuffleQueue::TryDequeueMany(int num_elements, OpKernelContext* ctx,
       // an optimized case where the queue 'knows' what attributes to
       // use, and plumbs them through here.
       Tensor element;
-      absl::Status s = ctx->allocate_temp(component_dtypes_[i],
-                                          ManyOutShape(i, 0), &element);
+      Status s = ctx->allocate_temp(component_dtypes_[i], ManyOutShape(i, 0),
+                                    &element);
       if (!s.ok()) {
         ctx->SetStatus(s);
         callback(Tuple());
@@ -350,7 +350,7 @@ void RandomShuffleQueue::TryDequeueMany(int num_elements, OpKernelContext* ctx,
                      i >= 0; --i) {
                   for (int j = 0; j < num_components(); ++j) {
                     Tensor element;
-                    absl::Status s = GetElementComponentFromBatch(
+                    Status s = GetElementComponentFromBatch(
                         attempt->tuple, i, j, attempt->context, &element);
                     if (!s.ok()) {
                       attempt->context->SetStatus(
@@ -436,7 +436,7 @@ void RandomShuffleQueue::TryDequeueMany(int num_elements, OpKernelContext* ctx,
   }
 }
 
-absl::Status RandomShuffleQueue::MatchesNodeDef(const NodeDef& node_def) {
+Status RandomShuffleQueue::MatchesNodeDef(const NodeDef& node_def) {
   if (!MatchesNodeDefOp(node_def, "RandomShuffleQueue").ok() &&
       !MatchesNodeDefOp(node_def, "RandomShuffleQueueV2").ok()) {
     return errors::InvalidArgument("Expected RandomShuffleQueue, found ",
@@ -468,7 +468,7 @@ absl::Status RandomShuffleQueue::MatchesNodeDef(const NodeDef& node_def) {
   TF_RETURN_IF_ERROR(MatchesNodeDefTypes(node_def));
   TF_RETURN_IF_ERROR(MatchesNodeDefShapes(node_def));
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Defines a RandomShuffleQueueOp, which produces a Queue (specifically, one
@@ -495,7 +495,7 @@ class RandomShuffleQueueOp : public TypedQueueOp {
   }
 
  private:
-  absl::Status CreateResource(QueueInterface** ret) override
+  Status CreateResource(QueueInterface** ret) override
       TF_EXCLUSIVE_LOCKS_REQUIRED(mu_) {
     RandomShuffleQueue* queue = new RandomShuffleQueue(
         capacity_, min_after_dequeue_, seed_, seed2_, component_types_,
@@ -508,8 +508,7 @@ class RandomShuffleQueueOp : public TypedQueueOp {
   int64_t seed2_;
   std::vector<TensorShape> component_shapes_;
 
-  RandomShuffleQueueOp(const RandomShuffleQueueOp&) = delete;
-  void operator=(const RandomShuffleQueueOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(RandomShuffleQueueOp);
 };
 
 REGISTER_KERNEL_BUILDER(Name("RandomShuffleQueue").Device(DEVICE_CPU),

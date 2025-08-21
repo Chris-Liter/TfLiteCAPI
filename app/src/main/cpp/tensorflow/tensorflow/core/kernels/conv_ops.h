@@ -16,7 +16,7 @@ limitations under the License.
 #ifndef TENSORFLOW_CORE_KERNELS_CONV_OPS_H_
 #define TENSORFLOW_CORE_KERNELS_CONV_OPS_H_
 
-#include "unsupported/Eigen/CXX11/Tensor"  // from @eigen_archive
+#include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 #include "tensorflow/core/framework/resource_mgr.h"
 #include "tensorflow/core/platform/mem.h"
 #include "tensorflow/core/util/tensor_format.h"
@@ -125,15 +125,15 @@ struct Conv2DDimensions {
 
 // Initializes and validates Conv2D parameters configured by OpKernel
 // attributes.
-absl::Status InitConv2DParameters(const OpKernelConstruction* context,
-                                  Conv2DParameters* params);
+Status InitConv2DParameters(const OpKernelConstruction* context,
+                            Conv2DParameters* params);
 
 // Computes and validates convolutions dimensions from Conv2D parameters. If
 // parameters are valid, dimensions will be updated with derived convolution
 // dimensions, otherwise an error will be returned.
-absl::Status ComputeConv2DDimension(const Conv2DParameters& params,
-                                    const Tensor& input, const Tensor& filter,
-                                    Conv2DDimensions* dimensions);
+Status ComputeConv2DDimension(const Conv2DParameters& params,
+                              const Tensor& input, const Tensor& filter,
+                              Conv2DDimensions* dimensions);
 
 }  // namespace tensorflow
 

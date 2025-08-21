@@ -14,13 +14,11 @@ limitations under the License.
 ==============================================================================*/
 #include <vector>
 
-#include "absl/status/status.h"
-#include "tensorflow/core/platform/logging.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/lite/toco/graph_transformations/graph_transformations.h"
 #include "tensorflow/lite/toco/graph_transformations/remove_trivial_passthrough.h"
 #include "tensorflow/lite/toco/model.h"
 #include "tensorflow/lite/toco/tooling_util.h"
+#include "tensorflow/core/platform/logging.h"
 
 namespace toco {
 
@@ -36,7 +34,7 @@ namespace toco {
   auto it = model->operators.begin() + op_index;
   const auto* base_op = it->get();
   if (base_op->type != OperatorType::kSelect) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   const auto* op = static_cast<const SelectOperator*>(base_op);
 
@@ -45,23 +43,23 @@ namespace toco {
   auto& output_array = model->GetArray(op->outputs[0]);
   if (output_array.data_type == ArrayDataType::kNone) {
     // Yield until the output type has been set by PropagateArrayDataTypes.
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   if (!output_array.has_shape()) {
     // Yield until the output shape has been set by PropagateFixedShapes.
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   // We require the cond input to be constant.
   if (!IsConstantParameterArray(*model, op->inputs[0])) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   const Array& cond_array = model->GetArray(op->inputs[0]);
   CHECK(cond_array.data_type == ArrayDataType::kBool)
       << "Only bool conditions are supported";
   const auto& cond_data = cond_array.GetBuffer<ArrayDataType::kBool>().data;
   if (cond_data.empty()) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   // Check if the condition is the same for all elements.
@@ -72,14 +70,14 @@ namespace toco {
           "Cannot resolve %s as constant; cond_array has differing "
           "per-element values",
           LogName(*op));
-      return absl::OkStatus();
+      return ::tensorflow::OkStatus();
     }
   }
 
   // Pass-through the selected input.
   *modified =
       RemoveTrivialPassthroughOp(this, model, op_index, cond_value ? 1 : 2);
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 }  // namespace toco

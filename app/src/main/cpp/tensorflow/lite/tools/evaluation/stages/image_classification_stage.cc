@@ -15,20 +15,13 @@ limitations under the License.
 #include "tensorflow/lite/tools/evaluation/stages/image_classification_stage.h"
 
 #include <algorithm>
-#include <cstddef>
 #include <iterator>
 #include <memory>
 #include <string>
-#include <vector>
 
 #include "tensorflow/core/platform/logging.h"
-#include "tensorflow/lite/c/c_api_types.h"
-#include "tensorflow/lite/tools/evaluation/evaluation_delegate_provider.h"
 #include "tensorflow/lite/tools/evaluation/proto/evaluation_config.pb.h"
 #include "tensorflow/lite/tools/evaluation/proto/evaluation_stages.pb.h"
-#include "tensorflow/lite/tools/evaluation/stages/image_preprocessing_stage.h"
-#include "tensorflow/lite/tools/evaluation/stages/tflite_inference_stage.h"
-#include "tensorflow/lite/tools/evaluation/stages/topk_accuracy_eval_stage.h"
 #include "tensorflow/lite/tools/evaluation/utils.h"
 
 namespace tflite {

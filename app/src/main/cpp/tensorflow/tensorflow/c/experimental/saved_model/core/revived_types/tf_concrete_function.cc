@@ -16,21 +16,20 @@ limitations under the License.
 #include "tensorflow/c/experimental/saved_model/core/revived_types/tf_concrete_function.h"
 
 #include <memory>
-#include <utility>
-#include <vector>
+#include <string>
 
-#include "absl/status/status.h"
 #include "absl/types/span.h"
 #include "tensorflow/c/eager/abstract_tensor_handle.h"
 #include "tensorflow/c/eager/immediate_execution_operation.h"
 #include "tensorflow/c/eager/immediate_execution_tensor_handle.h"
-#include "tensorflow/c/experimental/saved_model/core/function_metadata.h"
 #include "tensorflow/c/experimental/saved_model/core/revived_types/flat_tensor_function.h"
+#include "tensorflow/core/common_runtime/eager/context.h"
 #include "tensorflow/core/framework/function.pb.h"
+#include "tensorflow/core/platform/errors.h"
+#include "tensorflow/core/platform/logging.h"
 #include "tensorflow/core/platform/status.h"
 #include "tensorflow/core/protobuf/saved_object_graph.pb.h"
 #include "tensorflow/core/protobuf/struct.pb.h"
-#include "tsl/platform/errors.h"
 
 namespace tensorflow {
 
@@ -38,7 +37,7 @@ TFConcreteFunction::TFConcreteFunction(std::unique_ptr<FlatTensorFunction> func,
                                        FunctionMetadata metadata)
     : func_(std::move(func)), metadata_(std::move(metadata)) {}
 
-absl::Status TFConcreteFunction::Create(
+Status TFConcreteFunction::Create(
     const FunctionDef* function_def,
     std::vector<ImmediateExecutionTensorHandle*> captures,
     FunctionMetadata metadata, ImmediateExecutionContext* ctx,
@@ -48,14 +47,14 @@ absl::Status TFConcreteFunction::Create(
       function_def, std::move(captures), ctx, &func));
 
   out->reset(new TFConcreteFunction(std::move(func), std::move(metadata)));
-  return absl::Status();
+  return Status();
 }
 
 const FunctionMetadata& TFConcreteFunction::GetFunctionMetadata() const {
   return metadata_;
 }
 
-absl::Status TFConcreteFunction::MakeCallOp(
+Status TFConcreteFunction::MakeCallOp(
     absl::Span<AbstractTensorHandle* const> inputs, ImmediateOpPtr* out) const {
   return func_->MakeCallOp(inputs, out);
 }

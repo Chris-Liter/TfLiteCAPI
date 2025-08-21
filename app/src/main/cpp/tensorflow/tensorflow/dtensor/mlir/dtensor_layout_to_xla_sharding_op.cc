@@ -24,11 +24,10 @@ limitations under the License.
 #include "mlir/IR/Value.h"  // from @llvm-project
 #include "mlir/IR/Visitors.h"  // from @llvm-project
 #include "mlir/Pass/Pass.h"  // from @llvm-project
-#include "mlir/Support/LLVM.h"  // from @llvm-project
 #include "mlir/Support/LogicalResult.h"  // from @llvm-project
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_ops.h"
-#include "xla/xla_data.pb.h"
+#include "tensorflow/compiler/xla/xla_data.pb.h"
 #include "tensorflow/dtensor/cc/xla_spmd/layout_to_xla_sharding.h"
 #include "tensorflow/dtensor/mlir/ir/tf_dtensor.h"
 
@@ -66,7 +65,7 @@ class DTensorLayoutToXlaShardingOpPass
 mlir::LogicalResult RemoveDTensorLayoutAfterConstOrBlockArgPattern::match(
     DTensorLayout layout_op) const {
   auto input = layout_op.getInput();
-  if (mlir::isa<mlir::BlockArgument>(input)) {
+  if (input.isa<mlir::BlockArgument>()) {
     return mlir::success();
   }
   mlir::Operation* input_op = input.getDefiningOp();

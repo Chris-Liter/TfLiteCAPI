@@ -8,6 +8,7 @@ tensorflow {
     *TF_*;
     *Eager*;
     *TFE_*;
+    *nsync_*;
     *stream_executor*;
     *xla*;
     *PyInit_*;
@@ -16,7 +17,6 @@ tensorflow {
     *tsl*;
     *lite*;
     *TFL*;
-    *quantization*;
   local:
     *;
 };

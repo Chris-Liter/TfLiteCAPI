@@ -18,8 +18,6 @@ cc_library(
         "dummy_delegate.h",
     ],
     deps = [
-        "//tensorflow/lite/c:c_api_types",
-        "//tensorflow/lite/c:common",
         "//tensorflow/lite/core/c:common",
         "//tensorflow/lite/delegates/utils:simple_delegate",
     ],
@@ -49,9 +47,6 @@ cc_library(
     copts = tflite_copts(),
     deps = [
         ":dummy_delegate",
-        "//tensorflow/lite/c:c_api_types",
-        "//tensorflow/lite/tools:command_line_flags",
-        "//tensorflow/lite/tools:tool_params",
         "//tensorflow/lite/tools/delegates:delegate_provider_hdr",
     ],
     alwayslink = 1,

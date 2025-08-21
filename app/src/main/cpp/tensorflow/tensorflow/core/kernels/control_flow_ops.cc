@@ -26,10 +26,9 @@ namespace tensorflow {
 void SwitchOp::Compute(OpKernelContext* context) {
   const Tensor& outputPorts = context->input(1);
   OP_REQUIRES(context, TensorShapeUtils::IsScalar(outputPorts.shape()),
-              absl::InvalidArgumentError(
-                  absl::StrCat("The second input must be a scalar, "
-                               "but it has shape ",
-                               outputPorts.shape().DebugString())));
+              errors::InvalidArgument("The second input must be a scalar, "
+                                      "but it has shape ",
+                                      outputPorts.shape().DebugString()));
 
   bool pred = outputPorts.scalar<bool>()();
   int port = (pred) ? 1 : 0;
@@ -43,10 +42,9 @@ void SwitchOp::Compute(OpKernelContext* context) {
 void SwitchNOp::Compute(OpKernelContext* context) {
   const Tensor& output_index_t = context->input(1);
   OP_REQUIRES(context, TensorShapeUtils::IsScalar(output_index_t.shape()),
-              absl::InvalidArgumentError(
-                  absl::StrCat("The second input must be a scalar, "
-                               "but it has shape ",
-                               output_index_t.shape().DebugString())));
+              errors::InvalidArgument("The second input must be a scalar, "
+                                      "but it has shape ",
+                                      output_index_t.shape().DebugString()));
   int output_index = output_index_t.scalar<int>()();
   if (output_index < 0 || output_index >= num_outputs()) {
     output_index = num_outputs() - 1;
@@ -233,17 +231,15 @@ class RefSelectOp : public OpKernel {
   void Compute(OpKernelContext* context) override {
     const Tensor& index_tensor = context->input(0);
     OP_REQUIRES(context, TensorShapeUtils::IsScalar(index_tensor.shape()),
-                absl::InvalidArgumentError(
-                    absl::StrCat("Index must be a scalar, "
-                                 "but it has shape ",
-                                 index_tensor.shape().DebugString())));
+                errors::InvalidArgument("Index must be a scalar, "
+                                        "but it has shape ",
+                                        index_tensor.shape().DebugString()));
 
     int32_t index = index_tensor.scalar<int32>()();
 
     OP_REQUIRES(context, index >= 0 && index < num_ref_inputs_,
-                absl::InvalidArgumentError(
-                    absl::StrCat("Index must be in the range [0, ",
-                                 num_ref_inputs_, ") but got ", index)));
+                errors::InvalidArgument("Index must be in the range [0, ",
+                                        num_ref_inputs_, ") but got ", index));
     context->forward_ref_input_to_ref_output(index + 1, 0);
   }
 
@@ -251,8 +247,7 @@ class RefSelectOp : public OpKernel {
 
   ~RefSelectOp() override {}
 
-  RefSelectOp(const RefSelectOp&) = delete;
-  void operator=(const RefSelectOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(RefSelectOp);
 
  private:
   int num_ref_inputs_;
@@ -417,7 +412,6 @@ void EnterOp::Compute(OpKernelContext* context) {
   }
 }
 
-REGISTER_KERNEL_BUILDER(Name("Enter").Device(DEVICE_CPU), EnterOp);
 REGISTER_KERNEL_BUILDER(Name("Enter").Device(DEVICE_TPU_SYSTEM), EnterOp);
 REGISTER_KERNEL_BUILDER(Name("Enter").Device(DEVICE_TPU), EnterOp);
 REGISTER_KERNEL_BUILDER(Name("RefEnter").Device(DEVICE_CPU), EnterOp);
@@ -476,8 +470,6 @@ REGISTER_GPU_HOST_KERNEL(ResourceHandle);
 
 TF_CALL_NUMBER_TYPES_NO_INT32(REGISTER_DEFAULT_KERNEL);
 TF_CALL_NUMBER_TYPES_NO_INT32(REGISTER_DEFAULT_REF_KERNEL);
-TF_CALL_QUANTIZED_TYPES(REGISTER_DEFAULT_KERNEL);
-TF_CALL_QUANTIZED_TYPES(REGISTER_DEFAULT_REF_KERNEL);
 REGISTER_DEFAULT_KERNEL(bool);
 REGISTER_DEFAULT_REF_KERNEL(bool);
 TF_CALL_variant(REGISTER_DEFAULT_KERNEL);
@@ -518,7 +510,6 @@ void ExitOp::Compute(OpKernelContext* context) {
   }
 }
 
-REGISTER_KERNEL_BUILDER(Name("Exit").Device(DEVICE_CPU), ExitOp);
 REGISTER_KERNEL_BUILDER(Name("Exit").Device(DEVICE_TPU_SYSTEM), ExitOp);
 REGISTER_KERNEL_BUILDER(Name("Exit").Device(DEVICE_TPU), ExitOp);
 REGISTER_KERNEL_BUILDER(Name("RefExit").Device(DEVICE_CPU), ExitOp);
@@ -572,8 +563,6 @@ REGISTER_GPU_HOST_KERNEL(ResourceHandle);
 
 TF_CALL_NUMBER_TYPES_NO_INT32(REGISTER_DEFAULT_KERNEL);
 TF_CALL_NUMBER_TYPES_NO_INT32(REGISTER_DEFAULT_REF_KERNEL);
-TF_CALL_QUANTIZED_TYPES(REGISTER_DEFAULT_KERNEL);
-TF_CALL_QUANTIZED_TYPES(REGISTER_DEFAULT_REF_KERNEL);
 REGISTER_DEFAULT_KERNEL(bool);
 REGISTER_DEFAULT_REF_KERNEL(bool);
 TF_CALL_variant(REGISTER_DEFAULT_KERNEL);
@@ -696,7 +685,7 @@ void LoopCondOp::Compute(OpKernelContext* context) {
   if (cm != nullptr) {
     bool already_cancelled = cm->IsCancelled();
     OP_REQUIRES(context, !already_cancelled,
-                absl::CancelledError("Loop execution was cancelled."));
+                errors::Cancelled("Loop execution was cancelled."));
   }
 
   context->set_output(0, context->input(0));

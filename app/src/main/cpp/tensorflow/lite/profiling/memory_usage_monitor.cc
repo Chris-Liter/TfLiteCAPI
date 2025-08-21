@@ -14,19 +14,18 @@ limitations under the License.
 ==============================================================================*/
 #include "tensorflow/lite/profiling/memory_usage_monitor.h"
 
-#include <cstdint>
 #include <memory>
 #include <utility>
 
 #include "absl/synchronization/notification.h"
-#include "absl/time/time.h"
-#include "tensorflow/lite/logger.h"
 #include "tensorflow/lite/minimal_logging.h"
 #include "tensorflow/lite/profiling/memory_info.h"
 
 namespace tflite {
 namespace profiling {
 namespace memory {
+
+constexpr float MemoryUsageMonitor::kInvalidMemUsageMB;
 
 MemoryUsageMonitor::MemoryUsageMonitor(int sampling_interval_ms,
                                        std::unique_ptr<Sampler> sampler)
@@ -53,13 +52,8 @@ void MemoryUsageMonitor::Start() {
     // Note we retrieve the memory usage at the very beginning of the thread.
     while (true) {
       const auto mem_info = sampler_->GetMemoryUsage();
-      int64_t current_peak_bytes = mem_info.mem_footprint_kb * 1024;
-      if (current_peak_bytes > peak_mem_footprint_bytes_) {
-        peak_mem_footprint_bytes_ = current_peak_bytes;
-      }
-      if (static_cast<int64_t>(mem_info.in_use_allocated_bytes) >
-          peak_in_use_mem_bytes_) {
-        peak_in_use_mem_bytes_ = mem_info.in_use_allocated_bytes;
+      if (mem_info.mem_footprint_kb > peak_mem_footprint_kb_) {
+        peak_mem_footprint_kb_ = mem_info.mem_footprint_kb;
       }
       if (stop_signal_->HasBeenNotified()) break;
       sampler_->SleepFor(sampling_interval_);

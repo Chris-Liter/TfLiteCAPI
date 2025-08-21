@@ -77,15 +77,15 @@ constexpr std::array<const char*, 22> kPassThroughOps = {
 
 }  // namespace
 
-absl::Status Slack::RecursivelyHandleOp(const MutableGraphView& graph,
-                                        NodeDef* dataset_node) {
+Status Slack::RecursivelyHandleOp(const MutableGraphView& graph,
+                                  NodeDef* dataset_node) {
   if (dataset_node->op() == kPrefetchDatasetOp) {
     if (HasNodeAttr(*dataset_node, "slack_period")) {
       (*dataset_node->mutable_attr())["slack_period"].set_i(slack_period_);
     } else {
       AddNodeAttr("slack_period", slack_period_, dataset_node);
     }
-    return absl::OkStatus();
+    return OkStatus();
   }
   if (IsDatasetNodeOfType(*dataset_node, kPassThroughOps)) {
     NodeDef* input_node = graph_utils::GetInputNode(*dataset_node, graph, 0);
@@ -97,18 +97,18 @@ absl::Status Slack::RecursivelyHandleOp(const MutableGraphView& graph,
       NodeDef* input_node = graph_utils::GetInputNode(*dataset_node, graph, i);
       TF_RETURN_IF_ERROR(RecursivelyHandleOp(graph, input_node));
     }
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   LOG(WARNING) << "Could not find a final `prefetch` in the input pipeline to "
                   "which to introduce slack.";
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status Slack::OptimizeAndCollectStats(Cluster* cluster,
-                                            const GrapplerItem& item,
-                                            GraphDef* output,
-                                            OptimizationStats* stats) {
+Status Slack::OptimizeAndCollectStats(Cluster* cluster,
+                                      const GrapplerItem& item,
+                                      GraphDef* output,
+                                      OptimizationStats* stats) {
   if (slack_period_ < 1)
     return errors::InvalidArgument("Invalid `slack_period` parameter: ",
                                    slack_period_);
@@ -119,8 +119,7 @@ absl::Status Slack::OptimizeAndCollectStats(Cluster* cluster,
   // If the GrapplerItem is derived from a FunctionDef, we don't optimize it,
   // because we only want to add slack to the prefetch on the main dataset
   // pipeline.
-  if (graph_utils::IsItemDerivedFromFunctionDef(item, graph))
-    return absl::OkStatus();
+  if (graph_utils::IsItemDerivedFromFunctionDef(item, graph)) return OkStatus();
 
   if (item.fetch.size() != 1) {
     return errors::InvalidArgument(

@@ -27,7 +27,6 @@ py_strict_library(
     srcs_version = "PY3",
     deps = [
         "//tensorflow/python/util:tf_inspect",
-        "@absl_py//absl/logging",
     ],
 )
 
@@ -93,7 +92,7 @@ tf_py_strict_test(
         ":registration",
         ":test_util",
         "//tensorflow:tensorflow_py",
-        "//tensorflow/python/lib/io:file_io",
+        "//tensorflow/python/lib/io:lib",
         "//tensorflow/python/platform:client_testlib",
         "//tensorflow/python/platform:resource_loader",
     ],

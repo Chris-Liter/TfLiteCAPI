@@ -20,7 +20,6 @@ limitations under the License.
 #include "tensorflow/cc/saved_model/loader.h"
 #include "tensorflow/core/framework/graph.pb.h"
 #include "tensorflow/core/lib/core/status.h"
-#include "tensorflow/core/platform/types.h"
 
 namespace tensorflow {
 
@@ -34,10 +33,10 @@ namespace tensorflow {
 // in the SavedModelBundle.
 // WARNING: Only the variable checkpoints will be reflected in the frozen
 // graph_def. All saved_model assets will be ignored.
-absl::Status FreezeSavedModel(const SavedModelBundle& saved_model_bundle,
-                              GraphDef* frozen_graph_def,
-                              std::unordered_set<string>* inputs,
-                              std::unordered_set<string>* outputs);
+Status FreezeSavedModel(const SavedModelBundle& saved_model_bundle,
+                        GraphDef* frozen_graph_def,
+                        std::unordered_set<string>* inputs,
+                        std::unordered_set<string>* outputs);
 
 }  // namespace tensorflow
 

@@ -14,8 +14,6 @@ cc_library(
     srcs = ["generate_cpp_main.cc"],
     deps = [
         "@com_google_absl//absl/strings",
-        "//tensorflow/c/experimental/ops/gen/common",
-        "//tensorflow/c/experimental/ops/gen/cpp/renderers",
         "//tensorflow/core:framework",
         "//tensorflow/core:framework_internal",
         "//tensorflow/c/experimental/ops/gen/cpp",

@@ -129,8 +129,7 @@ LogicalResult LiftVariablesFromSession(
     const Tensor& tensor = std::get<1>(iter);
 
     // Create tensor attribute for this variable.
-    absl::StatusOr<ElementsAttr> tensor_attr_or =
-        ConvertTensor(tensor, &builder);
+    StatusOr<ElementsAttr> tensor_attr_or = ConvertTensor(tensor, &builder);
     if (!tensor_attr_or.ok()) {
       return module.emitOpError()
              << "failed to convert tensor (name: " << name.str() << ")";
@@ -190,10 +189,10 @@ LogicalResult LiftVariables(ModuleOp module, Session* session) {
           func, arg_number, symbol_table);
       if (!global_tensor) continue;
 
-      auto arg_type = mlir::cast<RankedTensorType>(arg.getType());
+      auto arg_type = arg.getType().cast<RankedTensorType>();
       assert(arg_type.getRank() == 0);
       llvm::ArrayRef<TensorType> underlying_type =
-          mlir::cast<TF::ResourceType>(arg_type.getElementType()).getSubtypes();
+          arg_type.getElementType().cast<TF::ResourceType>().getSubtypes();
 
       // If the arg type already matches the global_tensor type, we don't need
       // to do anything.
@@ -207,7 +206,7 @@ LogicalResult LiftVariables(ModuleOp module, Session* session) {
       auto new_arg_type = mlir::RankedTensorType::get(
           /*shape=*/{},
           mlir::TF::ResourceType::get(
-              /*subtypes=*/{mlir::cast<TensorType>(global_tensor.getType())},
+              /*subtypes=*/{global_tensor.getType().cast<TensorType>()},
               module.getContext()));
 
       arg.setType(new_arg_type);

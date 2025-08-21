@@ -17,12 +17,11 @@ limitations under the License.
 #include <unordered_map>
 #include <vector>
 
-#include "absl/status/status.h"
-#include "tensorflow/core/platform/logging.h"
-#include "tensorflow/core/platform/status.h"
+#include "absl/strings/str_cat.h"
 #include "tensorflow/lite/toco/graph_transformations/graph_transformations.h"
 #include "tensorflow/lite/toco/model.h"
 #include "tensorflow/lite/toco/tooling_util.h"
+#include "tensorflow/core/platform/logging.h"
 
 namespace toco {
 
@@ -31,12 +30,13 @@ namespace toco {
 // means that the data layout will never change with this op, just the shape.
 // By converting these to reshapes once we have run shape propagation we allow
 // standard reshape optimization transforms to do their magic.
-absl::Status ConvertSqueezeToReshape::Run(Model* model, std::size_t op_index,
-                                          bool* modified) {
+::tensorflow::Status ConvertSqueezeToReshape::Run(Model* model,
+                                                  std::size_t op_index,
+                                                  bool* modified) {
   *modified = false;
   auto squeeze_it = model->operators.begin() + op_index;
   if (squeeze_it->get()->type != OperatorType::kSqueeze) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   auto squeeze_op = static_cast<SqueezeOperator*>(squeeze_it->get());
   CHECK_EQ(squeeze_op->inputs.size(), 1);
@@ -45,16 +45,16 @@ absl::Status ConvertSqueezeToReshape::Run(Model* model, std::size_t op_index,
   const auto& input_array = model->GetArray(squeeze_op->inputs[0]);
   if (!input_array.has_shape()) {
     // Yield until input dims have been resolved.
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   if (input_array.shape().dimensions_count() == 0) {
     // Input array cannot be 0-D.
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   if (!model->HasArray(squeeze_op->outputs[0]) ||
       !model->GetArray(squeeze_op->outputs[0]).has_shape()) {
     // Yield until shape propagation has set the output shape for us.
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   // We use the output shape that has been calculated by shape propagation.
@@ -62,7 +62,7 @@ absl::Status ConvertSqueezeToReshape::Run(Model* model, std::size_t op_index,
 
   // Empty shapes will not work as empty data arrays.
   if (output_shape.dimensions_count() == 0) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   auto* reshape_op = new TensorFlowReshapeOperator;
@@ -81,7 +81,7 @@ absl::Status ConvertSqueezeToReshape::Run(Model* model, std::size_t op_index,
   DeleteOpAndArrays(model, squeeze_op);
 
   *modified = true;
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 }  // namespace toco

@@ -15,8 +15,6 @@ limitations under the License.
 
 // See docs in ../ops/nn_ops.cc.
 
-#include "absl/strings/str_cat.h"
-#include "absl/strings/str_join.h"
 #define EIGEN_USE_THREADS
 
 #include "tensorflow/core/kernels/maxpooling_op.h"
@@ -24,7 +22,7 @@ limitations under the License.
 #include <type_traits>
 #include <vector>
 
-#include "unsupported/Eigen/CXX11/Tensor"  // from @eigen_archive
+#include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 #include "tensorflow/core/common_runtime/device.h"
 #include "tensorflow/core/framework/bounds_check.h"
 #include "tensorflow/core/framework/numeric_op.h"
@@ -891,13 +889,6 @@ class MaxPoolingNoMaskV2Op : public OpKernel {
       OP_REQUIRES(context, ksize_.size() == 4,
                   errors::InvalidArgument("Sliding window ksize field must "
                                           "specify 4 dimensions"));
-      OP_REQUIRES(
-          context,
-          ksize_[0] > 0 && ksize_[1] > 0 && ksize_[2] > 0 && ksize_[3] > 0,
-          errors::InvalidArgument(
-              absl::StrCat("Sliding window ksize must be positive. The "
-                           "specified or inferred ksize is: ",
-                           absl::StrJoin(ksize_, ","))));
       OP_REQUIRES_OK(context, context->GetAttr("strides", &stride_));
       OP_REQUIRES(context, stride_.size() == 4,
                   errors::InvalidArgument("Sliding window stride field must "
@@ -989,7 +980,7 @@ class MaxPoolingWithArgmaxOp : public OpKernel {
     for (int i = 0; i < ksize_.size(); ++i) {
       OP_REQUIRES(context, ksize_[i] > 0,
                   errors::InvalidArgument(
-                      "ksize must be a positive int32 value, got:", ksize_[i]));
+                      "ksize must be a postive int32 value, got:", ksize_[i]));
     }
     OP_REQUIRES_OK(context, context->GetAttr("strides", &stride_));
     OP_REQUIRES(context, stride_.size() == 4,
@@ -1125,14 +1116,6 @@ class MaxPoolingGradWithArgmaxOp : public OpKernel {
     OP_REQUIRES(context, ksize_.size() == 4,
                 errors::InvalidArgument("Sliding window ksize field must "
                                         "specify 4 dimensions"));
-    OP_REQUIRES(
-        context,
-        ksize_[0] > 0 && ksize_[1] > 0 && ksize_[2] > 0 && ksize_[3] > 0,
-        errors::InvalidArgument(
-            absl::StrCat("Sliding window ksize must be positive. The "
-                         "specified or inferred ksize is: ",
-                         absl::StrJoin(ksize_, ","))));
-
     OP_REQUIRES_OK(context, context->GetAttr("strides", &stride_));
     OP_REQUIRES(context, stride_.size() == 4,
                 errors::InvalidArgument("Sliding window stride field must "
@@ -1278,14 +1261,6 @@ class MaxPoolingNoMaskOp<GPUDevice, T> : public OpKernel {
     OP_REQUIRES(context, ksize_.size() == 4,
                 errors::InvalidArgument("Sliding window ksize field must "
                                         "specify 4 dimensions"));
-    OP_REQUIRES(
-        context,
-        ksize_[0] > 0 && ksize_[1] > 0 && ksize_[2] > 0 && ksize_[3] > 0,
-        errors::InvalidArgument(
-            absl::StrCat("Sliding window ksize must be positive. The "
-                         "specified or inferred ksize is: ",
-                         absl::StrJoin(ksize_, ","))));
-
     OP_REQUIRES_OK(context, context->GetAttr("strides", &stride_));
     OP_REQUIRES(context, stride_.size() == 4,
                 errors::InvalidArgument("Sliding window stride field must "

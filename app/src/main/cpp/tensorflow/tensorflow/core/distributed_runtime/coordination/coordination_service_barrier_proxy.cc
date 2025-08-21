@@ -20,22 +20,18 @@ limitations under the License.
 #include <utility>
 #include <vector>
 
-#include "absl/log/check.h"
-#include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
-#include "xla/tsl/distributed_runtime/coordination/coordination_service_agent.h"
-#include "xla/tsl/protobuf/coordination_service.pb.h"
+#include "tensorflow/core/platform/errors.h"
 #include "tensorflow/core/platform/mutex.h"
-#include "tensorflow/core/platform/status.h"
-#include "tsl/profiler/lib/traceme.h"
-#include "tsl/profiler/lib/traceme_encode.h"
+#include "tensorflow/core/profiler/lib/traceme.h"
+#include "tensorflow/tsl/distributed_runtime/coordination/coordination_service_agent.h"
 
 namespace tensorflow {
 
-std::pair<absl::Status, bool> BarrierProxy::Wait() {
+std::pair<Status, bool> BarrierProxy::Wait() {
   mutex_lock l(mu_);
   if (status_set_) {
     return std::make_pair(
@@ -59,12 +55,12 @@ std::pair<absl::Status, bool> BarrierProxy::Wait() {
   if (num_entered_ == num_local_threads_) {
     // Now that all threads are waiting, starts waiting at the global barrier.
     if (tasks_.size() != 1) {
-      tsl::profiler::TraceMe traceme("BarrierProxy::Wait::WaitAtBarrier");
+      profiler::TraceMe traceme("BarrierProxy::Wait::WaitAtBarrier");
       // TODO(b/198475014) the barrier status will be stored in memory forever.
       // We should have a mechanism to remove it after it has been passed.
       status_ = agent_->WaitAtBarrier(key_, timeout_, tasks_);
     } else {
-      status_ = absl::OkStatus();
+      status_ = OkStatus();
     }
     status_set_ = true;
     cv_.notify_all();
@@ -97,20 +93,19 @@ size_t BarrierProxyManager::size() const {
   return barriers_.size();
 }
 
-absl::Status BarrierProxyManager::Wait(
-    tsl::CoordinationServiceAgent* agent,
-    const std::vector<CoordinatedTask>& tasks, int num_local_threads,
-    absl::string_view key, absl::Duration timeout) {
+Status BarrierProxyManager::Wait(tsl::CoordinationServiceAgent* agent,
+                                 const std::vector<CoordinatedTask>& tasks,
+                                 int num_local_threads, absl::string_view key,
+                                 absl::Duration timeout) {
   // Only one device, no need to wait.
-  if (tasks.size() == 1 && num_local_threads <= 1) return absl::OkStatus();
+  if (tasks.size() == 1 && num_local_threads <= 1) return OkStatus();
 
-  tsl::profiler::TraceMe traceme([&] {
-    return tsl::profiler::TraceMeEncode(
-        "BarrierProxyManager::Wait",
-        {
-            {"num_tasks", tasks.size()},
-            {"num_local_threads", num_local_threads},
-        });
+  profiler::TraceMe traceme([&] {
+    return profiler::TraceMeEncode("BarrierProxyManager::Wait",
+                                   {
+                                       {"num_tasks", tasks.size()},
+                                       {"num_local_threads", num_local_threads},
+                                   });
   });
 
   std::shared_ptr<BarrierProxy> barrier;

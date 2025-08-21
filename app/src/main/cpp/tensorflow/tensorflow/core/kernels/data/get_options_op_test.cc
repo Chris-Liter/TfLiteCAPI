@@ -42,13 +42,13 @@ class GetOptionsParams : public DatasetParams {
 
   std::vector<Tensor> GetInputTensors() const override { return {}; }
 
-  absl::Status GetInputNames(std::vector<string>* input_names) const override {
+  Status GetInputNames(std::vector<string>* input_names) const override {
     input_names->emplace_back(OptionsDatasetOp::kInputDataset);
-    return absl::OkStatus();
+    return OkStatus();
   }
 
-  absl::Status GetAttributes(AttributeVector* attr_vector) const override {
-    return absl::OkStatus();
+  Status GetAttributes(AttributeVector* attr_vector) const override {
+    return OkStatus();
   }
 
   string dataset_type() const override { return "GetOptions"; }

@@ -13,28 +13,25 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "mlir/IR/Attributes.h"  // from @llvm-project
-#include "mlir/IR/BuiltinAttributeInterfaces.h"  // from @llvm-project
 #include "mlir/IR/BuiltinAttributes.h"  // from @llvm-project
 #include "mlir/IR/BuiltinTypes.h"  // from @llvm-project
-#include "mlir/Support/LLVM.h"  // from @llvm-project
 
 namespace mlir {
 namespace TFL {
 
 FloatAttr ExtractSingleElementAsFloat(ElementsAttr attr) {
   if (attr.getShapedType().getNumElements() != 1 ||
-      !mlir::isa<FloatType>(attr.getShapedType().getElementType())) {
+      !attr.getShapedType().getElementType().isa<FloatType>()) {
     return {};
   }
   return attr.getSplatValue<FloatAttr>();
 }
 
 FloatAttr GetSingleElementAsFloatOrSelf(Attribute attr) {
-  if (auto m = mlir::dyn_cast_or_null<ElementsAttr>(attr)) {
+  if (auto m = attr.dyn_cast_or_null<ElementsAttr>()) {
     return ExtractSingleElementAsFloat(m);
   } else {
-    return mlir::dyn_cast_or_null<FloatAttr>(attr);
+    return attr.dyn_cast_or_null<FloatAttr>();
   }
 }
 

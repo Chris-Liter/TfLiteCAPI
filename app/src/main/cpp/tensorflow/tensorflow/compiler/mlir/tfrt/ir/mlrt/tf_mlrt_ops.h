@@ -41,7 +41,6 @@ class TFTensorType
     : public mlir::Type::TypeBase<TFTensorType, mlir::Type, mlir::TypeStorage> {
  public:
   using Base::Base;
-  static constexpr mlir::StringLiteral name = "tensorflow.tf_mlrt.tf_tensor";
 };
 
 // The MLIR type represents a tensorflow::Device*
@@ -49,7 +48,6 @@ class TFDeviceType
     : public mlir::Type::TypeBase<TFDeviceType, mlir::Type, mlir::TypeStorage> {
  public:
   using Base::Base;
-  static constexpr mlir::StringLiteral name = "tensorflow.tf_mlirt.tf_device";
 };
 
 }  // namespace tf_mlrt

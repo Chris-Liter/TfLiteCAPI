@@ -5,7 +5,7 @@ package(default_visibility = ["//visibility:private"])
 genrule(
     name = "clicenses_generate",
     srcs = [
-        # copybara:uncomment "//third_party/eigen3:LICENSE",
+        "//third_party/eigen3:LICENSE",
         "@arm_neon_2_x86_sse//:LICENSE",
         "@farmhash_archive//:COPYING",
         "@gemmlowp//:LICENSE",

@@ -16,7 +16,6 @@ limitations under the License.
 #include "tensorflow/compiler/mlir/tfrt/transforms/corert_converter.h"
 
 #include <optional>
-#include <string>
 
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/Attributes.h"
@@ -24,20 +23,15 @@ limitations under the License.
 #include "mlir/IR/OperationSupport.h"
 #include "mlir/IR/Types.h"
 #include "mlir/Pass/PassManager.h"
-#include "mlir/Support/LLVM.h"
 #include "mlir/Transforms/DialectConversion.h"
-#include "llvm/ADT/StringMap.h"
-#include "llvm/Support/Casting.h"
-#include "mlir/IR/BuiltinAttributes.h"  // from @llvm-project
-#include "mlir/IR/SymbolTable.h"  // from @llvm-project
-#include "mlir/Interfaces/DerivedAttributeOpInterface.h"  // from @llvm-project
-#include "tensorflow/compiler/mlir/tensorflow/analysis/side_effect_analysis.h"
+#include "mlir/Transforms/Passes.h"
+#include "tensorflow/compiler/mlir/tensorflow/ir/tf_ops.h"
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_types.h"
 #include "tensorflow/compiler/mlir/tfrt/transforms/attr_lowering_utils.h"
 #include "tensorflow/compiler/mlir/tfrt/transforms/utils.h"
 #include "tensorflow/core/util/device_name_utils.h"
 #include "tfrt/basic_kernels/opdefs/basic_kernels.h"  // from @tf_runtime
-#include "tfrt/basic_kernels/opdefs/types.h"  // from @tf_runtime
+#include "tfrt/core_runtime/opdefs/attributes.h"  // from @tf_runtime
 #include "tfrt/core_runtime/opdefs/core_runtime.h"  // from @tf_runtime
 #include "tfrt/core_runtime/opdefs/types.h"  // from @tf_runtime
 
@@ -52,7 +46,7 @@ CoreRTConverter::CoreRTConverter(
   addConversion([](tfrt::corert::TensorHandleType type) { return type; });
   addConversion([=](mlir::TensorType type) -> std::optional<mlir::Type> {
     // Ref types are not supported in both compiler and runtime.
-    if (mlir::isa<mlir::TF::TensorFlowRefType>(type.getElementType()))
+    if (type.getElementType().isa<mlir::TF::TensorFlowRefType>())
       return std::nullopt;
     return tensor_handle_type();
   });
@@ -80,8 +74,8 @@ mlir::ArrayAttr CoreRTConverter::CreateOpFuncAttrs(
     auto attr_key = key_and_value.getName();
     auto attr_value = key_and_value.getValue();
     if (!IsUnusedTfrtAttribute(attr_key) &&
-        mlir::isa<mlir::FlatSymbolRefAttr, mlir::SymbolRefAttr>(attr_value)) {
-      auto func_attr = mlir::dyn_cast<mlir::FlatSymbolRefAttr>(attr_value);
+        attr_value.isa<mlir::FlatSymbolRefAttr, mlir::SymbolRefAttr>()) {
+      auto func_attr = attr_value.dyn_cast<mlir::FlatSymbolRefAttr>();
       auto converted = CanonicalizeTensorflowFunctionName(
           symbol_table, func_attr.getValue().str(), use_mlir_func_name);
       if (!converted) return {};
@@ -132,7 +126,7 @@ std::optional<ParseDeviceNameResult> CoreRTConverter::ParseDeviceName(
   }
 
   auto parsed_device_name =
-      ParseDeviceName(mlir::cast<mlir::StringAttr>(device_attr).getValue());
+      ParseDeviceName(device_attr.cast<mlir::StringAttr>().getValue());
   if (!parsed_device_name) op->emitWarning("failed to parse device name.");
   return parsed_device_name;
 }

@@ -66,21 +66,21 @@ struct StoredTensorValue {
     stored = data.tensors_[0];
     return true;
   }
-  static absl::Status CopyCPUToGPU(
+  static Status CopyCPUToGPU(
       const StoredTensorValue& from, StoredTensorValue* to,
-      const std::function<absl::Status(const Tensor&, Tensor*)>& copy) {
+      const std::function<Status(const Tensor&, Tensor*)>& copy) {
     ++*GetCopyCPUToGPUCounter();
     return copy(from.stored, &(to->stored));
   }
-  static absl::Status CopyGPUToCPU(
+  static Status CopyGPUToCPU(
       const StoredTensorValue& from, StoredTensorValue* to,
-      const std::function<absl::Status(const Tensor&, Tensor*)>& copy) {
+      const std::function<Status(const Tensor&, Tensor*)>& copy) {
     ++*GetCopyGPUToCPUCounter();
     return copy(from.stored, &(to->stored));
   }
-  static absl::Status CopyGPUToGPU(
+  static Status CopyGPUToGPU(
       const StoredTensorValue& from, StoredTensorValue* to,
-      const std::function<absl::Status(const Tensor&, Tensor*)>& copy) {
+      const std::function<Status(const Tensor&, Tensor*)>& copy) {
     ++*GetCopyGPUToGPUCounter();
     return copy(from.stored, &(to->stored));
   }
@@ -259,7 +259,7 @@ TEST(VariantOpCopyTest, CreateConstOnGPUFailsGracefully) {
   TF_ASSERT_OK(root.status());
   ClientSession session(root);
   std::vector<Tensor> outputs;
-  absl::Status s = session.Run({create_const}, &outputs);
+  Status s = session.Run({create_const}, &outputs);
   EXPECT_TRUE(
       absl::StrContains(s.message(), "GPU copy from non-DMA string tensor"))
       << s.ToString();
@@ -364,7 +364,7 @@ TEST(VariantOpCopyTest, CreateCopyCPUToGPUStringFailsSafely) {
 
   ClientSession session(root);
   std::vector<Tensor> outputs;
-  absl::Status err = session.Run({create_op, identity}, &outputs);
+  Status err = session.Run({create_op, identity}, &outputs);
   EXPECT_TRUE(errors::IsInvalidArgument(err));
   EXPECT_TRUE(
       absl::StrContains(err.message(),

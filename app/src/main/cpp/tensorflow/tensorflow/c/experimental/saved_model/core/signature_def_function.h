@@ -51,9 +51,8 @@ class SignatureDefFunction {
   virtual ~SignatureDefFunction() = default;
 
   // Creates a "Call" Op used to execute the function.
-  virtual absl::Status MakeCallOp(
-      absl::Span<AbstractTensorHandle* const> inputs,
-      ImmediateOpPtr* out) const = 0;
+  virtual Status MakeCallOp(absl::Span<AbstractTensorHandle* const> inputs,
+                            ImmediateOpPtr* out) const = 0;
 
   virtual const SignatureDefFunctionMetadata& GetFunctionMetadata() const = 0;
 };

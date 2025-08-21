@@ -17,12 +17,11 @@ limitations under the License.
 #include <unordered_map>
 #include <vector>
 
-#include "absl/status/status.h"
-#include "tensorflow/core/platform/logging.h"
-#include "tensorflow/core/platform/status.h"
+#include "absl/strings/str_cat.h"
 #include "tensorflow/lite/toco/graph_transformations/graph_transformations.h"
 #include "tensorflow/lite/toco/model.h"
 #include "tensorflow/lite/toco/tooling_util.h"
+#include "tensorflow/core/platform/logging.h"
 
 namespace toco {
 
@@ -88,12 +87,12 @@ TransposeOperator* CreateTransposeFromReorderAxes(
 
 // Converts ReorderAxes into Transpose and Reshape which are compatible with the
 // TFLite interpreter.
-absl::Status ConvertReorderAxes::Run(Model* model, std::size_t op_index,
-                                     bool* modified) {
+::tensorflow::Status ConvertReorderAxes::Run(Model* model, std::size_t op_index,
+                                             bool* modified) {
   *modified = false;
   auto reorder_it = model->operators.begin() + op_index;
   if (reorder_it->get()->type != OperatorType::kReorderAxes)
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
 
   auto* reorder_op = static_cast<ReorderAxesOperator*>(reorder_it->get());
   CHECK_EQ(reorder_op->inputs.size(), 1);
@@ -119,8 +118,8 @@ absl::Status ConvertReorderAxes::Run(Model* model, std::size_t op_index,
   // been adjusted to reflect the permutations in ReorderAxes. ReorderAxes will
   // be merged into a constant array when possible.
   if (IsConstantParameterArray(*model, constant_input_array_name))
-    return absl::OkStatus();
-  if (!output_array.has_shape()) return absl::OkStatus();
+    return ::tensorflow::OkStatus();
+  if (!output_array.has_shape()) return ::tensorflow::OkStatus();
 
   const auto input_axes_order = reorder_op->input_axes_order;
   const auto output_axes_order = reorder_op->output_axes_order;
@@ -146,7 +145,7 @@ absl::Status ConvertReorderAxes::Run(Model* model, std::size_t op_index,
   DeleteOpAndArrays(model, reorder_op);
 
   *modified = true;
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 }  // namespace toco

@@ -34,38 +34,46 @@ namespace data {
 FileSystemDatasetStore::FileSystemDatasetStore(const std::string& datasets_dir)
     : datasets_dir_(datasets_dir) {}
 
-absl::Status FileSystemDatasetStore::Put(const std::string& key,
-                                         const DatasetDef& dataset) {
+Status FileSystemDatasetStore::Put(const std::string& key,
+                                   const DatasetDef& dataset) {
   std::string path_to_write = io::JoinPath(datasets_dir_, key);
+
+  if (Env::Default()->FileExists(path_to_write).ok()) {
+    return errors::AlreadyExists("File ", path_to_write, " already exists");
+  }
   TF_RETURN_IF_ERROR(WriteDatasetDef(path_to_write, dataset));
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status FileSystemDatasetStore::Get(
+Status FileSystemDatasetStore::Get(
     const std::string& key, std::shared_ptr<const DatasetDef>& dataset_def) {
   std::string path = io::JoinPath(datasets_dir_, key);
   TF_RETURN_IF_ERROR(Env::Default()->FileExists(path));
   DatasetDef def;
   TF_RETURN_IF_ERROR(ReadDatasetDef(path, def));
   dataset_def = std::make_shared<const DatasetDef>(def);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status MemoryDatasetStore::Put(const std::string& key,
-                                     const DatasetDef& dataset) {
+Status MemoryDatasetStore::Put(const std::string& key,
+                               const DatasetDef& dataset) {
   auto& stored_dataset = datasets_[key];
+  if (stored_dataset) {
+    return errors::AlreadyExists("Dataset with key ", key,
+                                 " is already stored.");
+  }
   stored_dataset = std::make_shared<const DatasetDef>(dataset);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status MemoryDatasetStore::Get(
-    const std::string& key, std::shared_ptr<const DatasetDef>& dataset_def) {
+Status MemoryDatasetStore::Get(const std::string& key,
+                               std::shared_ptr<const DatasetDef>& dataset_def) {
   auto& stored_dataset = datasets_[key];
   if (!stored_dataset) {
     return errors::NotFound("Dataset with key ", key, " not found");
   }
   dataset_def = stored_dataset;
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace data

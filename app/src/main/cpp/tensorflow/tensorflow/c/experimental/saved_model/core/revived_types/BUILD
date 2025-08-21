@@ -7,6 +7,7 @@ package(
     default_visibility = [
         # Restricting visibility for now
         "//tensorflow/c/experimental/saved_model/core:__pkg__",
+        # copybara:uncomment "//learning/brain/tfrt/aot:__pkg__",
     ],
     licenses = ["notice"],
 )
@@ -45,9 +46,10 @@ cc_library(
         "//tensorflow/c:tensor_interface",
         "//tensorflow/c/eager:immediate_execution_context",
         "//tensorflow/c/eager:immediate_execution_tensor_handle",
+        "//tensorflow/core:framework",
         "//tensorflow/core:lib",
         "//tensorflow/core:protos_all_cc",
-        "@com_google_absl//absl/status",
+        "//tensorflow/core/common_runtime/eager:tensor_handle",
     ],
 )
 
@@ -66,7 +68,7 @@ cc_library(
         "//tensorflow/c/eager:immediate_execution_tensor_handle",
         "//tensorflow/core:lib",
         "//tensorflow/core:protos_all_cc",
-        "@com_google_absl//absl/status",
+        "//tensorflow/core/common_runtime/eager:context",
         "@com_google_absl//absl/types:span",
     ],
 )
@@ -99,7 +101,6 @@ cc_library(
         "//tensorflow/core:lib",
         "//tensorflow/core:protos_all_cc",
         "//tensorflow/core/lib/llvm_rtti",
-        "//tensorflow/core/platform:hash",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
@@ -118,10 +119,10 @@ cc_library(
         ":tensorhandle_convertible",
         ":tf_concrete_function",
         "//tensorflow/c/eager:abstract_tensor_handle",
+        "//tensorflow/c/eager:immediate_execution_context",
         "//tensorflow/c/eager:immediate_execution_operation",
         "//tensorflow/c/eager:immediate_execution_tensor_handle",
         "//tensorflow/core:lib",
-        "@com_google_absl//absl/status",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
     ],
@@ -174,7 +175,6 @@ cc_library(
         "//tensorflow/core/common_runtime/eager:context",
         "//tensorflow/core/common_runtime/eager:tensor_handle",
         "//tensorflow/core/lib/llvm_rtti",
-        "@com_google_absl//absl/status",
         "@com_google_absl//absl/types:optional",
     ],
 )
@@ -207,7 +207,7 @@ cc_library(
         "//tensorflow/c/experimental/saved_model/core:function_metadata",
         "//tensorflow/core:lib",
         "//tensorflow/core:protos_all_cc",
-        "@com_google_absl//absl/status",
+        "//tensorflow/core/common_runtime/eager:context",
         "@com_google_absl//absl/types:span",
     ],
 )
@@ -245,7 +245,7 @@ cc_library(
         "//tensorflow/c/experimental/saved_model/core:signature_def_function_metadata",
         "//tensorflow/core:lib",
         "//tensorflow/core:protos_all_cc",
-        "@com_google_absl//absl/status",
+        "//tensorflow/core/common_runtime/eager:context",
         "@com_google_absl//absl/types:span",
     ],
 )

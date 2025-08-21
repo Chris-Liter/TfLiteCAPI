@@ -77,14 +77,20 @@ Status ReshapeSparseTensorFunctor<GPUDevice>::operator()(
   if (!stream) return errors::Internal("No GPU stream available.");
   se::DeviceMemoryBase input_shape_gpu_mem(input_shape_gpu.data(),
                                            input_rank * sizeof(int64));
-  TF_RETURN_IF_ERROR(stream->Memcpy(&input_shape_gpu_mem,
-                                    input_shape.dim_sizes().data(),
-                                    input_rank * sizeof(int64)));
+  if (!stream
+           ->ThenMemcpy(&input_shape_gpu_mem, input_shape.dim_sizes().data(),
+                        input_rank * sizeof(int64))
+           .ok()) {
+    return errors::Internal("Failed to copy input_shape to device");
+  }
   se::DeviceMemoryBase output_shape_gpu_mem(output_shape_gpu.data(),
                                             output_rank * sizeof(int64));
-  TF_RETURN_IF_ERROR(stream->Memcpy(&output_shape_gpu_mem,
-                                    output_shape.dim_sizes().data(),
-                                    output_rank * sizeof(int64)));
+  if (!stream
+           ->ThenMemcpy(&output_shape_gpu_mem, output_shape.dim_sizes().data(),
+                        output_rank * sizeof(int64))
+           .ok()) {
+    return errors::Internal("Failed to copy output_shape to device");
+  }
   const GPUDevice& device = context->template eigen_device<GPUDevice>();
   auto config = GetGpuLaunchConfig(nnz, device);
   return GpuLaunchKernel(ReshapeSparseTensorKernel<int64_t>, config.block_count,

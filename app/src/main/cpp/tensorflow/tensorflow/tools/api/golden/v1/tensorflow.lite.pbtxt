@@ -10,11 +10,11 @@ tf_module {
   }
   member {
     name: "OpsSet"
-    mtype: "<class \'enum.EnumType\'>"
+    mtype: "<class \'enum.EnumMeta\'>"
   }
   member {
     name: "Optimize"
-    mtype: "<class \'enum.EnumType\'>"
+    mtype: "<class \'enum.EnumMeta\'>"
   }
   member {
     name: "RepresentativeDataset"

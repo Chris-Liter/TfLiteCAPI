@@ -18,8 +18,7 @@ limitations under the License.
 #include <unordered_map>
 #include <vector>
 
-#include "absl/status/status.h"
-#include "tensorflow/core/platform/status.h"
+#include "tensorflow/core/platform/logging.h"
 #include "tensorflow/lite/toco/graph_transformations/graph_transformations.h"
 #include "tensorflow/lite/toco/graph_transformations/identify_util.h"
 #include "tensorflow/lite/toco/model.h"
@@ -37,14 +36,14 @@ namespace toco {
 
 using util::IsBinaryOp;
 
-absl::Status IdentifyHardSwish::Run(Model* model, std::size_t op_index,
-                                    bool* modified) {
+::tensorflow::Status IdentifyHardSwish::Run(Model* model, std::size_t op_index,
+                                            bool* modified) {
   *modified = false;
   const auto add_with_relu6_op_it = (model->operators.begin() + op_index);
   const auto add_with_relu6_op = add_with_relu6_op_it->get();
   if (!util::IsBinaryOp(add_with_relu6_op, OperatorType::kAdd,
                         FusedActivationFunctionType::kRelu6)) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   std::vector<const Operator*> ops;
   ops.push_back(add_with_relu6_op);
@@ -56,7 +55,7 @@ absl::Status IdentifyHardSwish::Run(Model* model, std::size_t op_index,
     ops.push_back(mul_op);
   }
   if (!IsBinaryOp(mul_op, OperatorType::kMul)) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   const auto* output_op = GetOpWithInput(*model, mul_op->outputs[0]);
@@ -66,13 +65,13 @@ absl::Status IdentifyHardSwish::Run(Model* model, std::size_t op_index,
     ops.push_back(output_op);
   }
   if (!IsBinaryOp(output_op, OperatorType::kMul)) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   const auto add_3_tensor =
       util::GetSingleScalarInputIndexOfBinaryOp(model, add_with_relu6_op, 3.0f);
   if (add_3_tensor < 0) {
     // Expected 3.0f got something else.;
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   const auto input_tensor_name = add_with_relu6_op->inputs[1 - add_3_tensor];
 
@@ -88,7 +87,7 @@ absl::Status IdentifyHardSwish::Run(Model* model, std::size_t op_index,
   if (std::find(mul_inputs.begin(), mul_inputs.end(), input_tensor_name) ==
       mul_inputs.end()) {
     // Input tensor not found! << input_tensor_name << std::endl;
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   // 2. Find 1/6
   bool found = false;
@@ -97,7 +96,7 @@ absl::Status IdentifyHardSwish::Run(Model* model, std::size_t op_index,
   }
   if (!found) {
     // Input tensor is not divided by 6!.";
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   //  Success! Now delete the subgraph and instert new one
   const auto output_tensor_name = output_op->outputs[0];
@@ -112,7 +111,7 @@ absl::Status IdentifyHardSwish::Run(Model* model, std::size_t op_index,
     ops.pop_back();
   }
   *modified = true;
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 }  // namespace toco

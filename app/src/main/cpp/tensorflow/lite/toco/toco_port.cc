@@ -72,12 +72,12 @@ void CheckInitGoogleIsDone(const char* message) {
 namespace file {
 
 // Conversion to our wrapper Status.
-absl::Status ToStatus(const absl::Status& uts) {
+tensorflow::Status ToStatus(const absl::Status& uts) {
   if (!uts.ok()) {
-    return absl::Status(absl::StatusCode(::util::RetrieveErrorCode(uts)),
-                        uts.message());
+    return tensorflow::Status(absl::StatusCode(::util::RetrieveErrorCode(uts)),
+                              uts.message());
   }
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 // Conversion to our wrapper Options.
@@ -86,7 +86,7 @@ toco::port::file::Options ToOptions(const ::file::Options& options) {
   return Options();
 }
 
-absl::Status Writable(const std::string& filename) {
+tensorflow::Status Writable(const std::string& filename) {
   File* f = nullptr;
   const auto status = ::file::Open(filename, "w", &f, ::file::Defaults());
   if (f) {
@@ -95,24 +95,26 @@ absl::Status Writable(const std::string& filename) {
   return ToStatus(status);
 }
 
-absl::Status Readable(const std::string& filename,
-                      const file::Options& options) {
+tensorflow::Status Readable(const std::string& filename,
+                            const file::Options& options) {
   return ToStatus(::file::Readable(filename, ::file::Defaults()));
 }
 
-absl::Status Exists(const std::string& filename, const file::Options& options) {
+tensorflow::Status Exists(const std::string& filename,
+                          const file::Options& options) {
   auto status = ::file::Exists(filename, ::file::Defaults());
   return ToStatus(status);
 }
 
-absl::Status GetContents(const std::string& filename, std::string* contents,
-                         const file::Options& options) {
+tensorflow::Status GetContents(const std::string& filename,
+                               std::string* contents,
+                               const file::Options& options) {
   return ToStatus(::file::GetContents(filename, contents, ::file::Defaults()));
 }
 
-absl::Status SetContents(const std::string& filename,
-                         const std::string& contents,
-                         const file::Options& options) {
+tensorflow::Status SetContents(const std::string& filename,
+                               const std::string& contents,
+                               const file::Options& options) {
   return ToStatus(::file::SetContents(filename, contents, ::file::Defaults()));
 }
 
@@ -127,15 +129,13 @@ std::string JoinPath(const std::string& a, const std::string& b) {
 #else  // !PLATFORM_GOOGLE || __APPLE__ || __ANDROID__ || _WIN32
 
 #include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-
-#include <cstdio>
 #if defined(_WIN32)
 #include <io.h>  // for _close, _open, _read
-#else
-#include <unistd.h>
 #endif
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <cstdio>
 
 #if defined(PLATFORM_GOOGLE)
 #include "base/commandlineflags.h"

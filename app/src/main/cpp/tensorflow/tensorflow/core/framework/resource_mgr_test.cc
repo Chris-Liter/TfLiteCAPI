@@ -73,14 +73,14 @@ string LookupOrCreate(ResourceMgr* rm, const string& container,
   T* r;
   TF_CHECK_OK(rm->LookupOrCreate<T>(container, name, &r, [&label](T** ret) {
     *ret = new T(label);
-    return absl::OkStatus();
+    return OkStatus();
   }));
   const string ret = r->DebugString();
   r->Unref();
   return ret;
 }
 
-static void HasError(const absl::Status& s, const error::Code code,
+static void HasError(const Status& s, const error::Code code,
                      const string& substr) {
   EXPECT_EQ(s.code(), code);
   EXPECT_TRUE(absl::StrContains(s.message(), substr))
@@ -88,10 +88,10 @@ static void HasError(const absl::Status& s, const error::Code code,
 }
 
 template <typename T>
-absl::Status FindErr(const ResourceMgr& rm, const string& container,
-                     const string& name) {
+Status FindErr(const ResourceMgr& rm, const string& container,
+               const string& name) {
   T* r;
-  absl::Status s = rm.Lookup(container, name, &r);
+  Status s = rm.Lookup(container, name, &r);
   CHECK(!s.ok());
   return s;
 }
@@ -240,7 +240,7 @@ TEST(ResourceMgrTest, CreateOrLookupRaceCondition) {
               Env::Default()->SleepForMicroseconds(1 * 1000 * 1000);
               atomic_int += 1;
               *ret = new Resource("label");
-              return absl::OkStatus();
+              return OkStatus();
             }));
         r->Unref();
       });
@@ -250,9 +250,9 @@ TEST(ResourceMgrTest, CreateOrLookupRaceCondition) {
   EXPECT_EQ(1, atomic_int);
 }
 
-absl::Status ComputePolicy(const string& attr_container,
-                           const string& attr_shared_name,
-                           bool use_node_name_as_default, string* result) {
+Status ComputePolicy(const string& attr_container,
+                     const string& attr_shared_name,
+                     bool use_node_name_as_default, string* result) {
   ContainerInfo cinfo;
   ResourceMgr rmgr;
   NodeDef ndef;
@@ -265,7 +265,7 @@ absl::Status ComputePolicy(const string& attr_container,
   }
   TF_RETURN_IF_ERROR(cinfo.Init(&rmgr, ndef, use_node_name_as_default));
   *result = cinfo.DebugString();
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 string Policy(const string& attr_container, const string& attr_shared_name,
@@ -292,9 +292,8 @@ TEST(ContainerInfo, Basic) {
   EXPECT_EQ(Policy(".cat", "bar", true), "[.cat,bar,public]");
 }
 
-absl::Status WrongPolicy(const string& attr_container,
-                         const string& attr_shared_name,
-                         bool use_node_name_as_default) {
+Status WrongPolicy(const string& attr_container, const string& attr_shared_name,
+                   bool use_node_name_as_default) {
   string dbg;
   auto s = ComputePolicy(attr_container, attr_shared_name,
                          use_node_name_as_default, &dbg);

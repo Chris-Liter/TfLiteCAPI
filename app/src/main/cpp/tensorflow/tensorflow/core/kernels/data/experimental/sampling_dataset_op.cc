@@ -70,20 +70,19 @@ class SamplingDatasetOp::Dataset : public DatasetBase {
     return name_utils::DatasetDebugString(kDatasetType);
   }
 
-  absl::Status InputDatasets(
-      std::vector<const DatasetBase*>* inputs) const override {
+  Status InputDatasets(std::vector<const DatasetBase*>* inputs) const override {
     inputs->push_back(input_);
-    return absl::OkStatus();
+    return OkStatus();
   }
 
-  absl::Status CheckExternalState() const override {
+  Status CheckExternalState() const override {
     return input_->CheckExternalState();
   }
 
  protected:
-  absl::Status AsGraphDefInternal(SerializationContext* ctx,
-                                  DatasetGraphDefBuilder* b,
-                                  Node** output) const override {
+  Status AsGraphDefInternal(SerializationContext* ctx,
+                            DatasetGraphDefBuilder* b,
+                            Node** output) const override {
     Node* input_graph_node = nullptr;
     TF_RETURN_IF_ERROR(b->AddInputDataset(ctx, input_, &input_graph_node));
     Node* rate = nullptr;
@@ -94,7 +93,7 @@ class SamplingDatasetOp::Dataset : public DatasetBase {
     TF_RETURN_IF_ERROR(b->AddScalar(seeds_.second, &seed2));
     TF_RETURN_IF_ERROR(
         b->AddDataset(this, {input_graph_node, rate, seed, seed2}, output));
-    return absl::OkStatus();
+    return OkStatus();
   }
 
  private:
@@ -106,20 +105,20 @@ class SamplingDatasetOp::Dataset : public DatasetBase {
           parent_generator_(seeds_.first, seeds_.second),
           generator_(&parent_generator_) {}
 
-    absl::Status Initialize(IteratorContext* ctx) override {
+    Status Initialize(IteratorContext* ctx) override {
       return dataset()->input_->MakeIterator(ctx, this, prefix(), &input_impl_);
     }
 
-    absl::Status GetNextInternal(IteratorContext* ctx,
-                                 std::vector<Tensor>* out_tensors,
-                                 bool* end_of_sequence) override {
+    Status GetNextInternal(IteratorContext* ctx,
+                           std::vector<Tensor>* out_tensors,
+                           bool* end_of_sequence) override {
       bool rand_val_hit;
       do {
         {
           tf_shared_lock l(mu_);
           if (!input_impl_) {
             *end_of_sequence = true;
-            return absl::OkStatus();
+            return OkStatus();
           }
           TF_RETURN_IF_ERROR(
               input_impl_->GetNext(ctx, out_tensors, end_of_sequence));
@@ -127,7 +126,7 @@ class SamplingDatasetOp::Dataset : public DatasetBase {
         if (*end_of_sequence) {
           mutex_lock l(mu_);
           input_impl_.reset();
-          return absl::OkStatus();
+          return OkStatus();
         }
 
         // generate a number from random uniform [0, 1)
@@ -139,7 +138,7 @@ class SamplingDatasetOp::Dataset : public DatasetBase {
         }
       } while (!rand_val_hit);
       *end_of_sequence = false;
-      return absl::OkStatus();
+      return OkStatus();
     }
 
    protected:
@@ -151,8 +150,8 @@ class SamplingDatasetOp::Dataset : public DatasetBase {
       generator_.Skip(num_random_samples_);
     }
 
-    absl::Status SaveInternal(SerializationContext* ctx,
-                              IteratorStateWriter* writer) override {
+    Status SaveInternal(SerializationContext* ctx,
+                        IteratorStateWriter* writer) override {
       mutex_lock l(mu_);
       // Save state needed to restore the random number generators.
       TF_RETURN_IF_ERROR(writer->WriteScalar(
@@ -168,11 +167,11 @@ class SamplingDatasetOp::Dataset : public DatasetBase {
         TF_RETURN_IF_ERROR(
             writer->WriteScalar(full_name("input_impl_empty"), ""));
       }
-      return absl::OkStatus();
+      return OkStatus();
     }
 
-    absl::Status RestoreInternal(IteratorContext* ctx,
-                                 IteratorStateReader* reader) override {
+    Status RestoreInternal(IteratorContext* ctx,
+                           IteratorStateReader* reader) override {
       mutex_lock l(mu_);
       // Restore the random number generators.
       TF_RETURN_IF_ERROR(reader->ReadScalar(
@@ -189,7 +188,7 @@ class SamplingDatasetOp::Dataset : public DatasetBase {
       } else {
         input_impl_.reset();
       }
-      return absl::OkStatus();
+      return OkStatus();
     }
 
     mutex mu_;

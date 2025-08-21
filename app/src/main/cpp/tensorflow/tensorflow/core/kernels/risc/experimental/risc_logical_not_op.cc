@@ -13,8 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
+#include "tensorflow/core/framework/common_shape_fns.h"
+#include "tensorflow/core/framework/op.h"
 #include "tensorflow/core/framework/op_kernel.h"
-#include "tensorflow/core/framework/types.h"
+#include "tensorflow/core/framework/register_types.h"
+#include "tensorflow/core/framework/shape_inference.h"
 
 namespace tensorflow {
 namespace risc {

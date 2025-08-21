@@ -44,7 +44,7 @@ void EagerOpRewriteRegistry::Register(Phase phase, int32_t ordinal,
                            std::make_pair(std::move(pass), ordinal));
 }
 
-absl::Status EagerOpRewriteRegistry::RunRewrite(
+Status EagerOpRewriteRegistry::RunRewrite(
     Phase phase, EagerOperation* orig_op,
     std::unique_ptr<EagerOperation>* out_op) {
   EagerOperation* pre_op = orig_op;
@@ -56,7 +56,7 @@ absl::Status EagerOpRewriteRegistry::RunRewrite(
     }
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace tensorflow

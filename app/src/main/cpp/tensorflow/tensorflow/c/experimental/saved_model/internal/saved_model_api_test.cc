@@ -15,11 +15,9 @@ limitations under the License.
 
 #include "tensorflow/c/experimental/saved_model/public/saved_model_api.h"
 
-#include <cstdint>
 #include <string>
 #include <vector>
 
-#include "absl/status/status.h"
 #include "tensorflow/c/eager/c_api.h"
 #include "tensorflow/c/eager/c_api_experimental.h"
 #include "tensorflow/c/eager/c_api_test_util.h"
@@ -35,7 +33,6 @@ limitations under the License.
 #include "tensorflow/c/tf_shape.h"
 #include "tensorflow/c/tf_status.h"
 #include "tensorflow/c/tf_tensor.h"
-#include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/lib/io/path.h"
 #include "tensorflow/core/platform/status.h"
 #include "tensorflow/core/platform/stringpiece.h"
@@ -509,11 +506,12 @@ TEST_P(CSavedModelAPITest, LoadSavedModelWithUninitializedVariable) {
       tensorflow::down_cast<tensorflow::TFSavedModelAPI*>(
           tensorflow::unwrap(saved_model));
   tensorflow::Variable* uninitialized_variable;
-  ASSERT_EQ(absl::OkStatus(), model_api->GetVariable("uninitialized_variable",
-                                                     &uninitialized_variable));
+  ASSERT_EQ(::tensorflow::OkStatus(),
+            model_api->GetVariable("uninitialized_variable",
+                                   &uninitialized_variable));
   ASSERT_EQ(tensorflow::DT_FLOAT, uninitialized_variable->dtype());
 
-  ASSERT_EQ(absl::OkStatus(),
+  ASSERT_EQ(::tensorflow::OkStatus(),
             model_api->GetVariable("sub_module.uninitialized_variable",
                                    &uninitialized_variable));
   ASSERT_EQ(tensorflow::DT_INT64, uninitialized_variable->dtype());

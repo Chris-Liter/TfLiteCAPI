@@ -22,6 +22,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -87,7 +88,7 @@ func Example() {
 		log.Fatal(err)
 	}
 
-	model, err := os.ReadFile(modelfile)
+	model, err := ioutil.ReadFile(modelfile)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -144,7 +145,7 @@ func printBestLabel(probabilities []float32, labels []string) {
 
 // Convert the image in filename to a Tensor suitable as input to the Inception model.
 func makeTensorFromImage(filename string) (*tf.Tensor, error) {
-	bytes, err := os.ReadFile(filename)
+	bytes, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}

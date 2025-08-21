@@ -127,8 +127,7 @@ DeviceFactory* DeviceFactory::GetFactory(const string& device_type) {
   return it->second.factory.get();
 }
 
-absl::Status DeviceFactory::ListAllPhysicalDevices(
-    std::vector<string>* devices) {
+Status DeviceFactory::ListAllPhysicalDevices(std::vector<string>* devices) {
   // CPU first. A CPU device is required.
   // TODO(b/183974121): Consider merge the logic into the loop below.
   auto cpu_factory = GetFactory("CPU");
@@ -152,10 +151,10 @@ absl::Status DeviceFactory::ListAllPhysicalDevices(
     }
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status DeviceFactory::ListPluggablePhysicalDevices(
+Status DeviceFactory::ListPluggablePhysicalDevices(
     std::vector<string>* devices) {
   tf_shared_lock l(*get_device_factory_lock());
   for (auto& p : device_factories()) {
@@ -164,10 +163,10 @@ absl::Status DeviceFactory::ListPluggablePhysicalDevices(
       TF_RETURN_IF_ERROR(factory->ListPhysicalDevices(devices));
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status DeviceFactory::GetAnyDeviceDetails(
+Status DeviceFactory::GetAnyDeviceDetails(
     int device_index, std::unordered_map<string, string>* details) {
   if (device_index < 0) {
     return errors::InvalidArgument("Device index out of bounds: ",
@@ -210,7 +209,7 @@ absl::Status DeviceFactory::GetAnyDeviceDetails(
                                  orig_device_index);
 }
 
-absl::Status DeviceFactory::AddCpuDevices(
+Status DeviceFactory::AddCpuDevices(
     const SessionOptions& options, const string& name_prefix,
     std::vector<std::unique_ptr<Device>>* devices) {
   auto cpu_factory = GetFactory("CPU");
@@ -224,10 +223,10 @@ absl::Status DeviceFactory::AddCpuDevices(
     return errors::NotFound("No CPU devices are available in this process");
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status DeviceFactory::AddDevices(
+Status DeviceFactory::AddDevices(
     const SessionOptions& options, const string& name_prefix,
     std::vector<std::unique_ptr<Device>>* devices) {
   // CPU first. A CPU device is required.
@@ -260,7 +259,7 @@ absl::Status DeviceFactory::AddDevices(
     }
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 std::unique_ptr<Device> DeviceFactory::NewDevice(const string& type,

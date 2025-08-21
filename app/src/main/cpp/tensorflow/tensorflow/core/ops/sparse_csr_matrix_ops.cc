@@ -13,15 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include <tuple>
-
-#include "absl/status/status.h"
-#include "absl/strings/str_cat.h"
 #include "tensorflow/core/framework/common_shape_fns.h"
+#include "tensorflow/core/framework/numeric_op.h"
 #include "tensorflow/core/framework/op.h"
 #include "tensorflow/core/framework/shape_inference.h"
-#include "tensorflow/core/platform/status.h"
-#include "tsl/platform/errors.h"
+#include "tensorflow/core/lib/core/errors.h"
 
 namespace tensorflow {
 
@@ -30,34 +26,34 @@ using shape_inference::InferenceContext;
 using shape_inference::ShapeAndType;
 using shape_inference::ShapeHandle;
 
-absl::Status GetVariantInput(InferenceContext* c, int index,
-                             ShapeAndType* shape_and_type) {
+Status GetVariantInput(InferenceContext* c, int index,
+                       ShapeAndType* shape_and_type) {
   ShapeHandle variant;
   TF_RETURN_IF_ERROR(c->WithRank(c->input(index), 0, &variant));
   auto* shapes_and_types = c->input_handle_shapes_and_types(index);
   if (shapes_and_types == nullptr || shapes_and_types->size() != 1) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Unable to access shape and type info from variant input ", index));
+    return errors::InvalidArgument(
+        "Unable to access shape and type info from variant input ", index);
   }
   *shape_and_type = shapes_and_types->at(0);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Validates that a shape represents a (rank-2) square matrix or a (rank-3)
 // batch of square matrices.
-absl::Status ValidateSquareMatrixShape(InferenceContext* c,
-                                       const ShapeHandle& matrix_shape,
-                                       DimensionHandle* matrix_dimension) {
+Status ValidateSquareMatrixShape(InferenceContext* c,
+                                 const ShapeHandle& matrix_shape,
+                                 DimensionHandle* matrix_dimension) {
   ShapeHandle out;
   TF_RETURN_IF_ERROR(c->WithRankAtLeast(matrix_shape, 2, &out));
   TF_RETURN_IF_ERROR(c->WithRankAtMost(matrix_shape, 3, &out));
   if (!c->RankKnown(matrix_shape)) {
-    return absl::InvalidArgumentError("Sparse matrix has an unknown rank.");
+    return errors::Internal("Sparse matrix has an unknown rank.");
   }
 
   TF_RETURN_IF_ERROR(c->Merge(c->Dim(matrix_shape, -2),
                               c->Dim(matrix_shape, -1), matrix_dimension));
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 REGISTER_OP("SparseTensorToCSRSparseMatrix")
@@ -75,9 +71,9 @@ REGISTER_OP("SparseTensorToCSRSparseMatrix")
       TF_RETURN_IF_ERROR(c->WithRank(dense_shape, rank, &dense_shape));
       if (!c->RankKnown(dense_shape) || c->Rank(dense_shape) < 2 ||
           c->Rank(dense_shape) > 3) {
-        return absl::InvalidArgumentError(
-            absl::StrCat("Invalid rank: ", c->Rank(dense_shape),
-                         ".  Expected a known rank of either 2 or 3."));
+        return errors::InvalidArgument(
+            "Invalid rank: ", c->Rank(dense_shape),
+            ".  Expected a known rank of either 2 or 3.");
       }
 
       DataType dtype;
@@ -85,7 +81,7 @@ REGISTER_OP("SparseTensorToCSRSparseMatrix")
       c->set_output(0, c->Scalar());
       c->set_output_handle_shapes_and_types(0,
                                             {ShapeAndType{dense_shape, dtype}});
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 REGISTER_OP("CSRSparseMatrixToSparseTensor")
@@ -100,7 +96,7 @@ REGISTER_OP("CSRSparseMatrixToSparseTensor")
       ShapeHandle sparse_matrix = sparse_matrix_shape_and_type.shape;
       TF_RETURN_IF_ERROR(c->WithRankAtMost(sparse_matrix, 3, &sparse_matrix));
       if (!c->RankKnown(sparse_matrix)) {
-        return absl::InvalidArgumentError("sparse_matrix has an unknown rank.");
+        return errors::InvalidArgument("sparse_matrix has an unknown rank.");
       }
       int rank = c->Rank(sparse_matrix);
       ShapeHandle indices = c->Matrix(c->UnknownDim(), rank);
@@ -109,7 +105,7 @@ REGISTER_OP("CSRSparseMatrixToSparseTensor")
       c->set_output(0, indices);
       c->set_output(1, values);
       c->set_output(2, dense_shape);
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 REGISTER_OP("DenseToCSRSparseMatrix")
@@ -121,23 +117,23 @@ REGISTER_OP("DenseToCSRSparseMatrix")
       ShapeHandle dense_shape = c->input(0);
       if (!c->RankKnown(dense_shape) || c->Rank(dense_shape) < 2 ||
           c->Rank(dense_shape) > 3) {
-        return absl::InvalidArgumentError(
-            absl::StrCat("Invalid rank of dense: ", c->Rank(dense_shape),
-                         ".  Expected a known rank of either 2 or 3."));
+        return errors::InvalidArgument(
+            "Invalid rank of dense: ", c->Rank(dense_shape),
+            ".  Expected a known rank of either 2 or 3.");
       }
       auto rank = c->Rank(dense_shape);
 
       ShapeHandle indices = c->input(1);
       if (!c->RankKnown(indices) || c->Rank(indices) != 2) {
-        return absl::InvalidArgumentError(
-            absl::StrCat("indices must be a matrix; but its rank is not 2: ",
-                         c->Rank(indices)));
+        return errors::InvalidArgument(
+            "indices must be a matrix; but its rank is not 2: ",
+            c->Rank(indices));
       }
       auto indices_col = c->Dim(indices, 1);
       if (!c->ValueKnown(indices_col) || c->Value(indices_col) != rank) {
-        return absl::InvalidArgumentError(
-            absl::StrCat("indices.shape[1] must match rank of dense; saw: ",
-                         c->Value(indices_col), " vs. ", rank));
+        return errors::InvalidArgument(
+            "indices.shape[1] must match rank of dense; saw: ",
+            c->Value(indices_col), " vs. ", rank);
       }
       ShapeHandle fake_values_vec = c->Vector(c->Dim(indices, 0));
       ShapeHandle fake_shape_shape = c->Vector(rank);
@@ -149,7 +145,7 @@ REGISTER_OP("DenseToCSRSparseMatrix")
       c->set_output_handle_shapes_and_types(0,
                                             {ShapeAndType{dense_shape, dtype}});
       c->set_output(0, c->Scalar());
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 REGISTER_OP("CSRSparseMatrixToDense")
@@ -162,10 +158,10 @@ REGISTER_OP("CSRSparseMatrixToDense")
       ShapeHandle sparse_matrix = sparse_matrix_shape_and_type.shape;
       TF_RETURN_IF_ERROR(c->WithRankAtMost(sparse_matrix, 3, &sparse_matrix));
       if (!c->RankKnown(sparse_matrix)) {
-        return absl::InvalidArgumentError("sparse_matrix has an unknown rank.");
+        return errors::InvalidArgument("sparse_matrix has an unknown rank.");
       }
       c->set_output(0, sparse_matrix);
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 REGISTER_OP("CSRSparseMatrixComponents")
@@ -185,10 +181,10 @@ REGISTER_OP("CSRSparseMatrixComponents")
           c->WithRankAtMost(csr_sparse_matrix, 3, &csr_sparse_matrix));
       ShapeHandle index;
       if (c->Rank(c->input(1)) != 0) {
-        return absl::InvalidArgumentError("index must be a scalar.");
+        return errors::InvalidArgument("index must be a scalar.");
       }
       if (!c->RankKnown(csr_sparse_matrix)) {
-        return absl::InvalidArgumentError(
+        return errors::InvalidArgument(
             "csr_sparse_matrix has an unknown rank.");
       }
       auto row_ptrs_dh = c->Dim(csr_sparse_matrix, -2);
@@ -197,7 +193,7 @@ REGISTER_OP("CSRSparseMatrixComponents")
       c->set_output(0, row_ptrs);
       c->set_output(1, c->Vector(c->UnknownDim()));
       c->set_output(2, c->Vector(c->UnknownDim()));
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 REGISTER_OP("SparseMatrixNNZ")
@@ -210,7 +206,7 @@ REGISTER_OP("SparseMatrixNNZ")
       TF_RETURN_IF_ERROR(c->WithRankAtLeast(sparse_matrix, 2, &sparse_matrix));
       TF_RETURN_IF_ERROR(c->WithRankAtMost(sparse_matrix, 3, &sparse_matrix));
       if (!c->RankKnown(sparse_matrix)) {
-        return absl::InvalidArgumentError("sparse_matrix has an unknown rank.");
+        return errors::InvalidArgument("sparse_matrix has an unknown rank.");
       }
       ShapeHandle out;
       if (c->Rank(sparse_matrix) == 3) {
@@ -219,7 +215,7 @@ REGISTER_OP("SparseMatrixNNZ")
         out = c->Scalar();
       }
       c->set_output(0, out);
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 REGISTER_OP("SparseMatrixMatMul")
@@ -240,7 +236,7 @@ REGISTER_OP("SparseMatrixMatMul")
       TF_RETURN_IF_ERROR(c->WithRankAtLeast(a_shape, 2, &a_shape));
       TF_RETURN_IF_ERROR(c->WithRankAtMost(a_shape, 3, &a_shape));
       if (!c->RankKnown(a_shape)) {
-        return absl::InvalidArgumentError("a has an unknown rank.");
+        return errors::Internal("a has an unknown rank.");
       }
       ShapeHandle b_shape;
       TF_RETURN_IF_ERROR(c->WithRankAtLeast(c->input(1), 2, &b_shape));
@@ -260,90 +256,11 @@ REGISTER_OP("SparseMatrixMatMul")
       TF_RETURN_IF_ERROR(c->GetAttr("adjoint_a", &adjoint_a));
       TF_RETURN_IF_ERROR(c->GetAttr("adjoint_b", &adjoint_b));
       if (adjoint_a && transpose_a) {
-        return absl::InvalidArgumentError(
+        return errors::InvalidArgument(
             "Only one of adjoint_a and transpose_a may be true.");
       }
       if (adjoint_b && transpose_b) {
-        return absl::InvalidArgumentError(
-            "Only one of adjoint_b and transpose_b may be true.");
-      }
-      transpose_a = transpose_a || adjoint_a;
-      transpose_b = transpose_b || adjoint_b;
-
-      auto output_rows = c->Dim(a_shape, transpose_a ? -1 : -2);
-      auto output_cols = c->Dim(b_shape, transpose_b ? -2 : -1);
-      if (transpose_output) {
-        std::tie(output_rows, output_cols) =
-            std::make_tuple(output_cols, output_rows);
-      }
-
-      // Batch dims match between inputs.
-      ShapeHandle a_batch_dims;
-      ShapeHandle b_batch_dims;
-      ShapeHandle batch_dims;
-      TF_RETURN_IF_ERROR(c->Subshape(a_shape, 0, -2, &a_batch_dims));
-      TF_RETURN_IF_ERROR(c->Subshape(b_shape, 0, -2, &b_batch_dims));
-      TF_RETURN_IF_ERROR(c->Merge(a_batch_dims, b_batch_dims, &batch_dims));
-
-      // Assert inner dims match.
-      shape_inference::DimensionHandle unused;
-      TF_RETURN_IF_ERROR(c->Merge(c->Dim(a_shape, transpose_a ? -2 : -1),
-                                  c->Dim(b_shape, transpose_b ? -1 : -2),
-                                  &unused));
-
-      ShapeHandle out;
-      TF_RETURN_IF_ERROR(c->Concatenate(
-          batch_dims, c->Matrix(output_rows, output_cols), &out));
-
-      c->set_output(0, out);
-      return absl::OkStatus();
-    });
-
-#if defined(INTEL_MKL) && defined(ENABLE_ONEDNN_V3)
-
-REGISTER_OP("_MklNativeSparseMatrixMatMul")
-    .Input("a: variant")
-    .Input("b: T")
-    .Attr("T: type")
-    .Attr("transpose_a: bool = false")
-    .Attr("transpose_b: bool = false")
-    .Attr("adjoint_a: bool = false")
-    .Attr("adjoint_b: bool = false")
-    .Attr("transpose_output: bool = false")
-    .Attr("conjugate_output: bool = false")
-    .Output("output: T")
-    .SetShapeFn([](InferenceContext* c) {
-      VLOG(1) << "_MklNativeSparseMatrixMatMul shape function";
-      ShapeAndType sparse_matrix_shape_and_type;
-      TF_RETURN_IF_ERROR(GetVariantInput(c, 0, &sparse_matrix_shape_and_type));
-      ShapeHandle a_shape = sparse_matrix_shape_and_type.shape;
-      TF_RETURN_IF_ERROR(c->WithRank(a_shape, 2, &a_shape));
-      if (!c->RankKnown(a_shape)) {
-        return absl::InvalidArgumentError("a has an unknown rank.");
-      }
-      ShapeHandle b_shape;
-      TF_RETURN_IF_ERROR(c->WithRank(c->input(1), 2, &b_shape));
-      VLOG(1) << "_MklNativeSparseMatrixMatMul shape function still";
-
-      bool transpose_a = false;
-      bool transpose_b = false;
-      bool transpose_output = false;
-
-      // TODO(ebrevdo): Add transpose support.
-      TF_RETURN_IF_ERROR(c->GetAttr("transpose_a", &transpose_a));
-      TF_RETURN_IF_ERROR(c->GetAttr("transpose_b", &transpose_b));
-      TF_RETURN_IF_ERROR(c->GetAttr("transpose_output", &transpose_output));
-
-      bool adjoint_a = false;
-      bool adjoint_b = false;
-      TF_RETURN_IF_ERROR(c->GetAttr("adjoint_a", &adjoint_a));
-      TF_RETURN_IF_ERROR(c->GetAttr("adjoint_b", &adjoint_b));
-      if (adjoint_a && transpose_a) {
-        return absl::InvalidArgumentError(
-            "Only one of adjoint_a and transpose_a may be true.");
-      }
-      if (adjoint_b && transpose_b) {
-        return absl::InvalidArgumentError(
+        return errors::InvalidArgument(
             "Only one of adjoint_b and transpose_b may be true.");
       }
       transpose_a = transpose_a || adjoint_a;
@@ -377,7 +294,6 @@ REGISTER_OP("_MklNativeSparseMatrixMatMul")
       c->set_output(0, out);
       return OkStatus();
     });
-#endif  // INTEL_MKL && ENABLE_ONEDNN_V3
 
 REGISTER_OP("SparseMatrixMul")
     .Input("a: variant")
@@ -390,24 +306,23 @@ REGISTER_OP("SparseMatrixMul")
       ShapeHandle a_shape = sparse_matrix_shape_and_type.shape;
       TF_RETURN_IF_ERROR(c->WithRankAtMost(a_shape, 3, &a_shape));
       if (!c->RankKnown(a_shape)) {
-        return absl::InvalidArgumentError("a has an unknown rank.");
+        return errors::Internal("a has an unknown rank.");
       }
       ShapeHandle b_shape;
       TF_RETURN_IF_ERROR(c->WithRankAtMost(c->input(1), 3, &b_shape));
       if (!c->RankKnown(b_shape)) {
-        return absl::InvalidArgumentError("b has an unknown rank.");
+        return errors::Internal("b has an unknown rank.");
       }
       ShapeHandle out;
       if (c->Rank(b_shape) == 0) {
         out = a_shape;
       } else if (c->Rank(b_shape) == 3) {
         if (c->Rank(a_shape) != 3) {
-          return absl::UnimplementedError(
-              "rank of b is 3 but rank of a is not.");
+          return errors::Unimplemented("rank of b is 3 but rank of a is not.");
         }
         if (!(c->Value(c->Dim(b_shape, 1)) == 1 &&
               c->Value(c->Dim(b_shape, 2)) == 1)) {
-          return absl::UnimplementedError(
+          return errors::Unimplemented(
               "b must be a scalar or shaped [batch_size, 1, 1]");
         }
         DimensionHandle batch_size = c->Dim(a_shape, 0);
@@ -417,13 +332,13 @@ REGISTER_OP("SparseMatrixMul")
         TF_RETURN_IF_ERROR(c->ReplaceDim(a_shape, 0, batch_size, &a_shape));
         out = a_shape;
       } else {
-        return absl::UnimplementedError(
+        return errors::Unimplemented(
             "b must be a scalar or shaped [batch_size, 1, 1]");
       }
       c->set_output_handle_shapes_and_types(
           0, {ShapeAndType{out, sparse_matrix_shape_and_type.dtype}});
       c->set_output(0, c->Scalar());
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 REGISTER_OP("SparseMatrixAdd")
@@ -445,7 +360,7 @@ REGISTER_OP("SparseMatrixAdd")
       TF_RETURN_IF_ERROR(c->WithRankAtLeast(a_shape, 2, &a_shape));
       TF_RETURN_IF_ERROR(c->WithRankAtMost(a_shape, 3, &a_shape));
       if (!c->RankKnown(a_shape)) {
-        return absl::InvalidArgumentError("a has an unknown rank.");
+        return errors::InvalidArgument("a has an unknown rank.");
       }
 
       TF_RETURN_IF_ERROR(GetVariantInput(c, 1, &sparse_matrix_shape_and_type));
@@ -453,14 +368,14 @@ REGISTER_OP("SparseMatrixAdd")
       TF_RETURN_IF_ERROR(c->WithRankAtLeast(b_shape, 2, &b_shape));
       TF_RETURN_IF_ERROR(c->WithRankAtMost(b_shape, 3, &b_shape));
       if (!c->RankKnown(b_shape)) {
-        return absl::InvalidArgumentError("b has an unknown rank.");
+        return errors::InvalidArgument("b has an unknown rank.");
       }
       ShapeHandle out;
       TF_RETURN_IF_ERROR(c->Merge(a_shape, b_shape, &out));
       c->set_output_handle_shapes_and_types(
           0, {ShapeAndType{out, sparse_matrix_shape_and_type.dtype}});
       c->set_output(0, c->Scalar());
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 REGISTER_OP("SparseMatrixSparseMatMul")
@@ -479,7 +394,7 @@ REGISTER_OP("SparseMatrixSparseMatMul")
       TF_RETURN_IF_ERROR(c->WithRankAtLeast(a_shape, 2, &a_shape));
       TF_RETURN_IF_ERROR(c->WithRankAtMost(a_shape, 3, &a_shape));
       if (!c->RankKnown(a_shape)) {
-        return absl::InvalidArgumentError("a has an unknown rank.");
+        return errors::Internal("a has an unknown rank.");
       }
 
       TF_RETURN_IF_ERROR(GetVariantInput(c, 1, &sparse_matrix_shape_and_type));
@@ -487,7 +402,7 @@ REGISTER_OP("SparseMatrixSparseMatMul")
       TF_RETURN_IF_ERROR(c->WithRankAtLeast(b_shape, 2, &b_shape));
       TF_RETURN_IF_ERROR(c->WithRankAtMost(b_shape, 3, &b_shape));
       if (!c->RankKnown(b_shape)) {
-        return absl::InvalidArgumentError("b has an unknown rank.");
+        return errors::Internal("b has an unknown rank.");
       }
 
       bool transpose_a = false;
@@ -499,10 +414,10 @@ REGISTER_OP("SparseMatrixSparseMatMul")
       TF_RETURN_IF_ERROR(c->GetAttr("adjoint_a", &adjoint_a));
       TF_RETURN_IF_ERROR(c->GetAttr("adjoint_b", &adjoint_b));
       if (adjoint_a && transpose_a) {
-        return absl::InvalidArgumentError(
+        return errors::InvalidArgument(
             "Only one of adjoint_a and transpose_a may be true.");
       } else if (adjoint_b && transpose_b) {
-        return absl::InvalidArgumentError(
+        return errors::InvalidArgument(
             "Only one of adjoint_b and transpose_b may be true.");
       }
       transpose_a = transpose_a || adjoint_a;
@@ -534,7 +449,7 @@ REGISTER_OP("SparseMatrixSparseMatMul")
       c->set_output_handle_shapes_and_types(
           0, {ShapeAndType{out, sparse_matrix_shape_and_type.dtype}});
       c->set_output(0, c->Scalar());
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 REGISTER_OP("SparseMatrixZeros")
@@ -549,16 +464,16 @@ REGISTER_OP("SparseMatrixZeros")
           c->WithRank(dense_shape, c->Value(rank), &dense_shape));
       if (!c->RankKnown(dense_shape) || c->Rank(dense_shape) < 2 ||
           c->Rank(dense_shape) > 3) {
-        return absl::InvalidArgumentError(
-            absl::StrCat("Invalid rank: ", c->Rank(dense_shape),
-                         ".  Expected a known rank of either 2 or 3."));
+        return errors::InvalidArgument(
+            "Invalid rank: ", c->Rank(dense_shape),
+            ".  Expected a known rank of either 2 or 3.");
       }
       DataType dtype;
       TF_RETURN_IF_ERROR(c->GetAttr("type", &dtype));
       c->set_output_handle_shapes_and_types(0,
                                             {ShapeAndType{dense_shape, dtype}});
       c->set_output(0, c->Scalar());
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 REGISTER_OP("SparseMatrixTranspose")
@@ -573,7 +488,7 @@ REGISTER_OP("SparseMatrixTranspose")
       TF_RETURN_IF_ERROR(c->WithRankAtLeast(input, 2, &input));
       TF_RETURN_IF_ERROR(c->WithRankAtMost(input, 3, &input));
       if (!c->RankKnown(input)) {
-        return absl::InvalidArgumentError("input has an unknown rank.");
+        return errors::InvalidArgument("input has an unknown rank.");
       }
       ShapeHandle output;
       if (c->Rank(input) == 2) {
@@ -586,7 +501,7 @@ REGISTER_OP("SparseMatrixTranspose")
           0, {ShapeAndType{output, sparse_matrix_shape_and_type.dtype}});
       c->set_output(0, c->Scalar());
 
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 REGISTER_OP("SparseMatrixSoftmax")
@@ -600,12 +515,12 @@ REGISTER_OP("SparseMatrixSoftmax")
       TF_RETURN_IF_ERROR(c->WithRankAtLeast(logits, 2, &logits));
       TF_RETURN_IF_ERROR(c->WithRankAtMost(logits, 3, &logits));
       if (!c->RankKnown(logits)) {
-        return absl::InvalidArgumentError("logits has an unknown rank.");
+        return errors::InvalidArgument("logits has an unknown rank.");
       }
       c->set_output_handle_shapes_and_types(
           0, {ShapeAndType{logits, sparse_matrix_shape_and_type.dtype}});
       c->set_output(0, c->Scalar());
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 REGISTER_OP("SparseMatrixSoftmaxGrad")
@@ -620,20 +535,20 @@ REGISTER_OP("SparseMatrixSoftmaxGrad")
       TF_RETURN_IF_ERROR(c->WithRankAtLeast(softmax, 2, &softmax));
       TF_RETURN_IF_ERROR(c->WithRankAtMost(softmax, 3, &softmax));
       if (!c->RankKnown(softmax)) {
-        return absl::InvalidArgumentError("softmax has an unknown rank.");
+        return errors::InvalidArgument("softmax has an unknown rank.");
       }
       TF_RETURN_IF_ERROR(GetVariantInput(c, 1, &sparse_matrix_shape_and_type));
       ShapeHandle grad_softmax = sparse_matrix_shape_and_type.shape;
       TF_RETURN_IF_ERROR(c->WithRankAtLeast(grad_softmax, 2, &grad_softmax));
       TF_RETURN_IF_ERROR(c->WithRankAtMost(grad_softmax, 3, &grad_softmax));
       if (!c->RankKnown(grad_softmax)) {
-        return absl::InvalidArgumentError("grad_softmax has an unknown rank.");
+        return errors::InvalidArgument("grad_softmax has an unknown rank.");
       }
       TF_RETURN_IF_ERROR(c->Merge(softmax, grad_softmax, &softmax));
       c->set_output_handle_shapes_and_types(
           0, {ShapeAndType{softmax, sparse_matrix_shape_and_type.dtype}});
       c->set_output(0, c->Scalar());
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 REGISTER_OP("SparseMatrixOrderingAMD")
@@ -653,7 +568,7 @@ REGISTER_OP("SparseMatrixOrderingAMD")
         output = c->Matrix(c->Dim(matrix_shape, 0), c->Dim(matrix_shape, 1));
       }
       c->set_output(0, output);
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 REGISTER_OP("SparseMatrixSparseCholesky")
@@ -672,7 +587,7 @@ REGISTER_OP("SparseMatrixSparseCholesky")
       TF_RETURN_IF_ERROR(c->WithRankAtLeast(c->input(1), 1, &perm_shape));
       TF_RETURN_IF_ERROR(c->WithRankAtMost(c->input(1), 2, &perm_shape));
       if (!c->RankKnown(perm_shape)) {
-        return absl::InvalidArgumentError("permutation has an unknown rank.");
+        return errors::Internal("permutation has an unknown rank.");
       }
 
       // Each batch component of permutation must have the same number of
@@ -694,7 +609,7 @@ REGISTER_OP("SparseMatrixSparseCholesky")
           0, {ShapeAndType{out, sparse_matrix_shape_and_type.dtype}});
       c->set_output(0, c->Scalar());
 
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 }  // namespace tensorflow

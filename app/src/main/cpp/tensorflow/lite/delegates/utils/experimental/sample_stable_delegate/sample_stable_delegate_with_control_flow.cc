@@ -14,7 +14,6 @@ limitations under the License.
 ==============================================================================*/
 #include "tensorflow/lite/delegates/utils/experimental/sample_stable_delegate/sample_stable_delegate_with_control_flow.h"
 
-#include <cstring>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -90,12 +89,12 @@ class SampleStableDelegateKernel : public SimpleOpaqueDelegateKernelInterface {
       const int node_index = nodes_to_execute->data[i];
 
       TfLiteOpaqueNode* delegated_node = nullptr;
-      TfLiteOperator* delegated_node_registration = nullptr;
+      TfLiteRegistrationExternal* delegated_node_registration = nullptr;
       TfLiteOpaqueContextGetNodeAndRegistration(
           context, node_index, &delegated_node, &delegated_node_registration);
 
       builtin_codes_[subgraph_index][i] =
-          TfLiteOperatorGetBuiltInCode(delegated_node_registration);
+          TfLiteRegistrationExternalGetBuiltInCode(delegated_node_registration);
 
       for (int n = 0; n < TfLiteOpaqueNodeNumberOfInputs(delegated_node); ++n) {
         auto input_tensor =
@@ -420,7 +419,7 @@ TfLiteStatus SampleStableDelegate::ComputeCompatibleCalleeSubgraphs(
   for (int i = 0; i < execution_plan->size; ++i) {
     int node_index = execution_plan->data[i];
     TfLiteOpaqueNode* node = nullptr;
-    TfLiteOperator* registration = nullptr;
+    TfLiteRegistrationExternal* registration = nullptr;
     status = TfLiteOpaqueContextGetNodeAndRegistration(
         current_context, node_index, &node, &registration);
     if (status != kTfLiteOk) {
@@ -428,7 +427,7 @@ TfLiteStatus SampleStableDelegate::ComputeCompatibleCalleeSubgraphs(
     }
 
     TfLiteBuiltinOperator builtin_operator =
-        TfLiteOperatorGetBuiltInCode(registration);
+        TfLiteRegistrationExternalGetBuiltInCode(registration);
     if (builtin_operator == kTfLiteBuiltinWhile) {
       void* builtin_data = TfLiteOpaqueNodeGetBuiltinData(node);
       const auto* op_data =
@@ -504,10 +503,10 @@ int helpers::CalculateNumElements(const TfLiteOpaqueTensor* opaque_tensor) {
 }
 
 bool SampleStableDelegate::IsNodeSupportedByDelegate(
-    const TfLiteOperator* registration_external, const TfLiteOpaqueNode* node,
-    TfLiteOpaqueContext* context) const {
+    const TfLiteRegistrationExternal* registration_external,
+    const TfLiteOpaqueNode* node, TfLiteOpaqueContext* context) const {
   TfLiteBuiltinOperator builtin_operator =
-      TfLiteOperatorGetBuiltInCode(registration_external);
+      TfLiteRegistrationExternalGetBuiltInCode(registration_external);
   void* builtin_data = TfLiteOpaqueNodeGetBuiltinData(node);
   // List of supported / unsupported ops.
   switch (builtin_operator) {

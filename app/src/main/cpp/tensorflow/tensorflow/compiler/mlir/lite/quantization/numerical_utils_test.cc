@@ -18,6 +18,7 @@ limitations under the License.
 #include <cmath>
 #include <optional>
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include "absl/types/optional.h"
 

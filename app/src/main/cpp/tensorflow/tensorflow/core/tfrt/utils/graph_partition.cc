@@ -72,7 +72,7 @@ struct OutputNodeInfo {
 // input/output info for the following processing.
 // TODO(b/217581711): Consider to use another GraphToFunctionDef() helper which
 // does not require _Arg and _Retval nodes.
-absl::Status PrepareSubgraphForFunctionConversion(
+Status PrepareSubgraphForFunctionConversion(
     const std::vector<std::string>& inputs,
     const std::vector<std::string>& outputs, const Device* host_device,
     const std::string& func_name,
@@ -208,12 +208,12 @@ absl::Status PrepareSubgraphForFunctionConversion(
 
     subgraph->AddEdge(const_node, 0, ret_node, 0);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Converts the subgraph to a function, and builds a PartitionedCallOp
 // to invoke the function.
-absl::StatusOr<Node*> BuildPartitionedCallOp(
+StatusOr<Node*> BuildPartitionedCallOp(
     const std::string& func_name, const Device* host_device,
     const std::string& device,
     const absl::flat_hash_map<std::string, NodeInfo>& input_nodes,
@@ -293,7 +293,7 @@ absl::StatusOr<Node*> BuildPartitionedCallOp(
 
 // Builds a StatefulPartitionedCallOp, and connects all PartitionedCallOps to
 // it. This StatefulPartitionedCallOp behaves as a stateful IdentityN.
-absl::StatusOr<Node*> BuildStatefulPartitionedCallOp(
+StatusOr<Node*> BuildStatefulPartitionedCallOp(
     absl::flat_hash_map<std::string, CallNodeInputInfo>& call_node_input_info,
     const absl::flat_hash_map<std::string, Node*>& all_partitioned_call_ops,
     const std::string& stateful_call_func_name, const Device* host_device,
@@ -419,7 +419,7 @@ std::string GetNameFromDevice(const std::string& device) {
 //    passes.
 // 4. Create output nodes and control output nodes to match the original graph's
 //    nodes.
-absl::StatusOr<std::unique_ptr<Graph>> InsertTransferOps(
+StatusOr<std::unique_ptr<Graph>> InsertTransferOps(
     const std::string& graph_func_name, const DeviceSet& device_set,
     const Device* host_device, const std::vector<std::string>& inputs,
     const std::vector<std::string>& outputs,

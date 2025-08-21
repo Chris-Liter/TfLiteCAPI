@@ -20,12 +20,9 @@ limitations under the License.
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include "llvm/ADT/DenseMap.h"
-#include "mlir/IR/Operation.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_ops.h"
-#include "tensorflow/core/platform/errors.h"
-#include "tensorflow/dtensor/cc/dstatus.h"
-#include "tensorflow/dtensor/cc/tensor_layout.h"
+#include "tensorflow/tsl/platform/errors.h"
+#include "tensorflow/tsl/platform/status_matchers.h"
 
 namespace tensorflow {
 namespace dtensor {

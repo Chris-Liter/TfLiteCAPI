@@ -39,7 +39,7 @@ constexpr std::array<const char*, 2> kMaxIntraOpParallelismDatasetOps = {
 
 }  // namespace
 
-absl::Status DisableIntraOpParallelism::OptimizeAndCollectStats(
+Status DisableIntraOpParallelism::OptimizeAndCollectStats(
     Cluster* cluster, const GrapplerItem& item, GraphDef* output,
     OptimizationStats* stats) {
   *output = item.graph;
@@ -48,8 +48,7 @@ absl::Status DisableIntraOpParallelism::OptimizeAndCollectStats(
   // If the GrapplerItem is derived from a FunctionDef, we don't optimize it,
   // because we only want to disable intra op parallelism on the main dataset
   // pipeline.
-  if (graph_utils::IsItemDerivedFromFunctionDef(item, graph))
-    return absl::OkStatus();
+  if (graph_utils::IsItemDerivedFromFunctionDef(item, graph)) return OkStatus();
 
   if (item.fetch.size() != 1) {
     return errors::InvalidArgument(
@@ -62,7 +61,7 @@ absl::Status DisableIntraOpParallelism::OptimizeAndCollectStats(
       if (node.op() == target_dataset_op) {
         // If parallelism is set by the user, we keep the user setting instead
         // of disabling it.
-        return absl::OkStatus();
+        return OkStatus();
       }
     }
   }
@@ -98,14 +97,14 @@ absl::Status DisableIntraOpParallelism::OptimizeAndCollectStats(
   // attrs from the input node. If we fail to set the attributes, we abort the
   // rewrite.
   if (!graph_utils::CopyShapesAndTypesAttrs(*last_node, &insert_node))
-    return absl::OkStatus();
+    return OkStatus();
 
   auto* added_node = graph.AddNode(std::move(insert_node));
   TF_RETURN_IF_ERROR(
       graph.UpdateFanouts(last_node->name(), added_node->name()));
 
   stats->num_changes++;
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 REGISTER_GRAPH_OPTIMIZER_AS(DisableIntraOpParallelism,

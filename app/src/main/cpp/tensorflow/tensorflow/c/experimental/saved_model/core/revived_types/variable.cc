@@ -16,15 +16,9 @@ limitations under the License.
 #include "tensorflow/c/experimental/saved_model/core/revived_types/variable.h"
 
 #include <memory>
-#include <string>
-#include <utility>
-#include <vector>
 
-#include "absl/types/optional.h"
-#include "tensorflow/c/eager/immediate_execution_context.h"
 #include "tensorflow/c/eager/immediate_execution_tensor_handle.h"
 #include "tensorflow/c/experimental/saved_model/core/ops/variable_ops.h"
-#include "tensorflow/c/experimental/saved_model/core/revived_types/tensorhandle_convertible.h"
 #include "tensorflow/core/common_runtime/eager/context.h"
 #include "tensorflow/core/common_runtime/eager/tensor_handle.h"
 #include "tensorflow/core/framework/tensor_shape.h"
@@ -32,8 +26,6 @@ limitations under the License.
 #include "tensorflow/core/lib/llvm_rtti/llvm_rtti.h"
 #include "tensorflow/core/platform/errors.h"
 #include "tensorflow/core/platform/logging.h"
-#include "tensorflow/core/platform/status.h"
-#include "tsl/platform/errors.h"
 
 namespace tensorflow {
 
@@ -53,7 +45,7 @@ Variable::~Variable() {
     return;
   }
 
-  absl::Status status = internal::DestroyResource(ctx_, handle_.get());
+  Status status = internal::DestroyResource(ctx_, handle_.get());
   if (!status.ok()) {
     LOG(ERROR) << "Error destroying variable: " << name_
                << "due to: " << status;
@@ -64,15 +56,15 @@ DataType Variable::dtype() { return dtype_; }
 
 TensorShape Variable::shape() { return shape_; }
 
-absl::Status Variable::Assign(ImmediateExecutionTensorHandle* handle) {
+Status Variable::Assign(ImmediateExecutionTensorHandle* handle) {
   return internal::AssignVariable(ctx_, handle_.get(), dtype_, handle);
 }
 
-absl::Status Variable::ReadValue(ImmediateTensorHandlePtr* out) {
+Status Variable::ReadValue(ImmediateTensorHandlePtr* out) {
   return internal::ReadVariable(ctx_, handle_.get(), dtype_, out);
 }
 
-absl::Status Variable::CreateUninitialized(
+Status Variable::CreateUninitialized(
     ImmediateExecutionContext* ctx, DataType dtype, TensorShape shape,
     absl::optional<std::string> name, const char* raw_device_name,
     const std::vector<std::string>& component_devices,
@@ -84,7 +76,7 @@ absl::Status Variable::CreateUninitialized(
         ctx, dtype, shape, raw_device_name, &handle));
     output->reset(
         new Variable(ctx, dtype, shape, std::move(name), std::move(handle)));
-    return absl::Status();
+    return Status();
   }
 
   if (!tensorflow::isa<EagerContext>(ctx)) {
@@ -121,7 +113,7 @@ absl::Status Variable::CreateUninitialized(
   handle.reset(packed_handle);
   output->reset(
       new Variable(ctx, dtype, shape, std::move(name), std::move(handle)));
-  return absl::Status();
+  return Status();
 }
 
 }  // namespace tensorflow

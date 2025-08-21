@@ -82,7 +82,7 @@ TFStats::TFStats(const string& filename,
       miss_accelerator_stream_(false),
       ckpt_reader_(std::move(ckpt_reader)) {
   string str;
-  absl::Status s = ReadFileToString(Env::Default(), filename, &str);
+  Status s = ReadFileToString(Env::Default(), filename, &str);
   if (!s.ok()) {
     absl::FPrintF(stderr, "Failed to read profile: %s", s.ToString());
     return;
@@ -351,7 +351,7 @@ void TFStats::SerializeToString(string* content) {
 void TFStats::WriteProfile(const string& filename) {
   string content;
   SerializeToString(&content);
-  absl::Status s = WriteStringToFile(Env::Default(), filename, content);
+  Status s = WriteStringToFile(Env::Default(), filename, content);
   if (!s.ok()) {
     absl::FPrintF(stderr, "%s\n", s.ToString());
   }

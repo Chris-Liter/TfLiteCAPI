@@ -26,7 +26,10 @@ from tensorflow.python.training import session_run_hook
 class LocalCLIDebugHook(session_run_hook.SessionRunHook):
   """Command-line-interface debugger hook.
 
-  Can be used as a hook for `tf.compat.v1.train.MonitoredSession`.
+  Can be used as a hook for `tf.compat.v1.train.MonitoredSession`s and
+  `tf.estimator.Estimator`s. Provides a substitute for
+  `tfdbg.LocalCLIDebugWrapperSession` in cases where the session is not directly
+  available.
   """
 
   def __init__(self,
@@ -144,7 +147,8 @@ class LocalCLIDebugHook(session_run_hook.SessionRunHook):
 class DumpingDebugHook(session_run_hook.SessionRunHook):
   """A debugger hook that dumps debug data to filesystem.
 
-  Can be used as a hook for `tf.compat.v1.train.MonitoredSession`.
+  Can be used as a hook for `tf.compat.v1.train.MonitoredSession`s and
+  `tf.estimator.Estimator`s.
   """
 
   def __init__(self,
@@ -218,7 +222,8 @@ class GrpcDebugHook(session_run_hook.SessionRunHook):
   When the arguments of debug_utils.watch_graph changes, strongly consider
   changing arguments here too so that features are available to tflearn users.
 
-  Can be used as a hook for `tf.compat.v1.train.MonitoredSession`.
+  Can be used as a hook for `tf.compat.v1.train.MonitoredSession`s and
+  `tf.estimator.Estimator`s.
   """
 
   def __init__(self,

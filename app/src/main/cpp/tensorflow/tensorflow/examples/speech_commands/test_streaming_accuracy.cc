@@ -63,33 +63,23 @@ bazel run tensorflow/examples/speech_commands:test_streaming_accuracy -- \
 
  */
 
-#include <algorithm>
-#include <cstdint>
 #include <fstream>
-#include <memory>
-#include <string>
-#include <utility>
+#include <iomanip>
+#include <unordered_set>
 #include <vector>
 
-#include "absl/status/status.h"
-#include "xla/tsl/util/command_line_flags.h"
-#include "tensorflow/core/framework/graph.pb.h"
 #include "tensorflow/core/framework/tensor.h"
-#include "tensorflow/core/framework/tensor_shape.h"
-#include "tensorflow/core/framework/types.pb.h"
+#include "tensorflow/core/lib/io/path.h"
+#include "tensorflow/core/lib/strings/numbers.h"
+#include "tensorflow/core/lib/strings/str_util.h"
 #include "tensorflow/core/lib/wav/wav_io.h"
-#include "tensorflow/core/platform/env.h"
-#include "tensorflow/core/platform/errors.h"
 #include "tensorflow/core/platform/init_main.h"
 #include "tensorflow/core/platform/logging.h"
-#include "tensorflow/core/platform/status.h"
+#include "tensorflow/core/platform/types.h"
 #include "tensorflow/core/public/session.h"
-#include "tensorflow/core/public/session_options.h"
 #include "tensorflow/core/util/command_line_flags.h"
 #include "tensorflow/examples/speech_commands/accuracy_utils.h"
 #include "tensorflow/examples/speech_commands/recognize_commands.h"
-#include "tsl/platform/env.h"
-#include "tsl/platform/types.h"
 
 // These are all common classes it's handy to reference with no namespace.
 using ::int64_t;
@@ -119,7 +109,7 @@ Status LoadGraph(const string& graph_file_name,
   if (!session_create_status.ok()) {
     return session_create_status;
   }
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 // Takes a file name, and loads a list of labels from it, one per line, and
@@ -135,7 +125,7 @@ Status ReadLabelsFile(const string& file_name, std::vector<string>* result) {
   while (std::getline(file, line)) {
     result->push_back(line);
   }
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 }  // namespace

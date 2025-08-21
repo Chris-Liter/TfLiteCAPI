@@ -1,8 +1,8 @@
 load("@bazel_skylib//lib:selects.bzl", "selects")
 load("//tensorflow:tensorflow.bzl", "transitive_hdrs")
-load("//tensorflow:tensorflow.default.bzl", "get_compatible_with_portable")
 load("//tensorflow/lite:build_def.bzl", "tflite_copts")
 load("//tensorflow/lite:special_rules.bzl", "tflite_extra_arm_config_settings", "tflite_portable_test_suite_combined")
+load("//tensorflow:tensorflow.default.bzl", "get_compatible_with_portable")
 load("//tensorflow/lite/core/shims:cc_library_with_tflite.bzl", "cc_library_with_tflite")
 
 package(
@@ -39,14 +39,6 @@ NEON_FLAGS_IF_APPLICABLE = select({
         "-O3",
     ],
 })
-
-filegroup(
-    name = "tflite_internal_cc_3p_api_deps_src",
-    srcs = ["compatibility.h"],
-    visibility = [
-        "//tensorflow/lite:__pkg__",
-    ],
-)
 
 cc_library(
     name = "compatibility",
@@ -185,20 +177,6 @@ config_setting(
 )
 
 config_setting(
-    name = "visionos_arm64",
-    values = {
-        "cpu": "visionos_arm64",
-    },
-)
-
-config_setting(
-    name = "visionos_sim_arm64",
-    values = {
-        "cpu": "visionos_sim_arm64",
-    },
-)
-
-config_setting(
     name = "k8",
     values = {
         "cpu": "k8",
@@ -295,8 +273,6 @@ selects.config_setting_group(
         ":ios_sim_arm64",
         ":darwin_arm64",
         ":raspberry_pi_with_neon",
-        ":visionos_arm64",
-        ":visionos_sim_arm64",
     ] + tflite_extra_arm_config_settings(),
 )
 
@@ -371,7 +347,7 @@ cc_library(
         "//tensorflow/lite/kernels:cpu_backend_gemm",
         "//tensorflow/lite/kernels:cpu_backend_threadpool",
         "//tensorflow/lite/kernels:kernel_util",
-        "@eigen_archive//:eigen3",
+        "//third_party/eigen3",
         "@gemmlowp//:fixedpoint",
         "@ruy//ruy/profiler:instrumentation",
     ],
@@ -409,7 +385,7 @@ cc_library(
         "//tensorflow/lite/kernels:cpu_backend_context",
         "//tensorflow/lite/kernels:cpu_backend_gemm",
         "//tensorflow/lite/kernels:cpu_backend_threadpool",
-        "@eigen_archive//:eigen3",
+        "//third_party/eigen3",
         "@gemmlowp",
         "@ruy//ruy/profiler:instrumentation",
     ],
@@ -428,62 +404,40 @@ cc_library(
         ":optimized_base",
         ":types",
         "//tensorflow/lite/core/c:common",
-        "@eigen_archive//:eigen3",
-        "@local_xla//xla/tsl/framework/convolution:eigen_spatial_convolutions-inl",
+        "//tensorflow/tsl/framework/convolution:eigen_spatial_convolutions-inl",
+        "//third_party/eigen3",
     ],
 )
 
 selects.config_setting_group(
-    name = "arm32_any",
-    match_any = [
-        ":armeabi-v7a",
-        ":armhf",
-        ":armv7a",
-        ":ios_armv7",
-    ],
-)
-
-selects.config_setting_group(
-    name = "aarch64_any",
-    match_any = [
-        ":arm",
-        ":aarch64",
-        ":arm64-v8a",
-        ":darwin_arm64",
-        ":ios_arm64",
-        ":ios_arm64e",
-        ":ios_sim_arm64",
-        ":visionos_arm64",
-        ":visionos_sim_arm64",
-    ],
-)
-
-selects.config_setting_group(
-    name = "x86_64_any",
-    match_any = [
-        ":darwin_x86_64",
-        ":haswell",
-        ":ios_x86_64",
-        ":k8",
-        ":tvos_x86_64",
-        ":windows",
-        ":x86_64",
+    name = "linux_x86_64_opt",
+    match_all = [
+        "//tensorflow:linux_x86_64",
+        "//tensorflow:optimized",
     ],
 )
 
 cc_library(
     name = "optimized_4bit",
     srcs = select({
-        ":x86_64_any": [
+        ":linux_x86_64_opt": [
             "optimized/4bit/sse_fully_connected.cc",
         ],
-        ":aarch64_any": [
+        "//tensorflow:android_arm64": [
             "optimized/4bit/neon_fully_connected.cc",
             "optimized/4bit/neon_fully_connected_aarch64_nosdot.cc",
             "optimized/4bit/neon_fully_connected_aarch64_sdot.cc",
             "optimized/4bit/neon_fully_connected_impl.h",
         ],
-        ":arm32_any": [
+        # copybara:uncomment_begin(google-only)
+        # "//tools/cc_target_os:toyota-sa8155-aarch64-oe-linux": [
+        # "optimized/4bit/neon_fully_connected.cc",
+        # "optimized/4bit/neon_fully_connected_aarch64_nosdot.cc",
+        # "optimized/4bit/neon_fully_connected_aarch64_sdot.cc",
+        # "optimized/4bit/neon_fully_connected_impl.h",
+        # ],
+        # copybara:uncomment_end
+        "//tensorflow:android_arm": [
             "optimized/4bit/neon_fully_connected.cc",
             "optimized/4bit/neon_fully_connected_arm32.cc",
             "optimized/4bit/neon_fully_connected_impl.h",
@@ -498,26 +452,47 @@ cc_library(
         "optimized/4bit/fully_connected_reference.h",
         "optimized/fully_connected_4bit.h",
     ] + select({
-        ":x86_64_any": [
+        ":linux_x86_64_opt": [
             "optimized/4bit/sse_fully_connected.h",
             "optimized/4bit/sse_fully_connected_impl.h",
         ],
-        ":aarch64_any": [
+        "//tensorflow:android_arm64": [
             "optimized/4bit/neon_fully_connected.h",
         ],
-        ":arm32_any": [
+        # copybara:uncomment_begin(google-only)
+        # "//tools/cc_target_os:toyota-sa8155-aarch64-oe-linux": [
+        # "optimized/4bit/neon_fully_connected.h",
+        # ],
+        # copybara:uncomment_end
+        "//tensorflow:android_arm": [
             "optimized/4bit/neon_fully_connected.h",
         ],
         "//conditions:default": [],
     }),
     compatible_with = get_compatible_with_portable(),
-    copts = tflite_copts() + NEON_FLAGS_IF_APPLICABLE,
+    copts = tflite_copts() + select({
+        "//tensorflow:android_arm64": [
+            "-march=armv8.2-a+dotprod",
+        ],
+        # copybara:uncomment_begin(google-only)
+        # "//tools/cc_target_os:toyota-sa8155-aarch64-oe-linux": [
+        # "-march=armv8.2-a+dotprod",
+        # ],
+        # copybara:uncomment_end
+        "//tensorflow:android_arm": [],
+        "//conditions:default": [],
+    }) + NEON_FLAGS_IF_APPLICABLE,
     defines = select({
-        ":x86_64_any": ["FC_4BIT_SSE"],
-        ":aarch64_any": [
+        ":linux_x86_64_opt": ["FC_4BIT_SSE"],
+        "//tensorflow:android_arm64": [
             "FC_4BIT_NEON",
         ],
-        ":arm32_any": [
+        # copybara:uncomment_begin(google-only)
+        # "//tools/cc_target_os:toyota-sa8155-aarch64-oe-linux": [
+        # "FC_4BIT_NEON",
+        # ],
+        # copybara:uncomment_end
+        "//tensorflow:android_arm": [
             "FC_4BIT_NEON",
         ],
         "//conditions:default": [],
@@ -669,9 +644,7 @@ cc_library(
     copts = tflite_copts(),
     deps = [
         ":common",
-        ":compatibility",
         ":types",
-        "//tensorflow/lite:macros",
         "//tensorflow/lite/core/c:common",
     ],
 )
@@ -786,14 +759,12 @@ cc_library(
         ":tensor",
         ":tensor_utils",
         ":types",
-        "//tensorflow/lite:macros",
         "//tensorflow/lite:string_util",
-        "//tensorflow/lite/core/c:c_api_types",
         "//tensorflow/lite/core/c:common",
         "//tensorflow/lite/kernels:kernel_util",
         "//tensorflow/lite/kernels:op_macros",
         "//tensorflow/lite/kernels/internal/utils:sparsity_format_converter",
-        "@eigen_archive//:eigen3",
+        "//third_party/eigen3",
         "@gemmlowp//:fixedpoint",
         "@ruy//ruy/profiler:instrumentation",
     ],
@@ -884,13 +855,11 @@ cc_library(
         ":tensor",
         ":tensor_utils",
         ":types",
-        "//tensorflow/lite:macros",
         "//tensorflow/lite:string_util",
-        "//tensorflow/lite/core/c:c_api_types",
         "//tensorflow/lite/core/c:common",
         "//tensorflow/lite/kernels:op_macros",
         "//tensorflow/lite/kernels/internal/utils:sparsity_format_converter",
-        "@eigen_archive//:eigen3",
+        "//third_party/eigen3",
         "@gemmlowp",
         "@ruy//ruy/profiler:instrumentation",
     ],
@@ -916,7 +885,6 @@ cc_library_with_tflite(
     copts = tflite_copts(),
     tflite_deps = [
         "//tensorflow/lite/c:c_api_experimental_without_op_resolver",
-        "//tensorflow/lite:namespace",
     ],
     deps = [
         ":types",
@@ -1030,7 +998,6 @@ cc_library(
         "//tensorflow/lite/kernels:cpu_backend_context",
         "//tensorflow/lite/kernels:cpu_backend_gemm",
         "//tensorflow/lite/kernels:op_macros",
-        "@com_google_absl//absl/base:prefetch",
         "@ruy//ruy/profiler:instrumentation",
     ],
 )
@@ -1143,7 +1110,7 @@ cc_library(
         ":cpu_check",
         ":tensor_utils_no_eigen",
         "//tensorflow/lite/core/c:common",
-        "@eigen_archive//:eigen3",
+        "//third_party/eigen3",
     ] + selects.with_or({
         (
             ":arm_any",
@@ -1466,7 +1433,6 @@ cc_test(
     srcs = ["per_channel_dequantize_test.cc"],
     deps = [
         ":reference_base",
-        ":tensor_utils_no_eigen",
         ":types",
         "//tensorflow/lite/kernels:test_util",
         "@com_google_googletest//:gtest_main",
@@ -1532,7 +1498,7 @@ filegroup(
     srcs = glob([
         "optimized/*.h",
     ]),
-    visibility = ["//visibility:private"],
+    visibility = ["//tensorflow/lite:__subpackages__"],
 )
 
 filegroup(
@@ -1540,7 +1506,7 @@ filegroup(
     srcs = glob([
         "reference/*.h",
     ]),
-    visibility = ["//visibility:private"],
+    visibility = ["//tensorflow/lite:__subpackages__"],
 )
 
 filegroup(
@@ -1548,14 +1514,14 @@ filegroup(
     srcs = glob([
         "*.h",
     ]),
-    visibility = ["//visibility:private"],
+    visibility = ["//tensorflow/lite:__subpackages__"],
 )
 
 transitive_hdrs(
     name = "nnapi_external_headers",
-    visibility = ["//visibility:private"],
+    visibility = ["//tensorflow/lite:__subpackages__"],
     deps = [
-        "@eigen_archive//:eigen3",
+        "//third_party/eigen3",
         "@gemmlowp",
     ],
 )

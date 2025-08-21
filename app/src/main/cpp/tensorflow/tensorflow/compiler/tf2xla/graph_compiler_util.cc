@@ -51,11 +51,10 @@ typedef std::unordered_map<string, Node*> NodeMap;
 // tensor with a placeholder.  For each feed tensor, replaces all edges so they
 // point from a new _Arg node instead. The newly created _Arg nodes are added to
 // `arg_nodes`.
-absl::Status AddArgNodes(
-    Graph* graph, const NodeMap& node_map,
-    const protobuf::RepeatedPtrField<tf2xla::Feed>& feeds,
-    const std::unordered_map<string, string>& feed_remapping,
-    std::unordered_set<const Node*>* arg_nodes) {
+Status AddArgNodes(Graph* graph, const NodeMap& node_map,
+                   const protobuf::RepeatedPtrField<tf2xla::Feed>& feeds,
+                   const std::unordered_map<string, string>& feed_remapping,
+                   std::unordered_set<const Node*>* arg_nodes) {
   for (int arg_index = 0; arg_index < feeds.size(); ++arg_index) {
     const tf2xla::Feed& feed = feeds[arg_index];
     // All feeds have been replaced by placeholders.
@@ -107,15 +106,14 @@ absl::Status AddArgNodes(
       graph->RemoveEdge(edge);
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Each fetch id identifies the positional output of some node.  For each fetch
 // node, adds a new _Retval node instead, and adds the node to `retval_nodes`.
-absl::Status AddRetvalNodes(
-    Graph* graph, const NodeMap& node_map,
-    const protobuf::RepeatedPtrField<tf2xla::Fetch>& fetches,
-    std::unordered_set<const Node*>* retval_nodes) {
+Status AddRetvalNodes(Graph* graph, const NodeMap& node_map,
+                      const protobuf::RepeatedPtrField<tf2xla::Fetch>& fetches,
+                      std::unordered_set<const Node*>* retval_nodes) {
   for (int ret_index = 0; ret_index < fetches.size(); ++ret_index) {
     const tf2xla::TensorId& id = fetches[ret_index].id();
     auto it = node_map.find(id.node_name());
@@ -140,14 +138,14 @@ absl::Status AddRetvalNodes(
             .Finalize(graph, &retval_node));
     retval_nodes->insert(retval_node);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // RewriteAndPruneGraph identifies input and output edges (named by the feed and
 // fetch ids respectively), and rewrites the edges so that inputs flow from _Arg
 // nodes, and outputs flow to _Retval nodes.  This allows the symbolic graph
 // execution to know the input and output args for the generated function.
-absl::Status RewriteAndPruneGraph(
+Status RewriteAndPruneGraph(
     Graph* graph, const tf2xla::Config& config,
     const std::unordered_map<string, string>& feed_remapping) {
   NodeMap node_map;
@@ -194,14 +192,13 @@ absl::Status RewriteAndPruneGraph(
         ", missing feeds: ", absl::StrJoin(missing_feeds, ", "),
         ", missing fetches: ", absl::StrJoin(missing_fetches, ", "));
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // CollectArgNodes collects _Arg nodes from the graph, and performs basic
 // sanity-checking to ensure the index and type attributes of each node are
 // initialized correctly.
-absl::Status CollectArgNodes(const Graph& graph,
-                             std::vector<Node*>* arg_nodes) {
+Status CollectArgNodes(const Graph& graph, std::vector<Node*>* arg_nodes) {
   std::map<int, Node*> indexed_arg_nodes;
   for (Node* n : graph.nodes()) {
     if (n->type_string() == FunctionLibraryDefinition::kArgOp) {
@@ -227,13 +224,13 @@ absl::Status CollectArgNodes(const Graph& graph,
     }
     arg_nodes->push_back(index_node.second);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace
 
-absl::Status CreateXlaArgs(const Graph& graph,
-                           std::vector<XlaCompiler::Argument>* xla_args) {
+Status CreateXlaArgs(const Graph& graph,
+                     std::vector<XlaCompiler::Argument>* xla_args) {
   std::vector<Node*> arg_nodes;
   TF_RETURN_IF_ERROR(CollectArgNodes(graph, &arg_nodes));
   for (const Node* node : arg_nodes) {
@@ -246,7 +243,7 @@ absl::Status CreateXlaArgs(const Graph& graph,
     TF_RETURN_IF_ERROR(GetNodeAttr(node->attrs(), kDebugNameAttr, &arg.name));
     xla_args->push_back(arg);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 void PopulateXlaArgs(const tf2xla::Config& config,
@@ -265,8 +262,8 @@ void PopulateXlaArgs(const tf2xla::Config& config,
   }
 }
 
-absl::Status InitGraph(const GraphDef& graph_def, const tf2xla::Config& config,
-                       std::unique_ptr<Graph>* graph) {
+Status InitGraph(const GraphDef& graph_def, const tf2xla::Config& config,
+                 std::unique_ptr<Graph>* graph) {
   TF_RETURN_IF_ERROR(ValidateConfig(config));
 
   FunctionLibraryDefinition flib_def(OpRegistry::Global(), graph_def.library());
@@ -309,7 +306,7 @@ absl::Status InitGraph(const GraphDef& graph_def, const tf2xla::Config& config,
   TF_RETURN_IF_ERROR(g->AddFunctionLibrary(flib_def.ToProto()));
 
   *graph = std::move(g);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace tensorflow

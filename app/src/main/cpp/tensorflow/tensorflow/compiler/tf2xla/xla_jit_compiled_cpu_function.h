@@ -19,11 +19,10 @@ limitations under the License.
 #include <memory>
 #include <vector>
 
-#include "absl/log/check.h"
 #include "tensorflow/compiler/tf2xla/tf2xla.pb.h"
 #include "tensorflow/compiler/tf2xla/xla_compiled_cpu_function.h"
-#include "xla/client/local_client.h"
-#include "xla/cpu_function_runtime.h"
+#include "tensorflow/compiler/xla/client/local_client.h"
+#include "tensorflow/compiler/xla/cpu_function_runtime.h"
 #include "tensorflow/core/framework/graph.pb.h"
 #include "tensorflow/core/platform/statusor.h"
 #include "tensorflow/core/platform/types.h"
@@ -44,7 +43,7 @@ class XlaJitCompiledCpuFunction {
   // `config` specifies the portion of the graph to compile, via feeds and
   // fetches. Each feed is a positional input argument for the compiled
   // function, while each fetch is a positional output argument.
-  static absl::StatusOr<std::unique_ptr<XlaJitCompiledCpuFunction>> Compile(
+  static StatusOr<std::unique_ptr<XlaJitCompiledCpuFunction>> Compile(
       const GraphDef& graph_def, const tf2xla::Config& config,
       const xla::ExecutableBuildOptions& build_options);
 
@@ -57,11 +56,6 @@ class XlaJitCompiledCpuFunction {
   // across each instance.
   const XlaCompiledCpuFunction::StaticData& StaticData() const {
     return static_data_;
-  }
-
-  const xla::LocalExecutable& LocalExecutable() const {
-    CHECK(executable_);  // Crash ok
-    return *executable_;
   }
 
  private:

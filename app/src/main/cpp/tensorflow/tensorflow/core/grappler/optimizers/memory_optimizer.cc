@@ -541,7 +541,7 @@ bool SchedulingPass(Cluster* cluster, std::unique_ptr<GraphMemory>* memory_ptr,
 
   if ((*memory_ptr) == nullptr) {
     memory_ptr->reset(new GraphMemory(*item));
-    absl::Status s = (*memory_ptr)->InferStatically(cluster->GetDevices());
+    Status s = (*memory_ptr)->InferStatically(cluster->GetDevices());
     if (!s.ok()) {
       memory_ptr->reset();
       VLOG(1) << "Failed to infer memory usage: " << s.message();
@@ -577,10 +577,9 @@ bool SchedulingPass(Cluster* cluster, std::unique_ptr<GraphMemory>* memory_ptr,
     return false;
   }
   GraphProperties properties(*item);
-  absl::Status s =
-      properties.InferStatically(/*assume_valid_feeds=*/false,
-                                 /*aggressive_shape_inference=*/false,
-                                 /*include_tensor_values=*/false);
+  Status s = properties.InferStatically(/*assume_valid_feeds=*/false,
+                                        /*aggressive_shape_inference=*/false,
+                                        /*include_tensor_values=*/false);
   if (!s.ok()) {
     VLOG(1) << "Failed to infer shapes: " << s.message();
     return false;
@@ -589,8 +588,7 @@ bool SchedulingPass(Cluster* cluster, std::unique_ptr<GraphMemory>* memory_ptr,
   // It's ok to use immutable GraphTopologyView here, because we do not destroy
   // any of the nodes in the underlying graph, we only add new nodes.
   GraphTopologyView graph_topology;
-  absl::Status initialized_topology =
-      graph_topology.InitializeFromGraph(item->graph);
+  Status initialized_topology = graph_topology.InitializeFromGraph(item->graph);
   if (!initialized_topology.ok()) {
     VLOG(1) << "Failed to initialize graph topology view: "
             << initialized_topology.message();
@@ -742,10 +740,10 @@ bool SchedulingPass(Cluster* cluster, std::unique_ptr<GraphMemory>* memory_ptr,
   return updated_graph;
 }
 
-absl::Status BuildSwapPair(
-    NodeDef* node, int input_to_swap,
-    const std::unordered_map<string, const NodeDef*>& name_map, GraphDef* graph,
-    std::pair<NodeDef*, NodeDef*>* swap_pair) {
+Status BuildSwapPair(NodeDef* node, int input_to_swap,
+                     const std::unordered_map<string, const NodeDef*>& name_map,
+                     GraphDef* graph,
+                     std::pair<NodeDef*, NodeDef*>* swap_pair) {
   string task, device;
   if (!DeviceNameUtils::SplitDeviceName(node->device(), &task, &device) ||
       !absl::StrContains(device, DEVICE_GPU)) {
@@ -796,7 +794,7 @@ absl::Status BuildSwapPair(
   (*swap_out_node->mutable_attr())["T"].set_type(input_type);
   *swap_pair = std::make_pair(swap_out_node, swap_in_node);
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 struct SwapInfo {
@@ -986,7 +984,7 @@ static bool IdentifySwappingCandidates(
     std::unordered_map<NodeDef*, SwapInfo>* nodes_to_swap) {
   if ((*memory_ptr) == nullptr) {
     memory_ptr->reset(new GraphMemory(*item));
-    absl::Status s = (*memory_ptr)->InferStatically(cluster->GetDevices());
+    Status s = (*memory_ptr)->InferStatically(cluster->GetDevices());
     if (!s.ok()) {
       memory_ptr->reset();
       VLOG(1) << "Failed to infer memory usage: " << s.message();
@@ -1023,8 +1021,7 @@ static bool IdentifySwappingCandidates(
         return false;
       }
       RunMetadata metadata;
-      absl::Status s =
-          vcluster.Run(item->graph, item->feed, item->fetch, &metadata);
+      Status s = vcluster.Run(item->graph, item->feed, item->fetch, &metadata);
       if (!s.ok() && s.code() != error::RESOURCE_EXHAUSTED) {
         return false;
       }
@@ -1298,8 +1295,8 @@ void RelaxAssignNodes(const std::set<int>& nodes_to_relax,
 }
 
 // TODO(rmlarsen): Add distributed TF test.
-absl::Status FindAssignNodesToRelax(const GraphDef& graph,
-                                    std::set<int>* nodes_to_relax) {
+Status FindAssignNodesToRelax(const GraphDef& graph,
+                              std::set<int>* nodes_to_relax) {
   std::unordered_set<string> devices;
   std::vector<int> assign_nodes;
   bool found_send = false;
@@ -1316,7 +1313,7 @@ absl::Status FindAssignNodesToRelax(const GraphDef& graph,
   }
   if (!found_send && devices.size() == 1) {
     nodes_to_relax->insert(assign_nodes.begin(), assign_nodes.end());
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   GraphTopologyView graph_view;
@@ -1376,14 +1373,13 @@ absl::Status FindAssignNodesToRelax(const GraphDef& graph,
       }
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace
 
-absl::Status MemoryOptimizer::Optimize(Cluster* cluster,
-                                       const GrapplerItem& item,
-                                       GraphDef* optimized_graph) {
+Status MemoryOptimizer::Optimize(Cluster* cluster, const GrapplerItem& item,
+                                 GraphDef* optimized_graph) {
   std::set<int> nodes_to_relax;
   TF_RETURN_IF_ERROR(FindAssignNodesToRelax(item.graph, &nodes_to_relax));
 
@@ -1443,7 +1439,7 @@ absl::Status MemoryOptimizer::Optimize(Cluster* cluster,
   }
 
   optimized_graph->Swap(&optimized_item.graph);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // end namespace grappler

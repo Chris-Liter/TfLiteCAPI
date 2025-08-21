@@ -13,29 +13,23 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include <cstdint>
 #include <vector>
 
-#include "absl/log/check.h"
-#include "absl/status/status.h"
-#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "tensorflow/compiler/tf2xla/type_util.h"
 #include "tensorflow/compiler/tf2xla/xla_op_kernel.h"
 #include "tensorflow/compiler/tf2xla/xla_op_registry.h"
-#include "xla/hlo/builder/lib/constants.h"
-#include "xla/hlo/builder/xla_builder.h"
-#include "xla/xla_data.pb.h"
+#include "tensorflow/compiler/xla/client/lib/constants.h"
+#include "tensorflow/compiler/xla/client/xla_builder.h"
+#include "tensorflow/compiler/xla/xla_data.pb.h"
 #include "tensorflow/core/framework/op_kernel.h"
-#include "tensorflow/core/framework/op_requires.h"
 #include "tensorflow/core/framework/tensor_shape.h"
 #include "tensorflow/core/framework/types.h"
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/platform/errors.h"
 #include "tensorflow/core/platform/status.h"
-#include "tensorflow/core/platform/types.h"
-#include "tsl/platform/errors.h"
+#include "tensorflow/core/platform/statusor.h"
 
 namespace tensorflow {
 namespace {
@@ -44,11 +38,10 @@ constexpr absl::string_view kNumSplitsAttrName = "num_splits";
 constexpr absl::string_view kNumConcatsAttrName = "num_concats";
 
 template <bool Split>
-absl::Status GetAndValidateAttributes(OpKernelConstruction* ctx,
-                                      std::vector<int64_t>& num_partitions,
-                                      int& num_slices,
-                                      std::vector<int64_t>& paddings,
-                                      bool& has_paddings) {
+Status GetAndValidateAttributes(OpKernelConstruction* ctx,
+                                std::vector<int64_t>& num_partitions,
+                                int& num_slices, std::vector<int64_t>& paddings,
+                                bool& has_paddings) {
   absl::string_view num_partitions_attr_name =
       Split ? kNumSplitsAttrName : kNumConcatsAttrName;
   TF_RETURN_IF_ERROR(ctx->GetAttr(num_partitions_attr_name, &num_partitions));
@@ -98,7 +91,7 @@ absl::Status GetAndValidateAttributes(OpKernelConstruction* ctx,
     paddings.assign(expected_rank, 0);
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 std::vector<int64_t> GetSliceIndices(absl::Span<const int64> num_partitions,
@@ -142,9 +135,9 @@ class XlaSplitNDBaseOp : public XlaOpKernel {
   }
 
  protected:
-  absl::Status CompileInternal(XlaOpKernelContext* ctx, const xla::XlaOp input,
-                               const TensorShape& input_shape,
-                               const DataType input_dtype) {
+  Status CompileInternal(XlaOpKernelContext* ctx, const xla::XlaOp input,
+                         const TensorShape& input_shape,
+                         const DataType input_dtype) {
     xla::PrimitiveType type;
     TF_RETURN_IF_ERROR(DataTypeToPrimitiveType(input_dtype, &type));
 
@@ -181,10 +174,10 @@ class XlaSplitNDBaseOp : public XlaOpKernel {
           xla::Pad(input,
                    xla::ConstantR0WithType(ctx->builder(), type, /*value=*/0),
                    padding_config));
-      return absl::OkStatus();
+      return OkStatus();
     } else if (num_slices_ == 1) {
       ctx->SetOutput(/*index=*/0, input);
-      return absl::OkStatus();
+      return OkStatus();
     }
 
     // Slice shape with optional padding.
@@ -249,7 +242,7 @@ class XlaSplitNDBaseOp : public XlaOpKernel {
                                      slice_limit_indices, slice_strides));
       }
     }
-    return absl::OkStatus();
+    return OkStatus();
   }
 
  private:
@@ -316,7 +309,7 @@ class XlaConcatNDBaseOp : public XlaOpKernel {
   }
 
  protected:
-  absl::StatusOr<xla::XlaOp> CompileInternal(XlaOpKernelContext* ctx) {
+  StatusOr<xla::XlaOp> CompileInternal(XlaOpKernelContext* ctx) {
     xla::PrimitiveType type;
     TF_RETURN_IF_ERROR(DataTypeToPrimitiveType(dtype_, &type));
 
@@ -401,10 +394,10 @@ class XlaConcatNDBaseOp : public XlaOpKernel {
   DataType dtype_;
 
  private:
-  absl::Status GetInputsAndOutputShape(XlaOpKernelContext* ctx,
-                                       std::vector<xla::XlaOp>& input_handles,
-                                       std::vector<TensorShape>& input_shapes,
-                                       std::vector<int64_t>& output_shape) {
+  Status GetInputsAndOutputShape(XlaOpKernelContext* ctx,
+                                 std::vector<xla::XlaOp>& input_handles,
+                                 std::vector<TensorShape>& input_shapes,
+                                 std::vector<int64_t>& output_shape) {
     TF_RETURN_IF_ERROR(ctx->InputList("inputs", &input_handles, &input_shapes));
 
     const TensorShape& slice_shape = input_shapes[0];
@@ -433,7 +426,7 @@ class XlaConcatNDBaseOp : public XlaOpKernel {
       output_shape.push_back(max_dim_size - paddings_[dim]);
     }
 
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   std::vector<int64_t> num_concats_;

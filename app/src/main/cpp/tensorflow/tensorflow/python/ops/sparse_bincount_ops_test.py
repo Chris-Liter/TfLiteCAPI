@@ -17,7 +17,6 @@
 from absl.testing import parameterized
 import numpy as np
 
-from tensorflow.python.compat import v2_compat
 from tensorflow.python.eager import context
 from tensorflow.python.framework import config as tf_config
 from tensorflow.python.framework import errors
@@ -590,8 +589,7 @@ class TestSparseCount(test_util.TensorFlowTestCase, parameterized.TestCase):
       expected,
       axis,
   ):
-    device_set = set([d.device_type for d in tf_config.list_physical_devices()])
-    if "GPU" in device_set and not test_util.is_xla_enabled():
+    if "GPU" in set([d.device_type for d in tf_config.list_physical_devices()]):
       self.skipTest(
           "b/263004039 The DenseBincount GPU kernel does not support weights."
           " unsorted_segment_sum should be used instead on GPU."
@@ -753,5 +751,4 @@ class TestSparseCountFailureModes(test_util.TensorFlowTestCase):
 
 
 if __name__ == "__main__":
-  v2_compat.enable_v2_behavior()
   test.main()

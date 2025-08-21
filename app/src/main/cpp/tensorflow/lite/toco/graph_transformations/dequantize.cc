@@ -17,13 +17,11 @@ limitations under the License.
 #include <unordered_map>
 #include <vector>
 
-#include "absl/status/status.h"
-#include "tensorflow/core/platform/logging.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/lite/toco/graph_transformations/graph_transformations.h"
 #include "tensorflow/lite/toco/graph_transformations/remove_trivial_passthrough.h"
 #include "tensorflow/lite/toco/model.h"
 #include "tensorflow/lite/toco/tooling_util.h"
+#include "tensorflow/core/platform/logging.h"
 
 namespace toco {
 
@@ -188,8 +186,8 @@ bool DequantizeArray(const std::string& array_name,
 
 }  // namespace
 
-absl::Status Dequantize::Run(Model* model, std::size_t op_index,
-                             bool* modified) {
+::tensorflow::Status Dequantize::Run(Model* model, std::size_t op_index,
+                                     bool* modified) {
   *modified = false;
   const auto op_it = model->operators.begin() + op_index;
   auto* op = op_it->get();
@@ -197,10 +195,10 @@ absl::Status Dequantize::Run(Model* model, std::size_t op_index,
   if (op->type == OperatorType::kDequantize) {
     auto& input_array = model->GetArray(op->inputs[0]);
     if (input_array.data_type == ArrayDataType::kFloat) {
-      return absl::OkStatus();
+      return ::tensorflow::OkStatus();
     }
     if (input_array.final_data_type != ArrayDataType::kFloat) {
-      return absl::OkStatus();
+      return ::tensorflow::OkStatus();
     }
     input_array.data_type = ArrayDataType::kFloat;
     input_array.quantization_params = nullptr;
@@ -208,7 +206,7 @@ absl::Status Dequantize::Run(Model* model, std::size_t op_index,
     output_array.data_type = ArrayDataType::kFloat;
     output_array.quantization_params = nullptr;
     *modified = RemoveTrivialPassthroughOp(this, model, op_index);
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   std::vector<std::string> arrays;
@@ -227,7 +225,7 @@ absl::Status Dequantize::Run(Model* model, std::size_t op_index,
   }
 
   *modified = changed;
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 }  // namespace toco

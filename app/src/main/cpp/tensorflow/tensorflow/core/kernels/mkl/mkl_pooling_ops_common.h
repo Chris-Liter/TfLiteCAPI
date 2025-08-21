@@ -226,7 +226,6 @@ class MklPoolingFwdPrimitiveFactory : public MklPrimitiveFactory<T> {
 #endif  // ENABLE_ONEDNN_V3
     key_creator.AddAsKey(fwdParams.padding_left);
     key_creator.AddAsKey(fwdParams.padding_right);
-    key_creator.AddAsKey(fwdParams.src_format);
     key_creator.AddAsKey<int>(static_cast<int>(fwdParams.alg_kind));
     key_creator.AddAsKey<int>(static_cast<int>(fwdParams.prop_kind));
     return key_creator.GetKey();
@@ -383,7 +382,6 @@ class MklPoolingBwdPrimitiveFactory : public MklPrimitiveFactory<T> {
 #endif  // ENABLE_ONEDNN_V3
     key_creator.AddAsKey(bwdParams.padding_left);
     key_creator.AddAsKey(bwdParams.padding_right);
-    key_creator.AddAsKey(bwdParams.src_format);
     key_creator.AddAsKey<int>(static_cast<int>(bwdParams.alg_kind));
     return key_creator.GetKey();
   }
@@ -507,10 +505,8 @@ class MklPoolingOpBase : public OpKernel {
                                            "specify 4 or 5 dimensions"));
     for (int i = 0; i < this->ksize_.size(); ++i) {
       OP_REQUIRES(context, this->ksize_[i] > 0,
-                  errors::InvalidArgument(
-                      absl::StrCat("Sliding window ksize must be positive. The "
-                                   "specified or inferred ksize is: ",
-                                   absl::StrJoin(ksize_, ","))));
+                  absl::InvalidArgumentError(absl::StrCat(
+                      "Sliding window ksize for dimension ", i, " was zero.")));
     }
 
     OP_REQUIRES_OK(context, context->GetAttr("strides", &this->stride_));

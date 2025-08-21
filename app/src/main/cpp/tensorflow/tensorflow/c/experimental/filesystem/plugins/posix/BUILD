@@ -1,6 +1,7 @@
+load("//tensorflow/core/platform:rules_cc.bzl", "cc_library")
+
 # Experimental posix filesystem plugin.
 load("//tensorflow:tensorflow.bzl", "tf_cc_shared_object")
-load("//tensorflow/core/platform:rules_cc.bzl", "cc_library")
 
 package(
     # copybara:uncomment default_applicable_licenses = ["//tensorflow:license"],
@@ -24,7 +25,6 @@ cc_library(
     hdrs = ["posix_filesystem.h"],
     deps = [
         ":posix_filesystem_helper",
-        "//tensorflow/c:tf_file_statistics",
         "//tensorflow/c:tf_status",
         "//tensorflow/c/experimental/filesystem:filesystem_interface",
     ],
@@ -40,8 +40,6 @@ cc_library(
         ":posix_filesystem_impl",
         "//tensorflow/c/experimental/filesystem:filesystem_interface",
         "//tensorflow/c/experimental/filesystem:modular_filesystem",
-        "//tensorflow/core/platform:status",
-        "@com_google_absl//absl/log",
     ],
     alwayslink = 1,
 )

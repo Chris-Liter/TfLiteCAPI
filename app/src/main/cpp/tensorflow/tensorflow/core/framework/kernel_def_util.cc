@@ -33,8 +33,8 @@ bool InTypeList(DataType dt, const AttrValue& type_list) {
 }
 }  // namespace
 
-absl::Status KernelAttrsMatch(const KernelDef& kernel_def, AttrSlice attrs,
-                              bool* match) {
+Status KernelAttrsMatch(const KernelDef& kernel_def, AttrSlice attrs,
+                        bool* match) {
   *match = false;
   for (const auto& constraint : kernel_def.constraint()) {
     auto constraint_value_case = AttrValue::VALUE_NOT_SET;
@@ -117,7 +117,7 @@ absl::Status KernelAttrsMatch(const KernelDef& kernel_def, AttrSlice attrs,
 
     if (attr_value->type() != DT_INVALID) {
       if (!InTypeList(attr_value->type(), constraint.allowed_values())) {
-        return absl::OkStatus();
+        return OkStatus();
       }
     } else {
       if (!AttrValueHasType(*attr_value, "list(type)").ok()) {
@@ -133,13 +133,13 @@ absl::Status KernelAttrsMatch(const KernelDef& kernel_def, AttrSlice attrs,
       for (int t : attr_value->list().type()) {
         if (!InTypeList(static_cast<DataType>(t),
                         constraint.allowed_values())) {
-          return absl::OkStatus();
+          return OkStatus();
         }
       }
     }
   }
   *match = true;
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace tensorflow

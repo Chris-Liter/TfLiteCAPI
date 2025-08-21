@@ -16,19 +16,17 @@ limitations under the License.
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_device.h"
 
 #include <algorithm>
-#include <cassert>
+#include <cstddef>
 #include <cstdint>
 #include <iterator>
 #include <optional>
 #include <utility>
 
 #include "llvm/ADT/ArrayRef.h"
-#include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/SMLoc.h"
-#include "mlir/Dialect/Func/IR/FuncOps.h"  // from @llvm-project
 #include "mlir/IR/Attributes.h"  // from @llvm-project
 #include "mlir/IR/Builders.h"  // from @llvm-project
 #include "mlir/IR/BuiltinAttributes.h"  // from @llvm-project
@@ -38,18 +36,14 @@ limitations under the License.
 #include "mlir/IR/OpImplementation.h"  // from @llvm-project
 #include "mlir/IR/OperationSupport.h"  // from @llvm-project
 #include "mlir/IR/PatternMatch.h"  // from @llvm-project
-#include "mlir/IR/SymbolTable.h"  // from @llvm-project
 #include "mlir/IR/TypeUtilities.h"  // from @llvm-project
 #include "mlir/IR/Types.h"  // from @llvm-project
 #include "mlir/IR/UseDefLists.h"  // from @llvm-project
 #include "mlir/IR/Value.h"  // from @llvm-project
-#include "mlir/Interfaces/CallInterfaces.h"  // from @llvm-project
 #include "mlir/Support/LLVM.h"  // from @llvm-project
 #include "mlir/Support/LogicalResult.h"  // from @llvm-project
-#include "mlir/Support/TypeID.h"  // from @llvm-project
 #include "mlir/Transforms/InliningUtils.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_ops.h"
-#include "tensorflow/compiler/mlir/tensorflow/ir/tf_types.h"
 #include "tensorflow/core/platform/logging.h"
 
 namespace mlir {
@@ -67,10 +61,9 @@ struct TFInlinerInterface : public DialectInlinerInterface {
   // Analysis Hooks
   //===--------------------------------------------------------------------===//
 
-  // Returns whether it's legal to inline a call to a function.
+  // Allow all call operations to be inlined.
   bool isLegalToInline(Operation* call, Operation* callable,
                        bool wouldBeCloned) const final {
-    if (isa<ClusterFuncOp>(call)) return false;
     return true;
   }
 
@@ -81,8 +74,10 @@ struct TFInlinerInterface : public DialectInlinerInterface {
     return true;
   }
 
-  // Defines the legality of inlining TF Device operations into a region.
-  bool isLegalToInline(Operation* call, Region*, bool, IRMapping&) const final {
+  // Defines the legality of inlining TF Device operations.
+  bool isLegalToInline(Operation*, Region*, bool,
+                       IRMapping&) const final {
+    // For now, enable inlining all operations.
     return true;
   }
 
@@ -99,8 +94,7 @@ struct TFInlinerInterface : public DialectInlinerInterface {
   Operation* materializeCallConversion(OpBuilder& builder, Value input,
                                        Type result_type,
                                        Location conversion_loc) const final {
-    if (!mlir::isa<TensorType>(result_type) ||
-        !mlir::isa<TensorType>(input.getType()))
+    if (!result_type.isa<TensorType>() || !input.getType().isa<TensorType>())
       return nullptr;
     return builder.create<TF::CastOp>(conversion_loc, result_type, input,
                                       /*truncate=*/builder.getBoolAttr(false));
@@ -131,27 +125,6 @@ TensorFlowDeviceDialect::TensorFlowDeviceDialect(MLIRContext* context)
       >();
 
   addInterfaces<TFInlinerInterface>();
-}
-
-//===----------------------------------------------------------------------===//
-// tf_device.cluster_func
-//===----------------------------------------------------------------------===//
-
-LogicalResult ClusterFuncOp::verifySymbolUses(
-    mlir::SymbolTableCollection& symbolTable) {
-  StringAttr func_attr = getFuncAttr().getRootReference();
-  func::FuncOp func =
-      symbolTable.lookupNearestSymbolFrom<func::FuncOp>(*this, func_attr);
-  if (!func) {
-    return emitError("'func' attribute refers to an undefined function: ")
-           << func_attr.getValue();
-  }
-  return success();
-}
-
-void ClusterFuncOp::setCalleeFromCallable(mlir::CallInterfaceCallable callee) {
-  SymbolRefAttr calleeAttr = callee.get<SymbolRefAttr>();
-  return setFuncAttr(cast<FlatSymbolRefAttr>(calleeAttr));
 }
 
 //===----------------------------------------------------------------------===//
@@ -308,7 +281,7 @@ ParseResult SetReplicateOpOperands(
     llvm::ArrayRef<Type> region_arg_types, int32_t* n) {
   for (const auto& attr : state->attributes)
     if (attr.getName().strref() == "n")
-      if (auto n_attr = mlir::dyn_cast<IntegerAttr>(attr.getValue()))
+      if (auto n_attr = attr.getValue().dyn_cast<IntegerAttr>())
         *n = n_attr.getInt();
 
   if (*n < 2)
@@ -349,7 +322,7 @@ ParseResult SetReplicateOpOperands(
 
 }  // namespace
 
-static constexpr char kOperandSegmentSizesAttr[] = "operandSegmentSizes";
+static constexpr char kOperandSegmentSizesAttr[] = "operand_segment_sizes";
 
 ParseResult ReplicateOp::parse(OpAsmParser& parser, OperationState& result) {
   llvm::SMLoc loc = parser.getCurrentLocation();
@@ -378,7 +351,7 @@ ParseResult ReplicateOp::parse(OpAsmParser& parser, OperationState& result) {
   }
   if (parser.parseRegion(body, packed_args)) return failure();
 
-  // Add derived `operandSegmentSizes` attribute based on parsed operands.
+  // Add derived `operand_segment_sizes` attribute based on parsed operands.
   if (!result.attributes.get(kOperandSegmentSizesAttr)) {
     int32_t num_replicated_inputs = replicated_inputs.size() * n;
     int32_t num_packed_inputs = packed_inputs.size();
@@ -414,7 +387,7 @@ void ReplicateOp::print(OpAsmPrinter& p) {
   //   packed_input
   //     %b as %block_arg1: type
   const int32_t n = this->getN();
-  const int32_t num_replicated_inputs = getProperties().operandSegmentSizes[0];
+  const int32_t num_replicated_inputs = getOperandSegmentSizes()[0];
   const int32_t num_replicated_block_args = num_replicated_inputs / n;
 
   if (getNumOperands()) {
@@ -437,7 +410,7 @@ void ReplicateOp::print(OpAsmPrinter& p) {
     p << ')';
   }
 
-  // Skip derived `operandSegmentSizes` attribute as custom print format of
+  // Skip derived `operand_segment_sizes` attribute as custom print format of
   // operands holds enough information to calculate these variadic operand list
   // lengths.
   p.printOptionalAttrDict(
@@ -488,12 +461,12 @@ void BuildReplicateOp(
     block.addArgument(packed_input.getType(), state->location);
   }
 
-  // Add derived `operandSegmentSizes` attribute.
+  // Add derived `operand_segment_sizes` attribute.
   int32_t num_replicated_inputs = replicated_inputs.size() * n;
   int32_t num_packed_inputs = packed_inputs.size();
-  auto operandSegmentSizes =
+  auto operand_segment_sizes =
       builder->getDenseI32ArrayAttr({num_replicated_inputs, num_packed_inputs});
-  state->addAttribute(kOperandSegmentSizesAttr, operandSegmentSizes);
+  state->addAttribute(kOperandSegmentSizesAttr, operand_segment_sizes);
 
   for (const auto& output_type : replica_output_types)
     state->addTypes(llvm::SmallVector<Type, 8>(n, output_type));
@@ -508,14 +481,13 @@ LogicalResult ReplicateOp::verify() {
   // Check number of devices, if set, matches `n`.
   if (op.getDevices().has_value()) {
     for (auto device_attr : op.getDevices().value().getValue()) {
-      auto device_list =
-          mlir::dyn_cast_or_null<ArrayAttr>(device_attr.getValue());
+      auto device_list = device_attr.getValue().dyn_cast_or_null<ArrayAttr>();
       if (!device_list)
         return op.emitError()
                << "expects 'devices' to be a map alias and device name list.";
 
       bool is_device_string = llvm::all_of(device_list, [](Attribute attr) {
-        return mlir::dyn_cast_or_null<StringAttr>(attr);
+        return attr.dyn_cast_or_null<StringAttr>();
       });
       if (!is_device_string)
         return op.emitOpError() << "expects 'devices' to be a consists of "
@@ -530,9 +502,9 @@ LogicalResult ReplicateOp::verify() {
 
   Block& block = op.getBody().front();
 
-  auto operandSegmentSizes = op.getProperties().operandSegmentSizes;
-  const int32_t num_replicated_inputs = operandSegmentSizes[0];
-  const int32_t num_packed_inputs = operandSegmentSizes[1];
+  auto operand_segment_sizes = op.getOperandSegmentSizes();
+  const int32_t num_replicated_inputs = operand_segment_sizes[0];
+  const int32_t num_packed_inputs = operand_segment_sizes[1];
 
   if (num_replicated_inputs % n != 0)
     return op.emitOpError()
@@ -749,8 +721,8 @@ static LogicalResult EliminatePassThroughResults(ClusterOp op,
     // Old bridge only removes unsupported TPU types (only string for now)
     // during outside compilation extraction so this should be enough for
     // the parity.
-    bool is_unsupported_type = mlir::isa<mlir::TF::StringType>(
-        getElementTypeOrSelf(operand.get().getType()));
+    bool is_unsupported_type = getElementTypeOrSelf(operand.get().getType())
+                                   .isa<mlir::TF::StringType>();
     Value result = operand.get();
     if (is_unsupported_type && result.getParentBlock() != &body &&
         !is_used_for_resource_write) {

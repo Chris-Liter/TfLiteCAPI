@@ -46,7 +46,7 @@ std::vector<GraphView::Edge> MakeEphemeralEdges(
 
 // Kahn's algorithm is implemented.
 // For details, see https://en.wikipedia.org/wiki/Topological_sorting
-absl::Status ComputeTopologicalOrder(
+Status ComputeTopologicalOrder(
     const GraphDef& graph,
     const absl::Span<const TopologicalDependency> extra_dependencies,
     std::vector<int>* ready_nodes) {
@@ -105,12 +105,12 @@ absl::Status ComputeTopologicalOrder(
     return errors::InvalidArgument(
         "The graph couldn't be sorted in topological order.");
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace
 
-absl::Status ComputeTopologicalOrder(
+Status ComputeTopologicalOrder(
     const GraphDef& graph,
     const absl::Span<const TopologicalDependency> extra_dependencies,
     std::vector<const NodeDef*>* topo_order) {
@@ -123,27 +123,27 @@ absl::Status ComputeTopologicalOrder(
     topo_order->emplace_back(&graph.node(ready_node_idx));
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status ComputeTopologicalOrder(const GraphDef& graph,
-                                     std::vector<const NodeDef*>* topo_order) {
+Status ComputeTopologicalOrder(const GraphDef& graph,
+                               std::vector<const NodeDef*>* topo_order) {
   return ComputeTopologicalOrder(graph, {}, topo_order);
 }
 
-absl::Status ReversedTopologicalSort(GraphDef* graph) {
+Status ReversedTopologicalSort(GraphDef* graph) {
   std::vector<int> ready_nodes;
   TF_RETURN_IF_ERROR(ComputeTopologicalOrder(*graph, {}, &ready_nodes));
   std::reverse(ready_nodes.begin(), ready_nodes.end());
   PermuteNodesInPlace(graph, &ready_nodes, /*invert_permutation=*/true);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status TopologicalSort(GraphDef* graph) {
+Status TopologicalSort(GraphDef* graph) {
   std::vector<int> ready_nodes;
   TF_RETURN_IF_ERROR(ComputeTopologicalOrder(*graph, {}, &ready_nodes));
   PermuteNodesInPlace(graph, &ready_nodes, /*invert_permutation=*/true);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace grappler

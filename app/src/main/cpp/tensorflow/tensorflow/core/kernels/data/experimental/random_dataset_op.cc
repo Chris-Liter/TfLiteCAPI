@@ -70,22 +70,22 @@ class RandomDatasetOp::Dataset : public DatasetBase {
   ~Dataset() override {
     manager_->Unref();
     if (owns_resource_) {
-      absl::Status s = resource_mgr_->Delete<SeedGeneratorManager>(
+      Status s = resource_mgr_->Delete<SeedGeneratorManager>(
           resource_handle_.container(), resource_handle_.name());
       if (!s.ok()) {
-        LOG(WARNING) << "Failed to delete RNG resource: " << s;
+        LOG(WARNING) << "Failed to delete RNG resource: " << s.ToString();
       }
     }
   }
 
-  absl::Status MakeSplitProviders(std::vector<std::unique_ptr<SplitProvider>>*
-                                      split_providers) const override {
+  Status MakeSplitProviders(std::vector<std::unique_ptr<SplitProvider>>*
+                                split_providers) const override {
     // We use kint64 to generate an effectively infinite number of "splits".
     // These splits aren't actually used during iteration.
     // TODO(aaudibert): Avoid sending dummy splits over RPC when using tf.data
     // service with RandomDataset.
     split_providers->push_back(std::make_unique<IndexSplitProvider>(kint64max));
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   std::unique_ptr<IteratorBase> MakeIteratorInternal(
@@ -118,17 +118,16 @@ class RandomDatasetOp::Dataset : public DatasetBase {
     return kInfiniteCardinality;
   }
 
-  absl::Status InputDatasets(
-      std::vector<const DatasetBase*>* inputs) const override {
-    return absl::OkStatus();
+  Status InputDatasets(std::vector<const DatasetBase*>* inputs) const override {
+    return OkStatus();
   }
 
-  absl::Status CheckExternalState() const override { return absl::OkStatus(); }
+  Status CheckExternalState() const override { return OkStatus(); }
 
  protected:
-  absl::Status AsGraphDefInternal(SerializationContext* ctx,
-                                  DatasetGraphDefBuilder* b,
-                                  Node** output) const override {
+  Status AsGraphDefInternal(SerializationContext* ctx,
+                            DatasetGraphDefBuilder* b,
+                            Node** output) const override {
     Node* seed_node = nullptr;
     Node* seed2_node = nullptr;
     TF_RETURN_IF_ERROR(b->AddScalar(seeds_.input_seed(), &seed_node));
@@ -160,22 +159,22 @@ class RandomDatasetOp::Dataset : public DatasetBase {
 
     bool SymbolicCheckpointCompatible() const override { return true; }
 
-    absl::Status Initialize(IteratorContext* ctx) override {
+    Status Initialize(IteratorContext* ctx) override {
       mutex_lock l(mu_);
       seed_generator_->GenerateSeeds(&seed_, &seed2_);
       ResetRngs();
-      return absl::OkStatus();
+      return OkStatus();
     }
 
-    absl::Status GetNextInternal(IteratorContext* ctx,
-                                 std::vector<Tensor>* out_tensors,
-                                 bool* end_of_sequence) override {
+    Status GetNextInternal(IteratorContext* ctx,
+                           std::vector<Tensor>* out_tensors,
+                           bool* end_of_sequence) override {
       out_tensors->reserve(1);
       mutex_lock l(mu_);
       out_tensors->emplace_back(ctx->allocator({}), DT_INT64, TensorShape({}));
       out_tensors->back().scalar<int64_t>()() = Random();
       *end_of_sequence = false;
-      return absl::OkStatus();
+      return OkStatus();
     }
 
     std::shared_ptr<model::Node> CreateNode(
@@ -183,8 +182,8 @@ class RandomDatasetOp::Dataset : public DatasetBase {
       return model::MakeSourceNode(std::move(args));
     }
 
-    absl::Status SaveInternal(SerializationContext* ctx,
-                              IteratorStateWriter* writer) override {
+    Status SaveInternal(SerializationContext* ctx,
+                        IteratorStateWriter* writer) override {
       mutex_lock l(mu_);
       // Save state needed to restore the random number generators.
       TF_RETURN_IF_ERROR(
@@ -194,11 +193,11 @@ class RandomDatasetOp::Dataset : public DatasetBase {
                                              num_random_samples_));
       TF_RETURN_IF_ERROR(writer->WriteScalar(this->full_name(kSeed), seed_));
       TF_RETURN_IF_ERROR(writer->WriteScalar(this->full_name(kSeed2), seed2_));
-      return absl::OkStatus();
+      return OkStatus();
     }
 
-    absl::Status RestoreInternal(IteratorContext* ctx,
-                                 IteratorStateReader* reader) override {
+    Status RestoreInternal(IteratorContext* ctx,
+                           IteratorStateReader* reader) override {
       mutex_lock l(mu_);
       // Restore the random number generators.
       int64_t num_random_samples;
@@ -211,7 +210,7 @@ class RandomDatasetOp::Dataset : public DatasetBase {
       TF_RETURN_IF_ERROR(reader->ReadScalar(this->full_name(kSeed), &seed_));
       TF_RETURN_IF_ERROR(reader->ReadScalar(this->full_name(kSeed2), &seed2_));
       ResetRngs();
-      return absl::OkStatus();
+      return OkStatus();
     }
 
    protected:
@@ -278,8 +277,8 @@ void RandomDatasetOp::MakeDataset(OpKernelContext* ctx, DatasetBase** output) {
   ResourceHandle handle;
   bool owns_resource = true;
   if (op_version_ == 2) {
-    OP_REQUIRES_OK(ctx, HandleFromInput(ctx, 2, &handle));
-    absl::Status s = ctx->resource_manager()->Lookup<SeedGeneratorManager>(
+    handle = HandleFromInput(ctx, 2);
+    Status s = ctx->resource_manager()->Lookup<SeedGeneratorManager>(
         handle.container(), handle.name(), &manager);
     owns_resource = false;
     if (errors::IsNotFound(s)) {
@@ -305,7 +304,7 @@ void RandomDatasetOp::MakeDataset(OpKernelContext* ctx, DatasetBase** output) {
                 *manager =
                     new SeedGeneratorManager(new FixedSeedGenerator(seeds));
               }
-              return absl::OkStatus();
+              return OkStatus();
             }));
     handle = MakeResourceHandle<SeedGenerator>(ctx, container, name);
   }

@@ -102,7 +102,8 @@ TEST_P(DatasetStoreTest, StoreAlreadyExists) {
   DatasetDef dataset_def = DatasetDefWithVersion(version);
   std::string key = "key";
   TF_ASSERT_OK(store->Put(key, dataset_def));
-  TF_EXPECT_OK(store->Put(key, dataset_def));
+  Status s = store->Put(key, dataset_def);
+  EXPECT_EQ(s.code(), error::ALREADY_EXISTS);
   std::shared_ptr<const DatasetDef> result;
   TF_ASSERT_OK(store->Get(key, result));
   EXPECT_EQ(result->graph().version(), version);
@@ -111,7 +112,7 @@ TEST_P(DatasetStoreTest, StoreAlreadyExists) {
 TEST_P(DatasetStoreTest, GetMissing) {
   std::unique_ptr<DatasetStore> store = MakeStore(GetParam());
   std::shared_ptr<const DatasetDef> result;
-  absl::Status s = store->Get("missing", result);
+  Status s = store->Get("missing", result);
   EXPECT_EQ(s.code(), error::NOT_FOUND);
 }
 

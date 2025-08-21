@@ -15,32 +15,26 @@ limitations under the License.
 
 #include "tensorflow/core/transforms/graph_compactor/pass.h"
 
-#include <cassert>
 #include <iterator>
 #include <memory>
 #include <string>
 #include <utility>
 
-#include "absl/status/statusor.h"
 #include "llvm/ADT/BitVector.h"
-#include "llvm/ADT/STLExtras.h"
-#include "mlir/IR/Attributes.h"  // from @llvm-project
 #include "mlir/IR/Builders.h"  // from @llvm-project
 #include "mlir/IR/MLIRContext.h"  // from @llvm-project
-#include "mlir/IR/OpDefinition.h"  // from @llvm-project
 #include "mlir/IR/OperationSupport.h"  // from @llvm-project
-#include "mlir/IR/Visitors.h"  // from @llvm-project
 #include "mlir/Pass/Pass.h"  // from @llvm-project
 #include "mlir/Support/LLVM.h"  // from @llvm-project
 #include "mlir/Support/LogicalResult.h"  // from @llvm-project
 #include "tensorflow/core/framework/op.h"
-#include "tensorflow/core/framework/op_def.pb.h"
 #include "tensorflow/core/framework/op_def_builder.h"
 #include "tensorflow/core/ir/dialect.h"
 #include "tensorflow/core/ir/importexport/convert_attributes.h"
 #include "tensorflow/core/ir/interfaces.h"
 #include "tensorflow/core/ir/ops.h"
 #include "tensorflow/core/ir/tf_op_registry.h"
+#include "tensorflow/core/platform/statusor.h"
 
 namespace mlir {
 namespace tfg {
@@ -116,8 +110,7 @@ class NameCompressPass : public impl::NameCompressBase<NameCompressPass> {
       arg_attrs.reserve(func.getNumArguments());
       // Iterate over the function arguments, skipping the control tokens.
       for (int i = 0, e = func.getNumArguments(); i != e; i += 2) {
-        NamedAttrList attrs =
-            mlir::cast<DictionaryAttr>(func.getArgAttrsAttr()[i]);
+        NamedAttrList attrs = func.getArgAttrsAttr()[i].cast<DictionaryAttr>();
         attrs.set(dialect_->getTfgNameAttrIdentifier(), encode_new_name());
         arg_attrs.append({attrs.getDictionary(&getContext()), empty_dict_});
       }
@@ -235,7 +228,7 @@ LogicalResult StripDefaultAttrsPass::removeDefaultValuedAttrs(Operation *op) {
     if (!it.second) continue;
     // Convert the TensorFlow attribute value and compare it to the MLIR
     // attribute.
-    absl::StatusOr<Attribute> maybe_attr =
+    tensorflow::StatusOr<Attribute> maybe_attr =
         ConvertAttributeValue(attr.default_value(), b);
     if (!maybe_attr.ok())
       return op->emitError(std::string(maybe_attr.status().message()));
@@ -325,7 +318,7 @@ LogicalResult AddDefaultAttrsPass::addDefaultValuedAttrs(Operation *op) {
     // Ignore default-valued attributes that are present.
     if (attrs.get(attr.name())) continue;
     // Convert the TensorFlow attribute value and set it.
-    absl::StatusOr<Attribute> maybe_attr =
+    tensorflow::StatusOr<Attribute> maybe_attr =
         ConvertAttributeValue(attr.default_value(), b);
     if (!maybe_attr.ok())
       return op->emitError(std::string(maybe_attr.status().message()));

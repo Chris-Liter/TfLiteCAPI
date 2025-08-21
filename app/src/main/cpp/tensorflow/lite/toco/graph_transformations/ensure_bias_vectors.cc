@@ -17,9 +17,7 @@ limitations under the License.
 #include <unordered_map>
 #include <vector>
 
-#include "absl/status/status.h"
 #include "tensorflow/core/platform/logging.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/lite/toco/graph_transformations/graph_transformations.h"
 #include "tensorflow/lite/toco/model.h"
 #include "tensorflow/lite/toco/tooling_util.h"
@@ -76,8 +74,8 @@ bool ProcessLinearOperator(Model* model, Operator* op) {
 }
 }  // namespace
 
-absl::Status EnsureBiasVectors::Run(Model* model, std::size_t op_index,
-                                    bool* modified) {
+::tensorflow::Status EnsureBiasVectors::Run(Model* model, std::size_t op_index,
+                                            bool* modified) {
   *modified = false;
   auto* op = model->operators[op_index].get();
   if (op->type == OperatorType::kConv ||
@@ -87,10 +85,10 @@ absl::Status EnsureBiasVectors::Run(Model* model, std::size_t op_index,
     if (ProcessLinearOperator(model, op)) {
       AddMessageF("Added bias vector to %s as %s", LogName(*op), op->inputs[2]);
       *modified = true;
-      return absl::OkStatus();
+      return ::tensorflow::OkStatus();
     }
   }
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 }  // namespace toco

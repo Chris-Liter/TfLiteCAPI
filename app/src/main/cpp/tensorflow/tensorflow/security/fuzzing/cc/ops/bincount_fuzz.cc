@@ -14,11 +14,9 @@
 
 #include <vector>
 
+#include <gtest/gtest.h>
 #include "fuzztest/fuzztest.h"
-#include "absl/log/log.h"
-#include "absl/status/status.h"
 #include "tensorflow/cc/ops/standard_ops.h"
-#include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/security/fuzzing/cc/core/framework/tensor_domains.h"
 #include "tensorflow/security/fuzzing/cc/core/framework/tensor_shape_domains.h"
 #include "tensorflow/security/fuzzing/cc/fuzz_session.h"
@@ -41,7 +39,7 @@ class FuzzBincount : public FuzzSession<Tensor, int32, Tensor> {
     Tensor size(DT_INT32, {});
     size.flat<int32>()(0) = nbins;
 
-    absl::Status s = RunInputsWithStatus(
+    Status s = RunInputsWithStatus(
         {{"arr", arr}, {"size", size}, {"weights", weights}});
     if (!s.ok()) {
       LOG(ERROR) << "Execution failed: " << s.message();
@@ -53,17 +51,17 @@ class FuzzBincount : public FuzzSession<Tensor, int32, Tensor> {
 // TODO(unda, b/275737422): Make the values in arr be within [0, size) with high
 // chance
 FUZZ_TEST_F(FuzzBincount, Fuzz)
-    .WithDomains(fuzzing::AnyValidNumericTensor(fuzzing::AnyValidTensorShape(
-                                                    /*max_rank=*/5,
-                                                    /*dim_lower_bound=*/0,
-                                                    /*dim_upper_bound=*/10),
-                                                fuzztest::Just(DT_INT32)),
+    .WithDomains(fuzzing::AnyValidTensor(fuzzing::AnyValidTensorShape(
+                                             /*max_rank=*/5,
+                                             /*dim_lower_bound=*/0,
+                                             /*dim_upper_bound=*/10),
+                                         fuzztest::Just(DT_INT32)),
                  fuzztest::InRange<int32>(0, 10),
-                 fuzzing::AnyValidNumericTensor(fuzzing::AnyValidTensorShape(
-                                                    /*max_rank=*/5,
-                                                    /*dim_lower_bound=*/0,
-                                                    /*dim_upper_bound=*/10),
-                                                fuzztest::Just(DT_INT32)));
+                 fuzzing::AnyValidTensor(fuzzing::AnyValidTensorShape(
+                                             /*max_rank=*/5,
+                                             /*dim_lower_bound=*/0,
+                                             /*dim_upper_bound=*/10),
+                                         fuzztest::Just(DT_INT32)));
 
 }  // end namespace fuzzing
 }  // end namespace tensorflow

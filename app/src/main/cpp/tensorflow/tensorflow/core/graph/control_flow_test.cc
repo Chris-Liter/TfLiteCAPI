@@ -26,22 +26,20 @@ limitations under the License.
 
 namespace tensorflow {
 namespace {
-absl::Status LessThanTenCond(const Scope& scope,
-                             const std::vector<Output>& inputs,
-                             Output* output) {
+Status LessThanTenCond(const Scope& scope, const std::vector<Output>& inputs,
+                       Output* output) {
   *output = ops::Less(scope, inputs[0], 10);
   return scope.status();
 }
 
-absl::Status AddOneBody(const Scope& scope, const std::vector<Output>& inputs,
-                        std::vector<Output>* outputs) {
+Status AddOneBody(const Scope& scope, const std::vector<Output>& inputs,
+                  std::vector<Output>* outputs) {
   outputs->push_back(ops::AddN(scope, {inputs[0], 1}));
   return scope.status();
 }
 
-absl::Status NestedLoopBody(const Scope& scope,
-                            const std::vector<Output>& inputs,
-                            std::vector<Output>* outputs) {
+Status NestedLoopBody(const Scope& scope, const std::vector<Output>& inputs,
+                      std::vector<Output>* outputs) {
   return ops::BuildWhileLoop(scope.NewSubScope("inner"), inputs,
                              LessThanTenCond, AddOneBody, "inner_loop",
                              outputs);
@@ -60,7 +58,7 @@ TEST(ValidateControlFlowTest, InputsFromDifferentFrames) {
   // {inner/Enter', 'outer/Switch'} --> 'inner/Merge'. 'inner/Enter' is in frame
   // 'inner_loop'. 'outer/Switch' is in frame 'outer_loop'.
   std::vector<ControlFlowInfo> info;
-  absl::Status status = BuildControlFlowInfo(graph.get(), &info);
+  Status status = BuildControlFlowInfo(graph.get(), &info);
   EXPECT_FALSE(status.ok());
   EXPECT_TRUE(
       absl::StrContains(status.message(), "has inputs from different frames"))
@@ -98,7 +96,7 @@ TEST(ValidateControlFlowTest, MismatchedParentFrames) {
   (*enter.mutable_attr())["T"].set_type(DT_INT32);
   (*enter.mutable_attr())["frame_name"].set_s("test_loop");
   *enter.add_input() = "Enter";
-  absl::Status status;
+  Status status;
   Node* enter_2 = graph->AddNode(enter, &status);
   TF_ASSERT_OK(status);
   graph->AddControlEdge(enter_1, enter_2);
@@ -131,7 +129,7 @@ TEST(ValidateControlFlowTest, TwoLoopCond) {
   std::unique_ptr<Graph> graph(new Graph(OpRegistry::Global()));
   TF_ASSERT_OK(scope.ToGraph(graph.get()));
   std::vector<ControlFlowInfo> info;
-  absl::Status status = BuildControlFlowInfo(graph.get(), &info);
+  Status status = BuildControlFlowInfo(graph.get(), &info);
   EXPECT_FALSE(status.ok());
   EXPECT_TRUE(
       absl::StrContains(status.message(), "more than one LoopCond node"))

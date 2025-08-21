@@ -15,24 +15,17 @@ limitations under the License.
 #include "tensorflow/lite/toco/tflite/export.h"
 
 #include <algorithm>
-#include <cstdint>
 #include <initializer_list>
-#include <map>
 #include <memory>
 #include <string>
-#include <vector>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include "absl/log/log.h"
-#include "flatbuffers/buffer.h"  // from @flatbuffers
-#include "flatbuffers/flatbuffer_builder.h"  // from @flatbuffers
-#include "tensorflow/compiler/mlir/lite/schema/schema_utils.h"
-#include "xla/tsl/protobuf/error_codes.pb.h"
+#include "flatbuffers/flatbuffers.h"  // from @flatbuffers
 #include "tensorflow/core/framework/node_def.pb.h"
 #include "tensorflow/core/lib/core/status.h"
 #include "tensorflow/lite/schema/schema_generated.h"
-#include "tensorflow/lite/toco/model.h"
+#include "tensorflow/lite/schema/schema_utils.h"
 #include "tensorflow/lite/toco/tflite/builtin_operator.h"
 #include "tensorflow/lite/toco/tflite/operator.h"
 #include "tensorflow/lite/toco/tflite/types.h"
@@ -165,7 +158,7 @@ class ExportTest : public ::testing::Test {
     }
   }
 
-  absl::Status ExportAndReturnStatus(const ExportParams& params) {
+  tensorflow::Status ExportAndReturnStatus(const ExportParams& params) {
     std::string result;
     return Export(input_model_, &result, params);
   }
@@ -810,6 +803,8 @@ TEST(OperatorKeyTest, TestFlexWithUnsupportedOp) {
 TEST(OperatorKeyTest, TestFlexWithPartiallySupportedOps) {
   // Test Toco-supported/TFLite-unsupported operators.
   Model model;
+  // TODO(ycling): The test will be broken if TensorFlowAssert is implemented in
+  // TFLite. Find a more robust way to test the fallback logic.
   auto op = std::make_unique<TensorFlowAssertOperator>();
 
   const auto ops_by_type = BuildOperatorByTypeMap();

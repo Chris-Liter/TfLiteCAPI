@@ -26,20 +26,20 @@ limitations under the License.
 #include "tensorflow/compiler/tf2xla/xla_helpers.h"
 #include "tensorflow/compiler/tf2xla/xla_op_kernel.h"
 #include "tensorflow/compiler/tf2xla/xla_op_registry.h"
-#include "xla/hlo/builder/lib/slicing.h"
-#include "xla/hlo/builder/xla_builder.h"
-#include "xla/status_macros.h"
+#include "tensorflow/compiler/xla/client/lib/slicing.h"
+#include "tensorflow/compiler/xla/client/xla_builder.h"
+#include "tensorflow/compiler/xla/status_macros.h"
 #include "tensorflow/core/framework/kernel_def_builder.h"
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/lib/core/errors.h"
 
 namespace tensorflow {
 
-absl::Status XlaGather(const xla::XlaOp& input, const TensorShape& input_shape,
-                       const xla::XlaOp& indices,
-                       const TensorShape& indices_shape, int64_t axis,
-                       bool indices_are_nd, DataType dtype, DataType index_type,
-                       xla::XlaBuilder* builder, xla::XlaOp* gather_output) {
+Status XlaGather(const xla::XlaOp& input, const TensorShape& input_shape,
+                 const xla::XlaOp& indices, const TensorShape& indices_shape,
+                 int64_t axis, bool indices_are_nd, DataType dtype,
+                 DataType index_type, xla::XlaBuilder* builder,
+                 xla::XlaOp* gather_output) {
   // There is no deep reason why we need this precondition, but this is the only
   // combination that is used and tested today.
   CHECK(!indices_are_nd || axis == 0);
@@ -86,19 +86,14 @@ absl::Status XlaGather(const xla::XlaOp& input, const TensorShape& input_shape,
 
     *gather_output =
         xla::Broadcast(XlaHelpers::Zero(builder, dtype), out_shape.dim_sizes());
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   for (int64_t i = 0; i < num_index_dims; ++i) {
     if (input_shape.dim_size(axis + i) == 0) {
-      // Gather dimension of size zero in tensor results in constant 0.
-      // This is done to match the legacy behavior of the MLIR legalization and
-      // avoid breaking existing models.
-      auto slice_sizes = input_shape.dim_sizes();
-      slice_sizes.erase(slice_sizes.begin() + axis);
-      *gather_output =
-          xla::Broadcast(XlaHelpers::Zero(builder, dtype), slice_sizes);
-      return absl::OkStatus();
+      return errors::InvalidArgument("Gather dimension ", axis + i,
+                                     " is of size zero in tensor with shape ",
+                                     input_shape.DebugString());
     }
   }
 
@@ -157,14 +152,13 @@ absl::Status XlaGather(const xla::XlaOp& input, const TensorShape& input_shape,
   }
 
   *gather_output = xla::Gather(input, indices, dim_numbers, slice_sizes);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status XlaGatherWithBatchDimsOpImpl(XlaOpKernelContext* context,
-                                          const xla::XlaOp input,
-                                          const TensorShape& input_shape,
-                                          int batch_dims,
-                                          xla::XlaOp* gather_output) {
+Status XlaGatherWithBatchDimsOpImpl(XlaOpKernelContext* context,
+                                    const xla::XlaOp input,
+                                    const TensorShape& input_shape,
+                                    int batch_dims, xla::XlaOp* gather_output) {
   auto indices = context->Input(1);
   auto indices_shape = context->InputShape(1);
 
@@ -242,7 +236,7 @@ absl::Status XlaGatherWithBatchDimsOpImpl(XlaOpKernelContext* context,
                   /*indices_are_nd=*/false, context->expected_output_dtype(0),
                   index_type, context->builder(), gather_output));
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 class GatherOp : public XlaOpKernel {
  public:
@@ -267,8 +261,7 @@ class GatherOp : public XlaOpKernel {
   }
 
  private:
-  GatherOp(const GatherOp&) = delete;
-  void operator=(const GatherOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(GatherOp);
 
   // The number of batch dimensions, as passed in the batch_dims attribute.
   // It must be less than or equal to rank(indices).

@@ -30,7 +30,6 @@ limitations under the License.
 #include "mlir/IR/Types.h"  // from @llvm-project
 #include "mlir/IR/Value.h"  // from @llvm-project
 #include "mlir/Pass/Pass.h"  // from @llvm-project
-#include "mlir/Support/LLVM.h"  // from @llvm-project
 #include "mlir/Support/LogicalResult.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_ops.h"
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_types.h"
@@ -197,8 +196,8 @@ LogicalResult PromoteResourcesToArguments(
   auto func_args = function.getArguments().take_front(
       function.getNumArguments() - var_handle_shared_names.size());
   for (BlockArgument& func_arg : func_args) {
-    auto resource_type = mlir::dyn_cast<TF::ResourceType>(
-        getElementTypeOrSelf(func_arg.getType()));
+    auto resource_type =
+        getElementTypeOrSelf(func_arg.getType()).dyn_cast<TF::ResourceType>();
     if (!resource_type) continue;
     if (failed(ValidateResourceArgument(function, func_arg, resource_type)))
       return failure();
@@ -213,8 +212,8 @@ LogicalResult PromoteResourcesToArguments(
   auto var_handle_args =
       function.getArguments().take_back(var_handle_shared_names.size());
   for (BlockArgument& var_handle_arg : var_handle_args) {
-    auto resource_type = mlir::cast<TF::ResourceType>(
-        getElementTypeOrSelf(var_handle_arg.getType()));
+    auto resource_type =
+        getElementTypeOrSelf(var_handle_arg.getType()).cast<TF::ResourceType>();
     add_resource_argument(var_handle_arg, resource_type);
   }
 
@@ -227,8 +226,7 @@ LogicalResult PromoteResourcesToArguments(
   // live value.
   for (Operation& op : llvm::make_early_inc_range(block)) {
     if (auto read_op = llvm::dyn_cast<TF::ReadVariableOp>(&op)) {
-      if (auto func_arg =
-              mlir::dyn_cast<BlockArgument>(read_op.getResource())) {
+      if (auto func_arg = read_op.getResource().dyn_cast<BlockArgument>()) {
         if (func_arg.getOwner() != &block)
           return read_op.emitOpError(kResourceFunctionMsg);
 
@@ -241,8 +239,7 @@ LogicalResult PromoteResourcesToArguments(
 
       read_op.erase();
     } else if (auto write_op = llvm::dyn_cast<TF::AssignVariableOp>(&op)) {
-      if (auto func_arg =
-              mlir::dyn_cast<BlockArgument>(write_op.getResource())) {
+      if (auto func_arg = write_op.getResource().dyn_cast<BlockArgument>()) {
         if (func_arg.getOwner() != &block)
           return write_op.emitOpError(kResourceFunctionMsg);
 

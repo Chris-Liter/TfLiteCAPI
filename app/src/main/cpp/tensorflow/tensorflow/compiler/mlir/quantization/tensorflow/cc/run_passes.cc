@@ -21,7 +21,6 @@ limitations under the License.
 #include "mlir/Pass/PassManager.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/quantization/tensorflow/debugging/mlir_dump.h"
 #include "tensorflow/compiler/mlir/tensorflow/utils/error_util.h"
-#include "tsl/platform/errors.h"
 
 namespace tensorflow {
 namespace quantization {
@@ -34,8 +33,11 @@ absl::Status RunPassesOnModuleOp(
 
   absl::StatusOr<std::unique_ptr<llvm::raw_ostream>> dump_file;
   if (mlir_dump_file_name) {
-    TF_RETURN_IF_ERROR(tensorflow::quantization::MaybeEnableIrPrinting(
-        pass_manager, mlir_dump_file_name.value()));
+    dump_file = tensorflow::quantization::MaybeEnableIrPrinting(
+        pass_manager, mlir_dump_file_name.value());
+    if (!dump_file.ok()) {
+      return dump_file.status();
+    }
   }
 
   if (failed(pass_manager.run(module_op))) {

@@ -18,7 +18,7 @@ limitations under the License.
 #include <unordered_map>
 #include <vector>
 
-#include "unsupported/Eigen/CXX11/Tensor"  // from @eigen_archive
+#include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 #include "tensorflow/core/framework/kernel_def_builder.h"
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/framework/tensor.h"
@@ -34,7 +34,7 @@ namespace tensorflow {
 namespace {
 // Returning a Status instead of using OP_REQUIRES directly since that doesn't
 // seem to work outside the main OpKernel functions.
-absl::Status RemapVectorToMap(
+Status RemapVectorToMap(
     const TTypes<const int64_t>::Vec& remapping, std::vector<bool>* id_present,
     std::unordered_map<int64_t, int64_t>* old_id_to_new_id) {
   id_present->clear();
@@ -50,7 +50,7 @@ absl::Status RemapVectorToMap(
                           ", which is not supported."));
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 }  // anonymous namespace
 

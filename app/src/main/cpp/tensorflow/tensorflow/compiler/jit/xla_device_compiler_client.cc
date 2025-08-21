@@ -20,7 +20,7 @@ limitations under the License.
 #include <utility>
 #include <vector>
 
-#include "xla/client/local_client.h"
+#include "tensorflow/compiler/xla/client/local_client.h"
 
 namespace tensorflow {
 namespace {
@@ -35,7 +35,7 @@ std::vector<const xla::Shape*> GetShapePointers(
 }
 }  // namespace
 
-absl::StatusOr<std::unique_ptr<xla::LocalExecutable>>
+StatusOr<std::unique_ptr<xla::LocalExecutable>>
 XlaDeviceCompilerClient::BuildExecutable(
     const XlaCompiler::Options& options,
     const XlaCompiler::CompilationResult& result) {
@@ -52,7 +52,7 @@ XlaDeviceCompilerClient::BuildExecutable(
   return std::move(executables[0]);
 }
 
-absl::StatusOr<std::string> XlaDeviceCompilerClient::SerializeExecutable(
+StatusOr<std::string> XlaDeviceCompilerClient::SerializeExecutable(
     const xla::LocalExecutable& executable) {
   if (executable.executable() == nullptr) {
     return errors::FailedPrecondition(
@@ -71,7 +71,7 @@ absl::StatusOr<std::string> XlaDeviceCompilerClient::SerializeExecutable(
   return exported.status();
 }
 
-absl::StatusOr<std::string> XlaDeviceCompilerClient::BuildSerializedExecutable(
+StatusOr<std::string> XlaDeviceCompilerClient::BuildSerializedExecutable(
     const XlaCompiler::Options& options,
     const XlaCompiler::CompilationResult& result) {
   VLOG(2) << "Compiling to xla::AotCompilationResult and serializing it";
@@ -88,7 +88,7 @@ absl::StatusOr<std::string> XlaDeviceCompilerClient::BuildSerializedExecutable(
   return aot_results[0]->SerializeAsString();
 }
 
-absl::StatusOr<std::unique_ptr<xla::LocalExecutable>>
+StatusOr<std::unique_ptr<xla::LocalExecutable>>
 XlaDeviceCompilerClient::LoadExecutable(
     const XlaCompiler::Options& options,
     const XlaCompiler::CompilationResult& result,

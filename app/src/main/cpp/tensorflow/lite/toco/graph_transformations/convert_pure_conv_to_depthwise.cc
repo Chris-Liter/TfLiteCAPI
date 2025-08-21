@@ -17,39 +17,39 @@ limitations under the License.
 #include <unordered_map>
 #include <vector>
 
-#include "absl/status/status.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/lite/toco/graph_transformations/graph_transformations.h"
 #include "tensorflow/lite/toco/model.h"
 #include "tensorflow/lite/toco/tooling_util.h"
+#include "tensorflow/core/platform/logging.h"
 
 namespace toco {
 
-absl::Status ConvertPureConvToDepthwise::Run(Model* model, std::size_t op_index,
-                                             bool* modified) {
+::tensorflow::Status ConvertPureConvToDepthwise::Run(Model* model,
+                                                     std::size_t op_index,
+                                                     bool* modified) {
   *modified = false;
   auto conv_it = model->operators.begin() + op_index;
   if (conv_it->get()->type != OperatorType::kConv) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   const auto* conv_op = static_cast<ConvOperator*>(conv_it->get());
   if (conv_op->stride_width != conv_op->stride_height) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   if ((conv_op->dilation_width_factor != 1) ||
       (conv_op->dilation_height_factor != 1)) {
     // Depthwise conv does not support dilation
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   auto& input_array = model->GetArray(conv_op->inputs[0]);
   if (!input_array.has_shape()) {
     // Shapes not propagated yet
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   if (input_array.shape().dims(3) != 1) {
     // Not a pure convolution: Conv does accumulation across the depth
     // dimension.
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   const auto& weights_name = conv_op->inputs[1];
@@ -59,15 +59,15 @@ absl::Status ConvertPureConvToDepthwise::Run(Model* model, std::size_t op_index,
         "Not changing %s to DepthwiseConv because the weights is consumed by "
         "another op.",
         LogName(*conv_op));
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   auto& weights_array = model->GetArray(weights_name);
   if (!weights_array.buffer) {
     // Yield until the weights are resolved as a constant array.
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   if (weights_array.data_type != ArrayDataType::kFloat) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   // At this point we know we have a pure conv. Rewrite it as DepthwiseConv.
   AddMessageF(
@@ -113,7 +113,7 @@ absl::Status ConvertPureConvToDepthwise::Run(Model* model, std::size_t op_index,
   *weights_array.mutable_shape()->mutable_dims() = {1, width, height, depth};
   weights_buffer.data = depthwise_conv_weights_data;
   *modified = true;
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 }  // namespace toco

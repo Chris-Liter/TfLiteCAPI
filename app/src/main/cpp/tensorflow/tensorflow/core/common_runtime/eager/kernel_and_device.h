@@ -60,19 +60,14 @@ class FunctionLibraryRuntime;
 
 const int64_t kInvalidOpId = -1;
 
-// This struct is used for:
-// 1. Setting `op_id` and `step_id`, `is_component_function` for single-client
+// This struc is used for:
+// 1. setting op_id and step_id, is_component_function for single-client
 // remote function scenario,
-// 2. Setting `step_id` for multi-client parallel_device scenario.
-// 3. Supplying an overriding, private `FunctionLibraryDefinition` for component
-// functions.
+// 2. setting step_id for multi-client parallel_device scenario.
 struct EagerFunctionParams {
   int64_t op_id = kInvalidOpId;
   bool is_component_function;
   std::optional<int64_t> step_id = std::nullopt;
-  FunctionLibraryDefinition* func_lib_def_override =
-      nullptr;  // Not owned (owned by `EagerContext`). If not null, functions
-                // called by the function will be looked up in this library.
 };
 
 class EagerKernelArgs : public FunctionArgsInterface {
@@ -81,7 +76,7 @@ class EagerKernelArgs : public FunctionArgsInterface {
 
   explicit EagerKernelArgs(int count) : tensor_args_(count) {}
 
-  explicit EagerKernelArgs(absl::InlinedVector<TensorValue, 4UL>&& tensor_args)
+  explicit EagerKernelArgs(gtl::InlinedVector<TensorValue, 4>&& tensor_args)
       : tensor_args_(std::move(tensor_args)) {}
 
   ~EagerKernelArgs() override = default;
@@ -89,17 +84,16 @@ class EagerKernelArgs : public FunctionArgsInterface {
   bool HasRemoteOrPackedInputs() const override { return false; };
   TensorValue* MutableInput(int i) { return &tensor_args_[i]; }
 
-  absl::Status GetLocalArg(const FunctionArgIndex& index,
-                           Tensor* val) const override;
+  Status GetLocalArg(const FunctionArgIndex& index, Tensor* val) const override;
 
   std::vector<Tensor> GetLocalTensors() const override;
 
-  const absl::InlinedVector<TensorValue, 4UL>* GetTensorValues() const {
+  const gtl::InlinedVector<TensorValue, 4>* GetTensorValues() const {
     return &tensor_args_;
   }
 
  protected:
-  absl::InlinedVector<TensorValue, 4UL> tensor_args_;
+  gtl::InlinedVector<TensorValue, 4> tensor_args_;
 };
 
 typedef std::variant<Tensor, TensorShape> EagerKernelRet;
@@ -119,10 +113,8 @@ class KernelAndDevice : public core::RefCounted {
   //
   // The provided FunctionLibraryRuntime MUST outlive all calls to
   // Run() on the returned KernelAndDevice.
-  virtual absl::Status Init(
-      bool log_device_placement, const NodeDef& ndef,
-      GraphCollector* graph_collector,
-      const absl::optional<EagerFunctionParams>& eager_func_params) = 0;
+  virtual Status Init(bool log_device_placement, const NodeDef& ndef,
+                      GraphCollector* graph_collector) = 0;
 
   // Non-multi-device functions are run using regular CallOp and look like
   // primitive operations from KernelAndDevice perspective.
@@ -147,7 +139,7 @@ class KernelAndDevice : public core::RefCounted {
   virtual bool IsCrossProcess() { return false; }
 
   // TODO(ashankar): Handle list-valued inputs.
-  virtual absl::Status Run(
+  virtual Status Run(
       ScopedStepContainer* step_container, const EagerKernelArgs& inputs,
       std::vector<EagerKernelRet>* outputs,
       CancellationManager* cancellation_manager,
@@ -223,12 +215,10 @@ class KernelAndDeviceOp final : public KernelAndDevice {
 
   ~KernelAndDeviceOp() override = default;
 
-  absl::Status Init(
-      bool log_device_placement, const NodeDef& ndef,
-      GraphCollector* graph_collector,
-      const absl::optional<EagerFunctionParams>& eager_func_params) override;
+  Status Init(bool log_device_placement, const NodeDef& ndef,
+              GraphCollector* graph_collector) override;
 
-  absl::Status Run(
+  Status Run(
       ScopedStepContainer* step_container, const EagerKernelArgs& inputs,
       std::vector<EagerKernelRet>* outputs,
       CancellationManager* cancellation_manager,
@@ -267,9 +257,9 @@ class KernelAndDeviceOp final : public KernelAndDevice {
  private:
   std::unique_ptr<OpKernel> kernel_;
   bool is_distributed_communication_op_;
-  absl::InlinedVector<AllocatorAttributes, 4UL> input_alloc_attrs_;
+  gtl::InlinedVector<AllocatorAttributes, 4> input_alloc_attrs_;
   std::vector<Device*> input_devices_;
-  absl::InlinedVector<AllocatorAttributes, 1UL> output_alloc_attrs_;
+  gtl::InlinedVector<AllocatorAttributes, 1> output_alloc_attrs_;
   Rendezvous* const rendezvous_;
   checkpoint::TensorSliceReaderCacheWrapper slice_reader_cache_;
   const bool log_memory_;
@@ -326,17 +316,13 @@ class KernelAndDeviceFunc : public KernelAndDevice {
 
   bool IsCrossProcess() override { return is_cross_process_; }
 
-  absl::Status InstantiateFunc(
-      bool log_device_placement, const NodeDef& ndef,
-      GraphCollector* graph_collector,
-      const absl::optional<EagerFunctionParams>& eager_func_params);
+  Status InstantiateFunc(bool log_device_placement, const NodeDef& ndef,
+                         GraphCollector* graph_collector);
 
-  absl::Status Init(
-      bool log_device_placement, const NodeDef& ndef,
-      GraphCollector* graph_collector,
-      const absl::optional<EagerFunctionParams>& eager_func_params) override;
+  Status Init(bool log_device_placement, const NodeDef& ndef,
+              GraphCollector* graph_collector) override;
 
-  absl::Status Run(
+  Status Run(
       ScopedStepContainer* step_container, const EagerKernelArgs& inputs,
       std::vector<EagerKernelRet>* outputs,
       CancellationManager* cancellation_manager,

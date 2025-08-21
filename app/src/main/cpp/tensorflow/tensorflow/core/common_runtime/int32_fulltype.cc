@@ -16,7 +16,6 @@ limitations under the License.
 #include "tensorflow/core/common_runtime/int32_fulltype.h"
 
 #include "absl/strings/str_cat.h"
-#include "xla/tsl/protobuf/error_codes.pb.h"
 #include "tensorflow/core/framework/device_attributes.pb.h"
 #include "tensorflow/core/framework/full_type.pb.h"
 #include "tensorflow/core/framework/function.h"
@@ -24,18 +23,18 @@ limitations under the License.
 #include "tensorflow/core/framework/types.h"
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/lib/core/errors.h"
+#include "tensorflow/tsl/protobuf/error_codes.pb.h"
 
 namespace tensorflow {
 
-absl::Status Int32FulltypePass::Int32FullTypeForTensor(DataType dtype,
-                                                       FullTypeDef* tensor_t,
-                                                       bool set_only_int32,
-                                                       Node* node,
-                                                       int output_idx) {
+Status Int32FulltypePass::Int32FullTypeForTensor(DataType dtype,
+                                                 FullTypeDef* tensor_t,
+                                                 bool set_only_int32,
+                                                 Node* node, int output_idx) {
   if (tensor_t->type_id() == TFT_TENSOR) {
     if (tensor_t->args_size() != 1) {
       if (node != nullptr) {
-        return absl::Status(
+        return Status(
             absl::StatusCode::kInvalidArgument,
             absl::StrCat("Full type for node='", node->name(), "' (op='",
                          node->op_def().name(), "') in '", debug_location_,
@@ -43,11 +42,10 @@ absl::Status Int32FulltypePass::Int32FullTypeForTensor(DataType dtype,
                          tensor_t->args_size(), " args instead of 1.\n got:\n",
                          tensor_t->DebugString()));
       } else {
-        return absl::Status(
-            absl::StatusCode::kInvalidArgument,
-            absl::StrCat("TFT_TENSOR has ", tensor_t->args_size(),
-                         " args instead of 1.\n got:\n",
-                         tensor_t->DebugString()));
+        return Status(absl::StatusCode::kInvalidArgument,
+                      absl::StrCat("TFT_TENSOR has ", tensor_t->args_size(),
+                                   " args instead of 1.\n got:\n",
+                                   tensor_t->DebugString()));
       }
     }
     if (tensor_t->args(0).type_id() == TFT_INT32) {
@@ -60,15 +58,14 @@ absl::Status Int32FulltypePass::Int32FullTypeForTensor(DataType dtype,
     tensor_t->set_type_id(TFT_SHAPE_TENSOR);
     (*tensor_t->add_args()) = data_t;
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 static bool is_host_memory_int32(MemoryType mtype, DataType dtype) {
   return (mtype == HOST_MEMORY) && (dtype == DT_INT32);
 }
 
-absl::Status Int32FulltypePass::ProcessGraph(Graph* graph,
-                                             bool ints_on_device) {
+Status Int32FulltypePass::ProcessGraph(Graph* graph, bool ints_on_device) {
   for (Node* n : graph->op_nodes()) {
     auto output_types = n->output_types();
     bool needs_annotation = false;
@@ -86,7 +83,7 @@ absl::Status Int32FulltypePass::ProcessGraph(Graph* graph,
     if (n->def().has_experimental_type()) {
       FullTypeDef* node_t = n->mutable_def()->mutable_experimental_type();
       if (node_t->type_id() != TFT_PRODUCT) {
-        return absl::Status(
+        return Status(
             absl::StatusCode::kInvalidArgument,
             absl::StrCat("Full type for node='", n->name(), "' (op='",
                          n->op_def().name(),
@@ -94,7 +91,7 @@ absl::Status Int32FulltypePass::ProcessGraph(Graph* graph,
                          node_t->DebugString()));
       }
       if (node_t->args_size() != output_types.size()) {
-        return absl::Status(
+        return Status(
             absl::StatusCode::kInvalidArgument,
             absl::StrCat("Full type for node='", n->name(), "' (op='",
                          n->op_def().name(), "') has ", node_t->args_size(),
@@ -138,7 +135,7 @@ absl::Status Int32FulltypePass::ProcessGraph(Graph* graph,
               << t.DebugString();
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace tensorflow

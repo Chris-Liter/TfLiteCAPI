@@ -22,13 +22,12 @@ limitations under the License.
 #include "mlir/IR/MLIRContext.h"  // from @llvm-project
 #include "mlir/IR/TypeUtilities.h"  // from @llvm-project
 #include "mlir/Pass/Pass.h"  // from @llvm-project
-#include "mlir/Support/LLVM.h"  // from @llvm-project
 #include "mlir/Support/LogicalResult.h"  // from @llvm-project
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/lite/ir/tfl_ops.h"
+#include "tensorflow/compiler/mlir/lite/quantization/quantization_config.h"
+#include "tensorflow/compiler/mlir/lite/quantization/quantization_utils.h"
 #include "tensorflow/compiler/mlir/lite/transforms/passes.h"
-#include "tensorflow/compiler/mlir/quantization/common/quantization_lib/quantization_config.h"
-#include "tensorflow/compiler/mlir/quantization/common/quantization_lib/quantization_utils.h"
 
 //===----------------------------------------------------------------------===//
 // The post-quantize Passes.
@@ -234,8 +233,8 @@ struct FoldTransposeOp : public OpRewritePattern<TransposeOp> {
     DenseIntElementsAttr perm_tensor;
     if (!matchPattern(op.getPerm(), m_Constant(&perm_tensor))) return failure();
 
-    if (!mlir::isa<quant::UniformQuantizedType>(
-            (getElementTypeOrSelf(op.getOutput().getType()))))
+    if (!(getElementTypeOrSelf(op.getOutput().getType()))
+             .isa<quant::UniformQuantizedType>())
       return failure();
 
     ElementsAttr input_tensor = qconst_op.getValue();
@@ -245,7 +244,7 @@ struct FoldTransposeOp : public OpRewritePattern<TransposeOp> {
     assert(perm_tensor.getType().getNumElements() == num_dimensions);
 
     ArrayRef<int64_t> input_shape = input_tensor.getShapedType().getShape();
-    auto output_type = mlir::cast<ShapedType>(op.getOutput().getType());
+    auto output_type = op.getOutput().getType().cast<ShapedType>();
 
     SmallVector<int32_t, 4> perm;
     SmallVector<int64_t, 4> output_shape;
@@ -266,9 +265,9 @@ struct FoldTransposeOp : public OpRewritePattern<TransposeOp> {
     auto result_type =
         RankedTensorType::get(output_shape, output_type.getElementType());
     auto values_type = RankedTensorType::get(
-        output_shape,
-        mlir::cast<quant::UniformQuantizedType>(output_type.getElementType())
-            .getStorageType());
+        output_shape, output_type.getElementType()
+                          .cast<quant::UniformQuantizedType>()
+                          .getStorageType());
     rewriter.replaceOpWithNewOp<QConstOp>(
         op, TypeAttr::get(result_type),
         DenseIntElementsAttr::get(values_type, new_values));
@@ -290,18 +289,18 @@ struct FoldReshapeOp : public OpRewritePattern<ReshapeOp> {
     if (qconst_op == nullptr) return failure();
 
     auto dense_elements =
-        mlir::dyn_cast_or_null<DenseElementsAttr>(qconst_op.getValue());
+        qconst_op.getValue().dyn_cast_or_null<DenseElementsAttr>();
     if (dense_elements == nullptr) return failure();
 
     // Handle per tensor cases only.
-    if (!mlir::isa<quant::UniformQuantizedType>(
-            (getElementTypeOrSelf(op.getType())))) {
+    if (!(getElementTypeOrSelf(op.getType()))
+             .isa<quant::UniformQuantizedType>()) {
       return failure();
     }
 
     // Remove identity reshape with both static result and input shape.
-    auto result_type = mlir::cast<ShapedType>(op.getType());
-    auto input_type = mlir::cast<ShapedType>(op.getInput().getType());
+    auto result_type = op.getType().cast<ShapedType>();
+    auto input_type = op.getInput().getType().cast<ShapedType>();
 
     // Constant folding
     // If the result type isn't static, tries to derive the result type from
@@ -319,9 +318,9 @@ struct FoldReshapeOp : public OpRewritePattern<ReshapeOp> {
           RankedTensorType::get(shape_data, input_type.getElementType());
     }
     auto values_type = RankedTensorType::get(
-        result_type.getShape(),
-        mlir::cast<quant::UniformQuantizedType>(result_type.getElementType())
-            .getStorageType());
+        result_type.getShape(), result_type.getElementType()
+                                    .cast<quant::UniformQuantizedType>()
+                                    .getStorageType());
 
     DenseElementsAttr reshaped_elements = dense_elements.reshape(values_type);
     rewriter.replaceOpWithNewOp<QConstOp>(op, TypeAttr::get(result_type),

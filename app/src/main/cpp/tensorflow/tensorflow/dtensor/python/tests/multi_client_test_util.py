@@ -31,11 +31,6 @@ _NUM_CLIENTS = flags.DEFINE_integer(
     'Number of clients. 0 for local mode. 2 is the only allowed value for TPU.')
 
 
-def pick_unused_port():
-  """Helper function to return an unused port."""
-  return portpicker.pick_unused_port()
-
-
 def multi_client_main(client_config_function):
   """Creates a Flock of TensorFlow Processes on localhost."""
   flags.FLAGS(sys.argv, known_only=True)
@@ -54,10 +49,11 @@ def multi_client_main(client_config_function):
 
   # Inverts the order of ports intentionally to rule out ordering bugs.
   server_ports = sorted(
-      [pick_unused_port() for _ in range(num_process)], reverse=True
-  )
+      [portpicker.pick_unused_port() for _ in range(num_process)], reverse=True)
 
-  additional_ports = sorted([pick_unused_port() for _ in range(num_process)])
+  additional_ports = sorted(
+      [portpicker.pick_unused_port() for _ in range(num_process)]
+  )
 
   # Starts processes
   procs = []
@@ -142,3 +138,4 @@ def run_client(idx, num_clients, server_ports, additional_ports,
 
   # The following function call never returns.
   tf_test.main()
+

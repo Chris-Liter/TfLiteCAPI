@@ -24,7 +24,6 @@ limitations under the License.
 #include "mlir/IR/Operation.h"  // from @llvm-project
 #include "mlir/IR/UseDefLists.h"  // from @llvm-project
 #include "tensorflow/core/framework/registration/registration.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/dtensor/cc/dstatus.h"
 
 namespace tensorflow {
@@ -47,7 +46,7 @@ class SparseExpanderBase {
 };
 
 // Computes the Sparse expansion for `op`.
-absl::Status RunSparseExpansion(mlir::Operation* op, mlir::Operation** output);
+Status RunSparseExpansion(mlir::Operation* op, mlir::Operation** output);
 
 // A registry of sparse SPMD expanders. This map is statically stored and
 // initialized with all the registered sparse SPMD expanders.

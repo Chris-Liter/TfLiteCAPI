@@ -20,24 +20,25 @@ limitations under the License.
 #include "absl/status/statusor.h"
 #include "tensorflow/tools/proto_splitter/cc/composable_splitter.h"
 #include "tensorflow/tools/proto_splitter/cc/size_splitter.h"
-#include "tensorflow/tools/proto_splitter/cc/util.h"
-#include "tsl/platform/protobuf.h"
+#include "tensorflow/tsl/platform/protobuf.h"
 
-namespace tensorflow::tools::proto_splitter {
+namespace tensorflow {
+namespace tools::proto_splitter {
 
 // Splitter that works on repeated message fields.
 template <typename ParentMessage, typename RepeatedMessage>
-class RepeatedFieldSplitter : public SizeSplitter {
+class RepeatedFieldSplitters : public SizeSplitter {
  public:
-  static absl::StatusOr<RepeatedFieldSplitter> Create(
+  static absl::StatusOr<RepeatedFieldSplitters> Create(
       tsl::protobuf::Message* message, ComposableSplitter* parent_splitter,
       std::vector<FieldType>* fields_in_parent, const FieldType& repeated_field,
       std::vector<SizeSplitterFactory*>* splitter_factories);
 
   absl::StatusOr<int> BuildChunksReturnSize() override;
+  FieldType repeated_field_;
 
  private:
-  explicit RepeatedFieldSplitter(
+  explicit RepeatedFieldSplitters(
       tsl::protobuf::Message* message, ComposableSplitter* parent_splitter,
       std::vector<FieldType>* fields_in_parent, const FieldType& repeated_field,
       std::vector<SizeSplitterFactory*>* splitter_factories)
@@ -45,10 +46,10 @@ class RepeatedFieldSplitter : public SizeSplitter {
         repeated_field_(repeated_field),
         splitter_factories_(splitter_factories) {}
 
-  FieldType repeated_field_;
   std::vector<SizeSplitterFactory*>* splitter_factories_;
 };
 
-}  // namespace tensorflow::tools::proto_splitter
+}  // namespace tools::proto_splitter
+}  // namespace tensorflow
 
 #endif  // TENSORFLOW_TOOLS_PROTO_SPLITTER_CC_REPEATED_FIELD_SPLITTER_H_

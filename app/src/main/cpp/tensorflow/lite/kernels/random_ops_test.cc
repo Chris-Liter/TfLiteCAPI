@@ -18,7 +18,6 @@ limitations under the License.
 #include <vector>
 
 #include <gtest/gtest.h>
-#include "absl/strings/str_cat.h"
 #include "tensorflow/lite/kernels/test_util.h"
 #include "tensorflow/lite/schema/schema_generated.h"
 

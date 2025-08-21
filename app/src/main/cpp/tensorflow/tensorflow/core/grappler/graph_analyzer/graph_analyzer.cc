@@ -31,18 +31,17 @@ GraphAnalyzer::GraphAnalyzer(const GraphDef& graph, int subgraph_size)
 
 GraphAnalyzer::~GraphAnalyzer() {}
 
-absl::Status GraphAnalyzer::Run() {
+Status GraphAnalyzer::Run() {
   // The signature computation code would detect this too, but better
   // to report it up front than spend time computing all the graphs first.
   if (subgraph_size_ > Signature::kMaxGraphSize) {
-    return absl::Status(
-        absl::StatusCode::kInvalidArgument,
-        absl::StrFormat("Subgraphs of %d nodes are not supported, "
-                        "the maximal supported node count is %d.",
-                        subgraph_size_, Signature::kMaxGraphSize));
+    return Status(absl::StatusCode::kInvalidArgument,
+                  absl::StrFormat("Subgraphs of %d nodes are not supported, "
+                                  "the maximal supported node count is %d.",
+                                  subgraph_size_, Signature::kMaxGraphSize));
   }
 
-  absl::Status st = BuildMap();
+  Status st = BuildMap();
   if (!st.ok()) {
     return st;
   }
@@ -54,10 +53,10 @@ absl::Status GraphAnalyzer::Run() {
     return st;
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status GraphAnalyzer::BuildMap() {
+Status GraphAnalyzer::BuildMap() {
   nodes_.clear();
   return GenNode::BuildGraphInMap(graph_, &nodes_);
 }
@@ -279,7 +278,7 @@ bool GraphAnalyzer::HasInvalidMultiInputs(Subgraph* sg) {
   return false;
 }
 
-absl::Status GraphAnalyzer::CollateResult() {
+Status GraphAnalyzer::CollateResult() {
   ordered_collation_.clear();
   collation_map_.clear();
 
@@ -287,7 +286,7 @@ absl::Status GraphAnalyzer::CollateResult() {
   for (const auto& it : result_) {
     auto sig = std::make_unique<Signature>();
     it->ExtractForSignature(&sig->map);
-    absl::Status status = sig->Compute();
+    Status status = sig->Compute();
     if (!status.ok()) {
       return status;
     }
@@ -306,7 +305,7 @@ absl::Status GraphAnalyzer::CollateResult() {
 
   result_.clear();  // Not needed after collation.
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 std::vector<string> GraphAnalyzer::DumpRawSubgraphs() {
@@ -326,7 +325,7 @@ std::vector<string> GraphAnalyzer::DumpSubgraphs() {
   return result;
 }
 
-absl::Status GraphAnalyzer::OutputSubgraphs() {
+Status GraphAnalyzer::OutputSubgraphs() {
   size_t total = 0;
   for (auto ptr : ordered_collation_) {
     std::cout << ptr->count << ' ' << ptr->sig->ToString() << '\n';
@@ -334,10 +333,9 @@ absl::Status GraphAnalyzer::OutputSubgraphs() {
   }
   std::cout << "Total: " << total << '\n';
   if (std::cout.fail()) {
-    return absl::Status(absl::StatusCode::kDataLoss,
-                        "Failed to write to stdout");
+    return Status(absl::StatusCode::kDataLoss, "Failed to write to stdout");
   } else {
-    return absl::OkStatus();
+    return OkStatus();
   }
 }
 

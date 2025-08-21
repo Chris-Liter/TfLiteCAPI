@@ -26,11 +26,6 @@ limitations under the License.
 namespace tflite {
 namespace xnnpack {
 
-struct ToleranceInfo {
-  float relative = 10.0f;
-  float absolute = 0.0f;
-};
-
 class UnaryElementwiseTester {
  public:
   UnaryElementwiseTester() = default;
@@ -50,14 +45,12 @@ class UnaryElementwiseTester {
 
   int32_t Size() const { return size_; }
 
-  inline UnaryElementwiseTester& Tolerance(const ToleranceInfo& tolerance) {
-    tolerance_ = tolerance;
+  inline UnaryElementwiseTester& RelativeTolerance(float relative_tolerance) {
+    relative_tolerance_ = relative_tolerance;
     return *this;
   }
 
-  const ToleranceInfo& Tolerance() const { return tolerance_; }
-  float RelativeTolerance() const { return tolerance_.relative; }
-  float AbsoluteTolerance() const { return tolerance_.absolute; }
+  float RelativeTolerance() const { return relative_tolerance_; }
 
   void Test(tflite::BuiltinOperator unary_op, TfLiteDelegate* delegate) const;
 
@@ -68,7 +61,7 @@ class UnaryElementwiseTester {
 
   std::vector<int32_t> shape_;
   int32_t size_;
-  ToleranceInfo tolerance_;
+  float relative_tolerance_{10.0f};
 };
 
 }  // namespace xnnpack

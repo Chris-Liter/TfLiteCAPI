@@ -14,7 +14,6 @@ limitations under the License.
 ==============================================================================*/
 #include "tensorflow/core/kernels/data/map_dataset_op.h"
 
-#include "absl/status/status.h"
 #include "tensorflow/core/common_runtime/function.h"
 #include "tensorflow/core/common_runtime/input_colocation_exemption_registry.h"
 #include "tensorflow/core/data/captured_function.h"
@@ -39,7 +38,6 @@ namespace data {
 /* static */ constexpr const char* const MapDatasetOp::kOutputShapes;
 /* static */ constexpr const char* const MapDatasetOp::kUseInterOpParallelism;
 /* static */ constexpr const char* const MapDatasetOp::kPreserveCardinality;
-/* static */ constexpr const char* const MapDatasetOp::kForceSynchronous;
 
 class MapDatasetOp::Dataset : public DatasetBase {
  public:
@@ -47,19 +45,14 @@ class MapDatasetOp::Dataset : public DatasetBase {
           std::unique_ptr<CapturedFunction> captured_func,
           const DataTypeVector& output_types,
           const std::vector<PartialTensorShape>& output_shapes,
-          bool preserve_cardinality, bool force_synchronous)
+          bool preserve_cardinality)
       : DatasetBase(DatasetContext(ctx)),
         input_(input),
         preserve_cardinality_(preserve_cardinality),
-        force_synchronous_(force_synchronous),
         captured_func_(std::move(captured_func)),
         output_types_(output_types),
         output_shapes_(output_shapes) {
     input_->Ref();
-    random_indexing_compatible_ = absl::OkStatus();
-    if (input_ != nullptr) {
-      random_indexing_compatible_ = input_->RandomIndexingCompatible();
-    }
   }
 
   ~Dataset() override { input_->Unref(); }
@@ -88,19 +81,18 @@ class MapDatasetOp::Dataset : public DatasetBase {
     }
   }
 
-  absl::Status InputDatasets(
-      std::vector<const DatasetBase*>* inputs) const override {
+  Status InputDatasets(std::vector<const DatasetBase*>* inputs) const override {
     inputs->push_back(input_);
-    return absl::OkStatus();
+    return OkStatus();
   }
 
-  absl::Status CheckExternalState() const override {
+  Status CheckExternalState() const override {
     TF_RETURN_IF_ERROR(captured_func_->CheckExternalState());
     return input_->CheckExternalState();
   }
 
-  absl::Status Get(OpKernelContext* ctx, int64 index,
-                   std::vector<Tensor>* out_tensors) const override {
+  Status Get(OpKernelContext* ctx, int64 index,
+             std::vector<Tensor>* out_tensors) const override {
     TF_RETURN_IF_ERROR(CheckRandomAccessCompatible(index));
     std::vector<Tensor> args;
     TF_RETURN_IF_ERROR(input_->Get(ctx, index, &args));
@@ -112,14 +104,10 @@ class MapDatasetOp::Dataset : public DatasetBase {
     return instantiated_captured_func_->RunInstantiated(args, out_tensors);
   }
 
-  absl::Status RandomIndexingCompatible() const override {
-    return random_indexing_compatible_;
-  }
-
  protected:
-  absl::Status AsGraphDefInternal(SerializationContext* ctx,
-                                  DatasetGraphDefBuilder* b,
-                                  Node** output) const override {
+  Status AsGraphDefInternal(SerializationContext* ctx,
+                            DatasetGraphDefBuilder* b,
+                            Node** output) const override {
     Node* input_graph_node = nullptr;
     TF_RETURN_IF_ERROR(b->AddInputDataset(ctx, input_, &input_graph_node));
 
@@ -145,20 +133,16 @@ class MapDatasetOp::Dataset : public DatasetBase {
     AttrValue preserve_cardinality_attr;
     b->BuildAttrValue(preserve_cardinality_, &preserve_cardinality_attr);
 
-    // Attr: force_synchronous
-    AttrValue force_synchronous_attr;
-    b->BuildAttrValue(force_synchronous_, &force_synchronous_attr);
-
     TF_RETURN_IF_ERROR(b->AddDataset(
         this, {std::make_pair(0, input_graph_node)},  // Single tensor inputs.
         {std::make_pair(1, other_arguments)},         // Tensor list inputs.
         {std::make_pair(kFunc, f_attr),
          std::make_pair(kTarguments, other_arguments_types_attr),
          std::make_pair(kUseInterOpParallelism, use_inter_op_parallelism_attr),
-         std::make_pair(kPreserveCardinality, preserve_cardinality_attr),
-         std::make_pair(kForceSynchronous, force_synchronous_attr)},  // Attrs
+         std::make_pair(kPreserveCardinality,
+                        preserve_cardinality_attr)},  // Attrs
         output));
-    return absl::OkStatus();
+    return OkStatus();
   }
 
  private:
@@ -169,7 +153,7 @@ class MapDatasetOp::Dataset : public DatasetBase {
 
     bool SymbolicCheckpointCompatible() const override { return true; }
 
-    absl::Status Initialize(IteratorContext* ctx) override {
+    Status Initialize(IteratorContext* ctx) override {
       TF_RETURN_IF_ERROR(
           dataset()->input_->MakeIterator(ctx, this, prefix(), &input_impl_));
       return dataset()->captured_func_->Instantiate(
@@ -179,17 +163,17 @@ class MapDatasetOp::Dataset : public DatasetBase {
     // NOTE(mrry): This method is thread-safe as long as `input_impl_` and `f`
     // are thread-safe. However, if multiple threads enter this method,
     // outputs may be observed in a non-deterministic order.
-    absl::Status GetNextInternal(IteratorContext* ctx,
-                                 std::vector<Tensor>* out_tensors,
-                                 bool* end_of_sequence) override {
+    Status GetNextInternal(IteratorContext* ctx,
+                           std::vector<Tensor>* out_tensors,
+                           bool* end_of_sequence) override {
       std::vector<Tensor> args;
       TF_RETURN_IF_ERROR(input_impl_->GetNext(ctx, &args, end_of_sequence));
       if (*end_of_sequence) {
-        return absl::OkStatus();
+        return OkStatus();
       }
 
-      absl::Status s = instantiated_captured_func_->Run(
-          ctx, std::move(args), out_tensors, model_node());
+      Status s = instantiated_captured_func_->Run(ctx, std::move(args),
+                                                  out_tensors, model_node());
       if (errors::IsOutOfRange(s)) {
         if (dataset()->preserve_cardinality_) {
           // To guarantee that the transformation preserves the cardinality of
@@ -201,13 +185,11 @@ class MapDatasetOp::Dataset : public DatasetBase {
           // `f` may deliberately raise `errors::OutOfRange` to indicate
           // that we should terminate the iteration early.
           *end_of_sequence = true;
-          return absl::OkStatus();
+          return OkStatus();
         }
+      } else {
+        return s;
       }
-      if (!s.ok()) {
-        return AddErrorContext(s);
-      }
-      return s;
     }
 
    protected:
@@ -216,18 +198,18 @@ class MapDatasetOp::Dataset : public DatasetBase {
       return model::MakeKnownRatioNode(std::move(args), /*ratio=*/1);
     }
 
-    absl::Status SaveInternal(SerializationContext* ctx,
-                              IteratorStateWriter* writer) override {
+    Status SaveInternal(SerializationContext* ctx,
+                        IteratorStateWriter* writer) override {
       TF_RETURN_IF_ERROR(ctx->HandleCheckExternalStateStatus(
           dataset()->captured_func_->CheckExternalState()));
       TF_RETURN_IF_ERROR(SaveInput(ctx, writer, input_impl_));
-      return absl::OkStatus();
+      return OkStatus();
     }
 
-    absl::Status RestoreInternal(IteratorContext* ctx,
-                                 IteratorStateReader* reader) override {
+    Status RestoreInternal(IteratorContext* ctx,
+                           IteratorStateReader* reader) override {
       TF_RETURN_IF_ERROR(RestoreInput(ctx, reader, input_impl_));
-      return absl::OkStatus();
+      return OkStatus();
     }
 
    private:
@@ -237,14 +219,12 @@ class MapDatasetOp::Dataset : public DatasetBase {
 
   const DatasetBase* const input_;
   const bool preserve_cardinality_;
-  const bool force_synchronous_;
   const std::unique_ptr<CapturedFunction> captured_func_;
   const DataTypeVector output_types_;
   const std::vector<PartialTensorShape> output_shapes_;
   // This is used for random access provided by Get().
   mutable std::unique_ptr<InstantiatedCapturedFunction>
       instantiated_captured_func_;
-  absl::Status random_indexing_compatible_;
 };
 
 MapDatasetOp::MapDatasetOp(OpKernelConstruction* ctx)
@@ -258,7 +238,6 @@ MapDatasetOp::MapDatasetOp(OpKernelConstruction* ctx)
   OP_REQUIRES_OK(ctx, ctx->GetAttr(kOutputShapes, &output_shapes_));
   OP_REQUIRES_OK(ctx,
                  ctx->GetAttr(kPreserveCardinality, &preserve_cardinality_));
-  OP_REQUIRES_OK(ctx, ctx->GetAttr(kForceSynchronous, &force_synchronous_));
 }
 
 void MapDatasetOp::MakeDataset(OpKernelContext* ctx, DatasetBase* input,
@@ -268,9 +247,8 @@ void MapDatasetOp::MakeDataset(OpKernelContext* ctx, DatasetBase* input,
                  CapturedFunction::Create(ctx, func_metadata_, kOtherArguments,
                                           &captured_func));
 
-  *output =
-      new Dataset(ctx, input, std::move(captured_func), output_types_,
-                  output_shapes_, preserve_cardinality_, force_synchronous_);
+  *output = new Dataset(ctx, input, std::move(captured_func), output_types_,
+                        output_shapes_, preserve_cardinality_);
 }
 
 namespace {

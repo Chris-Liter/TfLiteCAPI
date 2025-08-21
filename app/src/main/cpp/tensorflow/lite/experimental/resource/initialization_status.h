@@ -15,8 +15,6 @@ limitations under the License.
 #ifndef TENSORFLOW_LITE_EXPERIMENTAL_RESOURCE_INITIALIZATION_STATUS_H_
 #define TENSORFLOW_LITE_EXPERIMENTAL_RESOURCE_INITIALIZATION_STATUS_H_
 
-#include <cstddef>
-#include <cstdint>
 #include <memory>
 #include <unordered_map>
 
@@ -35,7 +33,7 @@ namespace resource {
 class InitializationStatus : public ResourceBase {
  public:
   InitializationStatus() {}
-  InitializationStatus(InitializationStatus&& other) noexcept {
+  InitializationStatus(InitializationStatus&& other) {
     is_initialized_ = other.is_initialized_;
   }
 

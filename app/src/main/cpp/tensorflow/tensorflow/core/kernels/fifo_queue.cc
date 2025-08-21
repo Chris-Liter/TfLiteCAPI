@@ -86,16 +86,17 @@ void FIFOQueue::TryEnqueue(const Tuple& tuple, OpKernelContext* ctx,
 }
 
 /* static */
-absl::Status FIFOQueue::GetElementComponentFromBatch(
-    const FIFOQueue::Tuple& tuple, int64_t index, int component,
-    OpKernelContext* ctx, Tensor* out_tensor) {
+Status FIFOQueue::GetElementComponentFromBatch(const FIFOQueue::Tuple& tuple,
+                                               int64_t index, int component,
+                                               OpKernelContext* ctx,
+                                               Tensor* out_tensor) {
   TensorShape element_shape(tuple[component].shape());
   element_shape.RemoveDim(0);
   TF_RETURN_IF_ERROR(
       ctx->allocate_temp(tuple[component].dtype(), element_shape, out_tensor));
   TF_RETURN_IF_ERROR(
       batch_util::CopySliceToElement(tuple[component], out_tensor, index));
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 void FIFOQueue::TryEnqueueMany(const Tuple& tuple, OpKernelContext* ctx,
@@ -230,8 +231,8 @@ void FIFOQueue::TryDequeueMany(int num_elements, OpKernelContext* ctx,
       // an optimized case where the queue 'knows' what attributes to
       // use, and plumbs them through here.
       Tensor element;
-      absl::Status status = ctx->allocate_temp(component_dtypes_[i],
-                                               ManyOutShape(i, 0), &element);
+      Status status = ctx->allocate_temp(component_dtypes_[i],
+                                         ManyOutShape(i, 0), &element);
       if (!status.ok()) {
         ctx->SetStatus(status);
         callback(Tuple());
@@ -269,7 +270,7 @@ void FIFOQueue::TryDequeueMany(int num_elements, OpKernelContext* ctx,
                      i >= 0; --i) {
                   for (int j = 0; j < num_components(); ++j) {
                     Tensor element;
-                    absl::Status s = GetElementComponentFromBatch(
+                    Status s = GetElementComponentFromBatch(
                         attempt->tuple, i, j, attempt->context, &element);
                     if (!s.ok()) {
                       attempt->context->SetStatus(
@@ -354,7 +355,7 @@ void FIFOQueue::TryDequeueMany(int num_elements, OpKernelContext* ctx,
   }
 }
 
-absl::Status FIFOQueue::MatchesNodeDef(const NodeDef& node_def) {
+Status FIFOQueue::MatchesNodeDef(const NodeDef& node_def) {
   if (!MatchesNodeDefOp(node_def, "FIFOQueue").ok() &&
       !MatchesNodeDefOp(node_def, "FIFOQueueV2").ok()) {
     return errors::InvalidArgument("Expected FIFOQueue, found ", node_def.op());
@@ -362,7 +363,7 @@ absl::Status FIFOQueue::MatchesNodeDef(const NodeDef& node_def) {
   TF_RETURN_IF_ERROR(MatchesNodeDefCapacity(node_def, capacity_));
   TF_RETURN_IF_ERROR(MatchesNodeDefTypes(node_def));
   TF_RETURN_IF_ERROR(MatchesNodeDefShapes(node_def));
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Defines a FIFOQueueOp, which produces a Queue (specifically, one
@@ -374,7 +375,7 @@ FIFOQueueOp::FIFOQueueOp(OpKernelConstruction* context)
   OP_REQUIRES_OK(context, context->GetAttr("shapes", &component_shapes_));
 }
 
-absl::Status FIFOQueueOp::CreateResource(QueueInterface** ret) {
+Status FIFOQueueOp::CreateResource(QueueInterface** ret) {
   FIFOQueue* queue = new FIFOQueue(capacity_, component_types_,
                                    component_shapes_, cinfo_.name());
   return CreateTypedQueue(queue, ret);

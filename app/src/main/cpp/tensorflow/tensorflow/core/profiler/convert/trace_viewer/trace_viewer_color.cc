@@ -16,8 +16,6 @@ limitations under the License.
 
 #include <cstdint>
 
-#include "absl/strings/string_view.h"
-
 namespace tensorflow {
 namespace profiler {
 namespace {

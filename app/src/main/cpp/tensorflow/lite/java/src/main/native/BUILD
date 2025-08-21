@@ -22,7 +22,6 @@ cc_library_with_tflite(
     visibility = jni_utils_visibility_allowlist(),
     deps = [
         "//tensorflow/lite:error_reporter",
-        "//tensorflow/lite/core/c:common",
         "//tensorflow/lite/java/jni",
     ],
 )

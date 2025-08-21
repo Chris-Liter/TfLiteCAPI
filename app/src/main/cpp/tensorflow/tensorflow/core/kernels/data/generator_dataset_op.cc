@@ -75,21 +75,20 @@ class GeneratorDatasetOp::Dataset : public DatasetBase {
     return name_utils::DatasetDebugString(kDatasetType);
   }
 
-  absl::Status InputDatasets(
-      std::vector<const DatasetBase*>* inputs) const override {
-    return absl::OkStatus();
+  Status InputDatasets(std::vector<const DatasetBase*>* inputs) const override {
+    return OkStatus();
   }
 
-  absl::Status CheckExternalState() const override {
+  Status CheckExternalState() const override {
     TF_RETURN_IF_ERROR(init_func_->CheckExternalState());
     TF_RETURN_IF_ERROR(next_func_->CheckExternalState());
     return finalize_func_->CheckExternalState();
   }
 
  protected:
-  absl::Status AsGraphDefInternal(SerializationContext* ctx,
-                                  DatasetGraphDefBuilder* b,
-                                  Node** output) const override {
+  Status AsGraphDefInternal(SerializationContext* ctx,
+                            DatasetGraphDefBuilder* b,
+                            Node** output) const override {
     return errors::Unimplemented(DebugString(),
                                  " does not support serialization");
   }
@@ -103,7 +102,7 @@ class GeneratorDatasetOp::Dataset : public DatasetBase {
     ~Iterator() override {
       if (!finalized_ && initialized_) {
         std::vector<Tensor> ignored;
-        absl::Status s =
+        Status s =
             instantiated_finalize_func_->RunInstantiated(state_, &ignored);
         if (!s.ok()) {
           LOG(WARNING)
@@ -113,19 +112,19 @@ class GeneratorDatasetOp::Dataset : public DatasetBase {
       }
     }
 
-    absl::Status Initialize(IteratorContext* ctx) override {
+    Status Initialize(IteratorContext* ctx) override {
       TF_RETURN_IF_ERROR(
           dataset()->init_func_->Instantiate(ctx, &instantiated_init_func_));
       TF_RETURN_IF_ERROR(
           dataset()->next_func_->Instantiate(ctx, &instantiated_next_func_));
       TF_RETURN_IF_ERROR(dataset()->finalize_func_->Instantiate(
           ctx, &instantiated_finalize_func_));
-      return absl::OkStatus();
+      return OkStatus();
     }
 
-    absl::Status GetNextInternal(IteratorContext* ctx,
-                                 std::vector<Tensor>* out_tensors,
-                                 bool* end_of_sequence) override {
+    Status GetNextInternal(IteratorContext* ctx,
+                           std::vector<Tensor>* out_tensors,
+                           bool* end_of_sequence) override {
       mutex_lock l(mu_);
 
       if (!initialized_) {
@@ -136,17 +135,17 @@ class GeneratorDatasetOp::Dataset : public DatasetBase {
 
       if (finalized_) {
         *end_of_sequence = true;
-        return absl::OkStatus();
+        return OkStatus();
       }
 
-      absl::Status s = instantiated_next_func_->RunWithBorrowedArgs(
+      Status s = instantiated_next_func_->RunWithBorrowedArgs(
           ctx, state_, out_tensors, model_node());
       if (s.ok()) {
         *end_of_sequence = false;
       } else if (errors::IsOutOfRange(s)) {
         // `next_func` may deliberately raise `errors::OutOfRange`
         // to indicate that we should terminate the iteration.
-        s = absl::OkStatus();
+        s = OkStatus();
         *end_of_sequence = true;
 
         // NOTE(mrry): We ignore any tensors returned by the finalize function.
@@ -164,14 +163,14 @@ class GeneratorDatasetOp::Dataset : public DatasetBase {
       return model::MakeSourceNode(std::move(args));
     }
 
-    absl::Status SaveInternal(SerializationContext* ctx,
-                              IteratorStateWriter* writer) override {
+    Status SaveInternal(SerializationContext* ctx,
+                        IteratorStateWriter* writer) override {
       return errors::Unimplemented(
           "GeneratorDataset does not support checkpointing.");
     }
 
-    absl::Status RestoreInternal(IteratorContext* ctx,
-                                 IteratorStateReader* reader) override {
+    Status RestoreInternal(IteratorContext* ctx,
+                           IteratorStateReader* reader) override {
       return errors::Unimplemented(
           "GeneratorDataset does not support checkpointing.");
     }

@@ -34,7 +34,7 @@ limitations under the License.
 
 namespace tensorflow {
 
-typedef absl::InlinedVector<AllocatorAttributes, 4UL> AllocatorAttributeVec;
+typedef gtl::InlinedVector<AllocatorAttributes, 4> AllocatorAttributeVec;
 
 // Represents the ephemeral "edge state" associated with one invocation of
 // `Executor::Run()`.
@@ -115,12 +115,12 @@ class PropagatorState {
     // TODO(b/152925936): Re-evaluate these constants with current usage
     // patterns.
     static constexpr int kSpillThreshold = 16384;
-    absl::InlinedVector<TaggedNode, 16UL> ready_;
+    gtl::InlinedVector<TaggedNode, 16> ready_;
     int front_index_;
   };
 
   // TODO(b/152925936): Re-evaluate this constant with current usage patterns.
-  typedef absl::InlinedVector<TaggedNode, 8UL> TaggedNodeSeq;
+  typedef gtl::InlinedVector<TaggedNode, 8> TaggedNodeSeq;
 
  private:
   // The state of an iteration in a particular frame.
@@ -283,7 +283,7 @@ class PropagatorState {
 
    private:
     // The active iteration states of this frame.
-    absl::InlinedVector<IterationState*, 12UL> iterations;
+    gtl::InlinedVector<IterationState*, 12> iterations;
     IterationState** const iterations_raw TF_GUARDED_BY(mu);
     IterationState* iterations_first TF_GUARDED_BY(mu);
 
@@ -546,8 +546,7 @@ class PropagatorState {
   absl::flat_hash_map<uint64, FrameState*> outstanding_frames_
       TF_GUARDED_BY(mu_);
 
-  PropagatorState(const PropagatorState&) = delete;
-  void operator=(const PropagatorState&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(PropagatorState);
 };
 
 inline int64_t PropagatorState::TaggedNode::get_iter_num() const {

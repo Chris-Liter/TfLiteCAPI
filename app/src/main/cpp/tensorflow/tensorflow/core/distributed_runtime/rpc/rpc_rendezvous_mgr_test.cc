@@ -63,7 +63,7 @@ class DummyWorker : public TestWorkerInterface {
       // RPC call objects.
       const int64_t t_us = random::New64() % 100 * 1000;
       Env::Default()->SleepForMicroseconds(t_us);
-      done(absl::OkStatus());
+      done(OkStatus());
     });
   }
 };
@@ -80,11 +80,11 @@ class DummyWorkerCache : public WorkerCacheInterface {
     }
     return dummy_remote_worker_;
   }
-  absl::Status GetEagerClientCache(
+  Status GetEagerClientCache(
       std::unique_ptr<eager::EagerClientCache>* eager_client_cache) override {
     return errors::Unimplemented("Unimplemented.");
   }
-  absl::Status GetCoordinationClientCache(
+  Status GetCoordinationClientCache(
       std::unique_ptr<CoordinationClientCache>* coord_client_cache) override {
     return errors::Unimplemented("Unimplemented.");
   }
@@ -103,7 +103,7 @@ static Device* CreateDevice(const char* type, const char* name) {
   class FakeDevice : public Device {
    public:
     explicit FakeDevice(const DeviceAttributes& attr) : Device(nullptr, attr) {}
-    absl::Status Sync() override { return absl::OkStatus(); }
+    Status Sync() override { return OkStatus(); }
     Allocator* GetAllocator(AllocatorAttributes) override { return nullptr; }
   };
   DeviceAttributes attr;
@@ -272,7 +272,7 @@ TEST_F(RpcRendezvousMgrTest, TransferDummyDeviceContext) {
     Notification n;
     rmgr_.RecvLocalAsync(
         step_id, key,
-        [&n](const absl::Status& s, const Rendezvous::Args send_args,
+        [&n](const Status& s, const Rendezvous::Args send_args,
              const Rendezvous::Args recv_args, const Tensor& val,
              bool is_dead) {
           auto send_dev_context =
@@ -320,21 +320,21 @@ TEST_F(RpcRendezvousMgrTest, RemoteRecvAsyncMany) {
     int num_requests = 10000;
     Tensor val(DT_STRING);
     mutex mu_;
-    absl::Status status = absl::OkStatus();
+    Status status = OkStatus();
     BlockingCounter counter(num_requests);
 
     for (int i = 0; i < num_requests; i++) {
-      rendez->RecvAsync(key, args,
-                        [&mu_, &status, &counter](const absl::Status& s,
-                                                  const Rendezvous::Args&,
-                                                  const Rendezvous::Args&,
-                                                  const Tensor&, const bool) {
-                          {
-                            mutex_lock l(mu_);
-                            status.Update(s);
-                          }
-                          counter.DecrementCount();
-                        });
+      rendez->RecvAsync(
+          key, args,
+          [&mu_, &status, &counter](const Status& s, const Rendezvous::Args&,
+                                    const Rendezvous::Args&, const Tensor&,
+                                    const bool) {
+            {
+              mutex_lock l(mu_);
+              status.Update(s);
+            }
+            counter.DecrementCount();
+          });
     }
     counter.Wait();
     TF_ASSERT_OK(status);

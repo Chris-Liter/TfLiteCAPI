@@ -15,14 +15,13 @@ limitations under the License.
 #include <algorithm>
 #include <vector>
 
-#include "absl/status/status.h"
-#include "tensorflow/core/lib/random/philox_random.h"
-#include "tensorflow/core/lib/random/random_distributions.h"
-#include "tensorflow/core/platform/logging.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/lite/toco/graph_transformations/graph_transformations.h"
 #include "tensorflow/lite/toco/model.h"
 #include "tensorflow/lite/toco/tooling_util.h"
+#include "tensorflow/core/platform/logging.h"
+
+#include "tensorflow/core/lib/random/philox_random.h"
+#include "tensorflow/core/lib/random/random_distributions.h"
 
 namespace toco {
 
@@ -67,7 +66,7 @@ bool ComputeRandomUniformArray(Model* model, RandomUniformOperator* op) {
   const auto it = model->operators.begin() + op_index;
   auto* base_op = it->get();
   if (base_op->type != OperatorType::kRandomUniform) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   auto* op = static_cast<RandomUniformOperator*>(base_op);
 
@@ -77,12 +76,12 @@ bool ComputeRandomUniformArray(Model* model, RandomUniformOperator* op) {
   auto& output_array = model->GetArray(op->outputs[0]);
   if (output_array.data_type == ArrayDataType::kNone) {
     // Yield until the output type has been set by PropagateArrayDataTypes
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   if (!output_array.has_shape()) {
     // Yield until the output shape has been set by PropagateFixedShapes
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   if ((op->seed == 0) && (op->seed2 == 0)) {
@@ -90,13 +89,13 @@ bool ComputeRandomUniformArray(Model* model, RandomUniformOperator* op) {
                  << "\" is truly random (using /dev/random system entropy). "
                     "Therefore, cannot resolve as constant. Set \"seed\" or "
                     "\"seed2\" attr non-zero to fix this";
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   switch (output_array.data_type) {
     case ArrayDataType::kFloat:
       if (!ComputeRandomUniformArray<ArrayDataType::kFloat>(model, op)) {
-        return absl::OkStatus();
+        return ::tensorflow::OkStatus();
       }
       break;
     // For future support of double or half.
@@ -110,7 +109,7 @@ bool ComputeRandomUniformArray(Model* model, RandomUniformOperator* op) {
 
   DeleteOpAndArrays(model, op);
   *modified = true;
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 }  // namespace toco

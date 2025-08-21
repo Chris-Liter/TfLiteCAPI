@@ -929,13 +929,10 @@ class MultiProcessPoolRunner(object):
     if self._runner is not None:
       try:
         self._runner.join()
-      except unittest.SkipTest:
-        raise
       except Exception as e:  # pylint: disable=broad-except
-        logging.exception(
+        logging.error(
             'Ignoring exception when shutting down MultiProcessPoolRunner: %s',
-            e,
-        )
+            e)
       self._runner = None
 
   def _start(self):

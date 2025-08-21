@@ -27,7 +27,7 @@ using shape_inference::DimensionHandle;
 using shape_inference::InferenceContext;
 using shape_inference::ShapeHandle;
 
-absl::Status DecodeWavShapeFn(InferenceContext* c) {
+Status DecodeWavShapeFn(InferenceContext* c) {
   ShapeHandle unused;
   TF_RETURN_IF_ERROR(c->WithRank(c->input(0), 0, &unused));
 
@@ -57,18 +57,18 @@ absl::Status DecodeWavShapeFn(InferenceContext* c) {
   }
   c->set_output(0, c->MakeShape({samples_dim, channels_dim}));
   c->set_output(1, c->Scalar());
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status EncodeWavShapeFn(InferenceContext* c) {
+Status EncodeWavShapeFn(InferenceContext* c) {
   ShapeHandle unused;
   TF_RETURN_IF_ERROR(c->WithRank(c->input(0), 2, &unused));
   TF_RETURN_IF_ERROR(c->WithRank(c->input(1), 0, &unused));
   c->set_output(0, c->Scalar());
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status SpectrogramShapeFn(InferenceContext* c) {
+Status SpectrogramShapeFn(InferenceContext* c) {
   ShapeHandle input;
   TF_RETURN_IF_ERROR(c->WithRank(c->input(0), 2, &input));
   int32_t window_size;
@@ -107,10 +107,10 @@ absl::Status SpectrogramShapeFn(InferenceContext* c) {
       c->MakeDim(1 + NextPowerOfTwo(window_size) / 2);
   c->set_output(0,
                 c->MakeShape({input_channels, output_length, output_channels}));
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status MfccShapeFn(InferenceContext* c) {
+Status MfccShapeFn(InferenceContext* c) {
   ShapeHandle spectrogram;
   TF_RETURN_IF_ERROR(c->WithRank(c->input(0), 3, &spectrogram));
   ShapeHandle unused;
@@ -127,7 +127,7 @@ absl::Status MfccShapeFn(InferenceContext* c) {
 
   c->set_output(0, c->MakeShape({spectrogram_channels, spectrogram_length,
                                  output_channels}));
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace

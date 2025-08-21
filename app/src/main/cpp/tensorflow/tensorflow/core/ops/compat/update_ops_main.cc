@@ -22,10 +22,8 @@ limitations under the License.
 #include "tensorflow/core/ops/compat/op_compatibility_lib.h"
 #include "tensorflow/core/platform/env.h"
 #include "tensorflow/core/platform/init_main.h"
-#include "tensorflow/core/platform/path.h"
 #include "tensorflow/core/platform/protobuf.h"
 #include "tensorflow/core/public/version.h"
-#include "tsl/platform/protobuf.h"
 
 namespace tensorflow {
 namespace {
@@ -53,7 +51,7 @@ void WriteUpdateTo(const string& directory) {
   printf("%d changed ops\n%d added ops\n", changed_ops, added_ops);
 
   const string& history_dir = compatibility.op_history_directory();
-  absl::Status status = env->CreateDir(history_dir);
+  Status status = env->CreateDir(history_dir);
   if (!errors::IsAlreadyExists(status)) {
     TF_QCHECK_OK(status);
   }
@@ -61,9 +59,9 @@ void WriteUpdateTo(const string& directory) {
     // Write out new op history.
     printf("Writing updated op history to %s/...\n", history_dir.c_str());
     for (const auto& op_file : out_op_history) {
-      TF_QCHECK_OK(
-          WriteStringToFile(env, io::JoinPath(history_dir, op_file.first),
-                            tsl::LegacyUnredactedDebugString(op_file.second)));
+      TF_QCHECK_OK(WriteStringToFile(env,
+                                     io::JoinPath(history_dir, op_file.first),
+                                     op_file.second.DebugString()));
     }
   }
 }

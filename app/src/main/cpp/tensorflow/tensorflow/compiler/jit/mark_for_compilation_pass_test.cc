@@ -374,8 +374,8 @@ TEST(XlaCompilationTest, CallXlaDeviceFuncWithResourceOp) {
   EXPECT_NE(clusters["A"], "");
 }
 
-static absl::Status GradForUnaryCwise(
-    FunctionDef* g, std::vector<FunctionDefHelper::Node> nodes) {
+static Status GradForUnaryCwise(FunctionDef* g,
+                                std::vector<FunctionDefHelper::Node> nodes) {
   for (auto& n : nodes) {
     if (n.attr.empty()) {
       n.attr = {{"T", DT_FLOAT}};
@@ -390,11 +390,11 @@ static absl::Status GradForUnaryCwise(
       {},
       // Nodes
       nodes);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // A gradient containing only supported operators
-absl::Status SupportedGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status SupportedGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForUnaryCwise(g, {
       {{"y"}, "Tanh", {"x"}},
@@ -408,7 +408,7 @@ absl::Status SupportedGrad(const AttrSlice& attrs, FunctionDef* g) {
 REGISTER_OP_GRADIENT("Supported", SupportedGrad);
 
 // A gradient containing an unsupported operator.
-absl::Status UnsupportedGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status UnsupportedGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForUnaryCwise(g, {
       {{"y"}, "Tanh", {"x"}},
@@ -799,7 +799,7 @@ TEST(XlaCompilationTest, IllegalCycle_UsefulErrorMessage) {
       NodeDef def;
       TF_CHECK_OK(builder.Finalize(&def));
 
-      absl::Status status;
+      Status status;
       Node* node = graph->AddNode(def, &status);
       TF_CHECK_OK(status);
       return node;
@@ -815,8 +815,7 @@ TEST(XlaCompilationTest, IllegalCycle_UsefulErrorMessage) {
 
   TF_EXPECT_OK(root.ToGraph(graph.get()));
 
-  absl::Status status =
-      MarkForCompilationPassTestHelper::MarkForCompilation(&graph);
+  Status status = MarkForCompilationPassTestHelper::MarkForCompilation(&graph);
   EXPECT_FALSE(status.ok());
   EXPECT_TRUE(absl::StrContains(status.ToString(),
                                 "Edge from c to a would create a cycle.\n"
@@ -1010,7 +1009,7 @@ TEST(XlaCompilationTest, RandomShapeWithFunc) {
   NodeDef call_node;
   call_node.set_name("fn_call");
   call_node.set_op("Stateful_func");
-  absl::Status status;
+  Status status;
   Node* call = root.graph()->AddNode(call_node, &status);
   TF_ASSERT_OK(status);
 
@@ -1817,7 +1816,7 @@ TEST(XlaCompilationTest, DeterministicClusterNames) {
           " rhs: ", rhs_cluster_name);
     }
 
-    return absl::OkStatus();
+    return OkStatus();
   };
 
   testing::ResetClusterSequenceNumber();
@@ -1904,7 +1903,7 @@ Node* MakeStageNode(GraphDefBuilder& builder, string name,
 }  // namespace
 
 TEST(XlaCompilationTest, StagePipelinePreservedByClusterScopingPass) {
-  auto build_staged_graph = [](std::unique_ptr<Graph>* graph) -> absl::Status {
+  auto build_staged_graph = [](std::unique_ptr<Graph>* graph) -> Status {
     // Construct a graph as below with two pipeline stages and test that nodes
     // in different stages will not be merged if ClusterScopingPass is on.
     //

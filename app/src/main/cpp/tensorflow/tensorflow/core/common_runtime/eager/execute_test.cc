@@ -168,7 +168,7 @@ TEST(ExecuteTest, SimpleFunctionInt32BadFullType) {
 
   std::vector<TensorHandle*> retvals(1);
   int num_retvals = retvals.size();
-  absl::Status status = EagerExecute(op.get(), retvals.data(), &num_retvals);
+  Status status = EagerExecute(op.get(), retvals.data(), &num_retvals);
   ASSERT_TRUE(errors::IsInvalidArgument(status)) << "Actual status: " << status;
   EXPECT_TRUE(
       absl::StrContains(status.message(), "TFT_TENSOR has 0 args instead of 1"))
@@ -223,13 +223,10 @@ TEST(ExecuteTest, CompiledFunction) {
 
   monitoring::testing::CellReader<int64_t> counter_reader(
       "/tensorflow/core/tf_function_compile");
-  monitoring::testing::CellReader<int64_t> top_level_counter(
-      "/tensorflow/core/tf_top_level_jit_compilation");
   std::vector<TensorHandle*> retvals(1);
   int num_retvals = retvals.size();
   TF_ASSERT_OK(EagerExecute(op.get(), retvals.data(), &num_retvals));
   EXPECT_EQ(counter_reader.Delta("CPU", "enabled"), 1);
-  EXPECT_EQ(top_level_counter.Delta("CPU"), 1);
 
   retvals[0]->Unref();
   retvals[0] = nullptr;
@@ -302,14 +299,11 @@ TEST(ExecuteTest, NestedCompiledFunction) {
 
   monitoring::testing::CellReader<int64_t> counter_reader(
       "/tensorflow/core/tf_function_compile");
-  monitoring::testing::CellReader<int64_t> top_level_counter(
-      "/tensorflow/core/tf_top_level_jit_compilation");
   std::vector<TensorHandle*> retvals(1);
   int num_retvals = retvals.size();
   TF_ASSERT_OK(EagerExecute(op.get(), retvals.data(), &num_retvals));
   EXPECT_EQ(counter_reader.Delta("CPU", "enabled"), 1);
   EXPECT_EQ(counter_reader.Delta("CPU", "disabled"), 0);
-  EXPECT_EQ(top_level_counter.Delta("CPU"), 0);
 
   retvals[0]->Unref();
   retvals[0] = nullptr;
@@ -347,7 +341,7 @@ TEST(ExecuteTest, MultipleNestedCompiledFunction) {
   TF_ASSERT_OK(ctx->AddFunctionDef(x_times_two));
 
   const string call_function_name = "FunctionCall";
-  FunctionDef function_call = FunctionDefHelper::Define(
+  const FunctionDef function_call = FunctionDefHelper::Define(
       // Name
       call_function_name,
       // Args
@@ -362,21 +356,12 @@ TEST(ExecuteTest, MultipleNestedCompiledFunction) {
            "StatefulPartitionedCall",
            {"x"},
            {{"_XlaMustCompile", true},
-            {"_device", "/job:localhost/replica:0/task:0/device:CPU:0"},
+            {"device", "/job:localhost/replica:0/task:0/device:CPU:0"},
             {"Tin", DataTypeSlice({DT_INT64})},
             {"Tout", DataTypeSlice({DT_INT64})},
             {"f", tensorflow::FunctionDefHelper::FunctionRef(
                       "XTimesTwo", {{"T", DT_INT64}})}}},
       });
-
-  // Set user requested device for the StatefulPartitionedCall node, as
-  // FunctionDefHelper::Define cannot do that.
-  for (auto& node_def : *function_call.mutable_node_def()) {
-    if (node_def.op() == "StatefulPartitionedCall") {
-      node_def.set_device("/job:localhost/replica:0/task:0/device:CPU:0");
-    }
-  }
-
   TF_ASSERT_OK(ctx->AddFunctionDef(function_call));
 
   const string call_function_name2 = "FunctionCall2";
@@ -414,14 +399,11 @@ TEST(ExecuteTest, MultipleNestedCompiledFunction) {
 
   monitoring::testing::CellReader<int64_t> counter_reader(
       "/tensorflow/core/tf_function_compile");
-  monitoring::testing::CellReader<int64_t> top_level_counter(
-      "/tensorflow/core/tf_top_level_jit_compilation");
   std::vector<TensorHandle*> retvals(1);
   int num_retvals = retvals.size();
   TF_ASSERT_OK(EagerExecute(op.get(), retvals.data(), &num_retvals));
   EXPECT_EQ(counter_reader.Delta("CPU", "enabled"), 1);
   EXPECT_EQ(counter_reader.Delta("CPU", "disabled"), 0);
-  EXPECT_EQ(top_level_counter.Delta("CPU"), 0);
 
   retvals[0]->Unref();
   retvals[0] = nullptr;

@@ -51,7 +51,7 @@ limitations under the License.
 namespace tensorflow {
 
 // from graph_partition.cc
-extern absl::Status TopologicalSortNodesWithTimePriority(
+extern Status TopologicalSortNodesWithTimePriority(
     const GraphDef* gdef,
     std::vector<std::pair<const NodeDef*, int64_t>>* nodes,
     std::unordered_map<const NodeDef*, int64_t>* node_to_start_time_out);
@@ -103,7 +103,7 @@ void Partition(const GraphDef& graph_def,
   popts.get_incarnation = [](const string& name) {
     return (name[0] - 'A') + 100;
   };
-  absl::Status s = Partition(popts, &g, partitions);
+  Status s = Partition(popts, &g, partitions);
   CHECK(s.ok()) << s;
 
   // Check versions.
@@ -173,7 +173,7 @@ REGISTER_OP("Combine")
     .SetShapeFn(shape_inference::UnknownShape);
 
 Output ConstructOp(const Scope& scope, const string& op_type,
-                   const absl::Span<const Input>& inputs) {
+                   const gtl::ArraySlice<Input>& inputs) {
   if (!scope.ok()) return Output();
   const string unique_name = scope.GetUniqueNameForOp(op_type);
   auto builder =
@@ -302,8 +302,7 @@ TEST_F(GraphPartitionTest, CrossDeviceControl) {
   string a = "/job:a/replica:0/task:0/cpu:0";
   string b = "/job:a/replica:0/task:0/cpu:1";
   a1 = FloatInput(scope_a_.WithOpName("A1"));
-  auto c =
-      Const(scope_a_.WithOpName("A1/ctrl/_0").WithControlDependencies(a1), {});
+  auto c = Const(scope_a_.WithOpName("A1/_0").WithControlDependencies(a1), {});
   _Send(scope_a_.WithOpName("A1/_1"), c, "edge_3_A1", a, 82, b);
   ExpectMatchA();
 
@@ -350,8 +349,7 @@ TEST_F(GraphPartitionTest, CrossDeviceControl_MultiUse) {
   string a = "/job:a/replica:0/task:0/cpu:0";
   string b = "/job:a/replica:0/task:0/cpu:1";
   a1 = FloatInput(scope_a_.WithOpName("A1"));
-  auto c =
-      Const(scope_a_.WithOpName("A1/ctrl/_0").WithControlDependencies(a1), {});
+  auto c = Const(scope_a_.WithOpName("A1/_0").WithControlDependencies(a1), {});
   _Send(scope_a_.WithOpName("A1/_1"), c, "edge_3_A1", a, 82, b);
   ExpectMatchA();
 
@@ -377,8 +375,7 @@ TEST_F(GraphPartitionTest, CrossDevice_DataControl) {
   string b = "/job:a/replica:0/task:0/cpu:1";
   a1 = FloatInput(scope_a_.WithOpName("A1"));
   _Send(scope_a_.WithOpName("A1/_0"), a1, "edge_1_A1", a, 82, b);
-  auto c =
-      Const(scope_a_.WithOpName("A1/ctrl/_2").WithControlDependencies(a1), {});
+  auto c = Const(scope_a_.WithOpName("A1/_2").WithControlDependencies(a1), {});
   // NOTE: Send 0 A1/_1 -> A1/_2 is not necessarily needed. We could
   // use A1/_0 -> A1/_4 as the control as a minor optimization.
   _Send(scope_a_.WithOpName("A1/_3"), c, "edge_3_A1", a, 82, b);
@@ -466,7 +463,7 @@ TEST_F(GraphPartitionTest, PartitionIncompleteGraph) {
       )EOF",
       &ndef);
   ASSERT_TRUE(parsed);
-  absl::Status status;
+  Status status;
   g.AddNode(ndef, &status);
   TF_ASSERT_OK(status);
 
@@ -511,32 +508,14 @@ TEST_F(GraphPartitionTest, Functions) {
 
 TEST_F(GraphPartitionTest, SetIncarnation) {
   GraphDef gdef;
-  const char* const kSendRecvAttrs = R"pb(
-    attr {
-      key: 'T'
-      value { type: DT_FLOAT }
-    }
-    attr {
-      key: 'client_terminated'
-      value { b: false }
-    }
-    attr {
-      key: 'recv_device'
-      value { s: 'B' }
-    }
-    attr {
-      key: 'send_device'
-      value { s: 'A' }
-    }
-    attr {
-      key: 'send_device_incarnation'
-      value { i: 0 }
-    }
-    attr {
-      key: 'tensor_name'
-      value { s: 'test' }
-    }
-  )pb";
+  const char* const kSendRecvAttrs = R"proto(
+  attr { key: 'T' value { type: DT_FLOAT  }  }
+  attr { key: 'client_terminated' value {  b: false } }
+  attr { key: 'recv_device' value { s: 'B' } }
+  attr { key: 'send_device' value { s: 'A' } }
+  attr { key: 'send_device_incarnation' value { i: 0 }  }
+  attr { key: 'tensor_name' value { s: 'test' } }
+)proto";
   CHECK(protobuf::TextFormat::ParseFromString(
       strings::StrCat(
           "node { name: 'A/Pi' op: 'Const' ",
@@ -685,8 +664,8 @@ TEST(TopologicalSortNodesWithTimePriority, Dependencies) {
   // Create addn to sum all squares.
   std::vector<Input> inputs;
   for (const auto& s : squares) inputs.push_back(s);
-  ops::AddN addn =
-      ops::AddN(root.WithOpName("addn"), absl::Span<const Input>(inputs));
+  ops::AddN addn = ops::AddN(root.WithOpName("addn"),
+                             tensorflow::gtl::ArraySlice<Input>(inputs));
   // Start times is actually listed earlier than the nodes it depends on.
   // But because of dependency ordering, it is last in the list.
   addn.node()->AddAttr("_start_time", 1);

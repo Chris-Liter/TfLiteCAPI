@@ -27,7 +27,7 @@ using shape_inference::ShapeHandle;
 
 namespace {
 
-static absl::Status StatelessRandomPermuteShape(InferenceContext* c) {
+static Status StatelessRandomPermuteShape(InferenceContext* c) {
   ShapeHandle index_shape, seed_shape, max_index_shape, rounds_shape;
 
   // Basic constraints but unknown ranks will not raise errors here.
@@ -67,7 +67,7 @@ static absl::Status StatelessRandomPermuteShape(InferenceContext* c) {
       (index_rank == 0 && seed_rank == 1 && max_index_rank == 0);
   if (output_is_scalar) {
     c->set_output(0, c->Scalar());
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   // Case 2.
@@ -78,7 +78,7 @@ static absl::Status StatelessRandomPermuteShape(InferenceContext* c) {
       (index_rank == 1 || seed_rank == 2 || max_index_rank == 1);
   if (!output_must_be_vector) {
     c->set_output(0, c->UnknownShape());
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   // Case 3.
@@ -117,7 +117,7 @@ static absl::Status StatelessRandomPermuteShape(InferenceContext* c) {
   }
 
   c->set_output(0, c->Vector(num_outputs));
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 REGISTER_OP("RandomIndexShuffle")

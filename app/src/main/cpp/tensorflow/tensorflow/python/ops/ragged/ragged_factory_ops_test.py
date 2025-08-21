@@ -116,6 +116,8 @@ class RaggedFactoryOpsTest(test_util.TensorFlowTestCase,
         return it.get_next_as_optional()
 
     t = ragged_factory()
+    if t.dtype == dtypes.string:
+      self.skipTest('b/241136926: fix RaggedTensorFromVariant copy')
     result = dataset_producer(t)
     self.assertAllEqual(
         self.evaluate(t[0]), self.evaluate(result[0].get_value()[0]))
@@ -159,9 +161,11 @@ class RaggedFactoryOpsTest(test_util.TensorFlowTestCase,
 
   @parameterized.named_parameters(
       ('Int65Drop', ragged_int64, True),
-      ('StrDrop', ragged_str, True),
+      # TODO(b/241136926) fix RaggedTensorFromVariant copy
+      # ('StrDrop', ragged_str, True),
       ('Int65NoDrop', ragged_int64, False),
-      ('StrNoDrop', ragged_str, False),
+      # TODO(b/241136926) fix RaggedTensorFromVariant copy
+      # ('StrNoDrop', ragged_str, False),
   )
   @test_util.run_v2_only
   def testRaggedWithDistributedDatasetReplicaFn(self, ragged_factory,
@@ -263,9 +267,11 @@ class RaggedFactoryOpsTest(test_util.TensorFlowTestCase,
 
   @parameterized.named_parameters(
       ('DenseDrop', dense_str, True),
-      ('RaggedDrop', ragged_str, True),
+      # TODO(b/241136926) fix RaggedTensorFromVariant copy
+      # ('RaggedDrop', ragged_str, True),
       ('DenseNoDrop', dense_str, False),
-      ('RaggedNoDrop', ragged_str, True),
+      # TODO(b/241136926) fix RaggedTensorFromVariant copy
+      # ('RaggedNoDrop', ragged_str, True),
   )
   @test_util.run_v2_only
   def testOpsWithDistributedDataset(self, string_factory, drop_remainder):
@@ -309,9 +315,11 @@ class RaggedFactoryOpsTest(test_util.TensorFlowTestCase,
 
   @parameterized.named_parameters(
       ('DenseDrop', dense_str, True),
-      ('RaggedDrop', ragged_str, True),
+      # TODO(b/241136926) fix RaggedTensorFromVariant copy
+      # ('RaggedDrop', ragged_str, True),
       ('DenseNoDrop', dense_str, False),
-      ('RaggedNoDrop', ragged_str, False),
+      # TODO(b/241136926) fix RaggedTensorFromVariant copy
+      # ('RaggedNoDrop', ragged_str, False),
   )
   @test_util.run_v2_only
   def testIntStringOpsWithDistributedDataset(self, string_factory,

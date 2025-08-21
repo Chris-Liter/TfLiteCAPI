@@ -18,10 +18,9 @@ limitations under the License.
 
 #include <string>
 
-#include "absl/status/status.h"
 #include "tensorflow/compiler/jit/variable_info.h"
 #include "tensorflow/core/common_runtime/next_pluggable_device/plugin_variable.h"
-#include "tsl/platform/status.h"
+#include "tensorflow/tsl/platform/status.h"
 
 namespace tensorflow {
 
@@ -30,14 +29,14 @@ class DirectPluginOpKernelContext;
 class DirectPluginVariable : public PluginVariable {
  public:
   DirectPluginVariable(int index, const std::string& name, Var* var);
-  absl::Status GetTensor(const Tensor** result_tensor) override {
+  tsl::Status GetTensor(const Tensor** result_tensor) override {
     *result_tensor = var_info_.var()->tensor();
-    return absl::OkStatus();
+    return tsl::OkStatus();
   }
 
-  absl::Status GetMutableTensor(Tensor** result_tensor) override {
+  tsl::Status GetMutableTensor(Tensor** result_tensor) override {
     *result_tensor = var_info_.var()->tensor();
-    return absl::OkStatus();
+    return tsl::OkStatus();
   }
 
   VariableInfo* GetVariableInfo() { return &var_info_; }

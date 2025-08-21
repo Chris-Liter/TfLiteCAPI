@@ -20,23 +20,19 @@ limitations under the License.
 #include <utility>
 #include <vector>
 
-#include "absl/numeric/bits.h"
-#include "absl/status/status.h"
-#include "llvm/ADT/DenseMap.h"
-#include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/ADT/SmallVector.h"
-#include "llvm/Support/Casting.h"
-#include "mlir/IR/Builders.h"  // from @llvm-project
+#include "llvm/Support/FormatVariadic.h"
+#include "mlir/IR/BuiltinTypes.h"  // from @llvm-project
 #include "mlir/IR/Operation.h"  // from @llvm-project
-#include "mlir/IR/Value.h"  // from @llvm-project
-#include "mlir/Support/LLVM.h"  // from @llvm-project
+#include "mlir/Support/DebugStringHelper.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_ops.h"
+#include "tensorflow/core/platform/errors.h"
 #include "tensorflow/dtensor/cc/dstatus.h"
 #include "tensorflow/dtensor/cc/slice_util.h"
-#include "tensorflow/dtensor/cc/tensor_layout.h"
 #include "tensorflow/dtensor/mlir/collectives.h"
 #include "tensorflow/dtensor/mlir/layout_parsing.h"
 #include "tensorflow/dtensor/mlir/shape_utils.h"
+#include "tensorflow/dtensor/mlir/spmd_expander_common.h"
 #include "tensorflow/dtensor/mlir/value_utils.h"
 #include "tensorflow/dtensor/proto/layout.pb.h"
 
@@ -128,8 +124,8 @@ StatusOr<std::vector<slice_util::Token>> TokenizeOp(T strided_slice) {
 // this is the only meaningful change when a global Token vector is converted
 // to the local Token vector.
 template <typename T>
-absl::Status UpdateOpFromTokens(T strided_slice,
-                                const std::vector<slice_util::Token>& tokens) {
+Status UpdateOpFromTokens(T strided_slice,
+                          const std::vector<slice_util::Token>& tokens) {
   mlir::OpBuilder builder(strided_slice);
   llvm::SmallVector<int64_t, 4> end;
   end.reserve(tokens.size());
@@ -140,7 +136,7 @@ absl::Status UpdateOpFromTokens(T strided_slice,
   mlir::Value new_end = IntConstWithMatchingType(
       builder, strided_slice.getLoc(), end, strided_slice.getBegin().getType());
   strided_slice.getEndMutable().assign(new_end);
-  return absl::OkStatus();
+  return OkStatus();
 }
 }  // namespace
 

@@ -14,8 +14,7 @@ limitations under the License.
 ==============================================================================*/
 // Must be included first
 // clang-format off
-#include "tensorflow/c/tf_datatype.h"
-#include "xla/tsl/python/lib/core/numpy.h" //NOLINT
+#include "tensorflow/tsl/python/lib/core/numpy.h" //NOLINT
 // clang-format on
 
 #include "tensorflow/python/lib/core/ndarray_tensor.h"
@@ -25,7 +24,6 @@ limitations under the License.
 
 #include "tensorflow/c/eager/tfe_context_internal.h"
 #include "tensorflow/c/tf_tensor_internal.h"
-#include "xla/tsl/python/lib/core/ml_dtypes.h"
 #include "tensorflow/core/lib/core/coding.h"
 #include "tensorflow/core/lib/core/errors.h"
 #include "tensorflow/core/lib/gtl/inlined_vector.h"
@@ -33,6 +31,7 @@ limitations under the License.
 #include "tensorflow/core/util/port.h"
 #include "tensorflow/python/lib/core/ndarray_tensor_bridge.h"
 #include "tensorflow/python/lib/core/safe_pyobject_ptr.h"
+#include "tensorflow/tsl/python/lib/core/ml_dtypes.h"
 
 namespace tensorflow {
 namespace {
@@ -67,6 +66,7 @@ char const* numpy_type_name(int numpy_type) {
     TYPE_CASE(NPY_DATETIME);
     TYPE_CASE(NPY_TIMEDELTA);
     TYPE_CASE(NPY_HALF);
+    TYPE_CASE(NPY_NTYPES);
     TYPE_CASE(NPY_NOTYPE);
     TYPE_CASE(NPY_CHAR);
     TYPE_CASE(NPY_USERDEF);
@@ -75,23 +75,19 @@ char const* numpy_type_name(int numpy_type) {
   }
 }
 
-#if NPY_ABI_VERSION < 0x02000000
-#define PyDataType_FIELDS(descr) ((descr)->fields)
-#endif  // NPY_ABI_VERSION < 0x02000000
-
-absl::Status PyArrayDescr_to_TF_DataType(PyArray_Descr* descr,
-                                         TF_DataType* out_tf_datatype) {
+Status PyArrayDescr_to_TF_DataType(PyArray_Descr* descr,
+                                   TF_DataType* out_tf_datatype) {
   PyObject* key;
   PyObject* value;
   Py_ssize_t pos = 0;
 
   // Return an error if the fields attribute is null.
   // Occurs with an improper conversion attempt to resource.
-  if (PyDataType_FIELDS(descr) == nullptr) {
+  if (descr->fields == nullptr) {
     return errors::Internal("Unexpected numpy data type");
   }
 
-  if (PyDict_Next(PyDataType_FIELDS(descr), &pos, &key, &value)) {
+  if (PyDict_Next(descr->fields, &pos, &key, &value)) {
     // In Python 3, the keys of numpy custom struct types are unicode, unlike
     // Python 2, where the keys are bytes.
     const char* key_string =
@@ -120,15 +116,13 @@ absl::Status PyArrayDescr_to_TF_DataType(PyArray_Descr* descr,
     } else {
       return errors::Internal("Unsupported numpy data type");
     }
-    return absl::OkStatus();
+    return OkStatus();
   }
   return errors::Internal("Unsupported numpy data type");
 }
 
-absl::Status PyArray_TYPE_to_TF_DataType(PyArrayObject* array,
-                                         TF_DataType* out_tf_datatype) {
-  const tsl::ml_dtypes::NumpyDtypes& custom_dtypes =
-      tsl::ml_dtypes::GetNumpyDtypes();
+Status PyArray_TYPE_to_TF_DataType(PyArrayObject* array,
+                                   TF_DataType* out_tf_datatype) {
   int pyarray_type = PyArray_TYPE(array);
   PyArray_Descr* descr = PyArray_DESCR(array);
   switch (pyarray_type) {
@@ -187,7 +181,7 @@ absl::Status PyArray_TYPE_to_TF_DataType(PyArrayObject* array,
       // custom struct type.
       return PyArrayDescr_to_TF_DataType(descr, out_tf_datatype);
     default:
-      if (pyarray_type == custom_dtypes.bfloat16) {
+      if (pyarray_type == tsl::ml_dtypes::GetBfloat16TypeNum()) {
         *out_tf_datatype = TF_BFLOAT16;
         break;
       } else if (pyarray_type == NPY_ULONGLONG) {
@@ -210,28 +204,21 @@ absl::Status PyArray_TYPE_to_TF_DataType(PyArrayObject* array,
         // be different on certain platforms.
         *out_tf_datatype = TF_UINT32;
         break;
-      } else if (pyarray_type == custom_dtypes.float8_e5m2) {
+      } else if (pyarray_type == tsl::ml_dtypes::GetFloat8E5m2TypeNum()) {
         *out_tf_datatype = TF_FLOAT8_E5M2;
         break;
-      } else if (pyarray_type == custom_dtypes.float8_e4m3fn) {
+      } else if (pyarray_type == tsl::ml_dtypes::GetFloat8E4m3fnTypeNum()) {
         *out_tf_datatype = TF_FLOAT8_E4M3FN;
         break;
-      } else if (pyarray_type == custom_dtypes.int4) {
-        *out_tf_datatype = TF_INT4;
-        break;
-      } else if (pyarray_type == custom_dtypes.uint4) {
-        *out_tf_datatype = TF_UINT4;
-        break;
       }
-
       return errors::Internal("Unsupported numpy type: ",
                               numpy_type_name(pyarray_type));
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status PyObjectToString(PyObject* obj, const char** ptr, Py_ssize_t* len,
-                              PyObject** ptr_owner) {
+Status PyObjectToString(PyObject* obj, const char** ptr, Py_ssize_t* len,
+                        PyObject** ptr_owner) {
   *ptr_owner = nullptr;
   if (PyBytes_Check(obj)) {
     char* buf;
@@ -239,11 +226,11 @@ absl::Status PyObjectToString(PyObject* obj, const char** ptr, Py_ssize_t* len,
       return errors::Internal("Unable to get element as bytes.");
     }
     *ptr = buf;
-    return absl::OkStatus();
+    return OkStatus();
   } else if (PyUnicode_Check(obj)) {
 #if (PY_MAJOR_VERSION > 3 || (PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION >= 3))
     *ptr = PyUnicode_AsUTF8AndSize(obj, len);
-    if (*ptr != nullptr) return absl::OkStatus();
+    if (*ptr != nullptr) return OkStatus();
 #else
     PyObject* utemp = PyUnicode_AsUTF8String(obj);
     char* buf;
@@ -263,7 +250,7 @@ absl::Status PyObjectToString(PyObject* obj, const char** ptr, Py_ssize_t* len,
 // Iterate over the string array 'array', extract the ptr and len of each string
 // element and call f(ptr, len).
 template <typename F>
-absl::Status PyBytesArrayMap(PyArrayObject* array, F f) {
+Status PyBytesArrayMap(PyArrayObject* array, F f) {
   Safe_PyObjectPtr iter = tensorflow::make_safe(
       PyArray_IterNew(reinterpret_cast<PyObject*>(array)));
   while (PyArray_ITER_NOTDONE(iter.get())) {
@@ -280,13 +267,13 @@ absl::Status PyBytesArrayMap(PyArrayObject* array, F f) {
     Py_XDECREF(ptr_owner);
     PyArray_ITER_NEXT(iter.get());
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Encode the strings in 'array' into a contiguous buffer and return the base of
 // the buffer. The caller takes ownership of the buffer.
-absl::Status EncodePyBytesArray(PyArrayObject* array, int64_t nelems,
-                                size_t* size, void** buffer) {
+Status EncodePyBytesArray(PyArrayObject* array, int64_t nelems, size_t* size,
+                          void** buffer) {
   // Encode all strings.
   *size = nelems * sizeof(tensorflow::tstring);
   std::unique_ptr<tensorflow::tstring[]> base_ptr(
@@ -299,11 +286,11 @@ absl::Status EncodePyBytesArray(PyArrayObject* array, int64_t nelems,
         dst++;
       }));
   *buffer = base_ptr.release();
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status CopyTF_TensorStringsToPyArray(const TF_Tensor* src, uint64 nelems,
-                                           PyArrayObject* dst) {
+Status CopyTF_TensorStringsToPyArray(const TF_Tensor* src, uint64 nelems,
+                                     PyArrayObject* dst) {
   const void* tensor_data = TF_TensorData(src);
   DCHECK(tensor_data != nullptr);
   DCHECK_EQ(TF_STRING, TF_TensorType(src));
@@ -330,14 +317,14 @@ absl::Status CopyTF_TensorStringsToPyArray(const TF_Tensor* src, uint64 nelems,
     }
     PyArray_ITER_NEXT(iter.get());
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Determine the dimensions of a numpy ndarray to be created to represent an
 // output Tensor.
-absl::Status GetPyArrayDimensionsForTensor(
-    const TF_Tensor* tensor, absl::InlinedVector<npy_intp, 4UL>* dims,
-    int64_t* nelems) {
+Status GetPyArrayDimensionsForTensor(const TF_Tensor* tensor,
+                                     gtl::InlinedVector<npy_intp, 4>* dims,
+                                     int64_t* nelems) {
   dims->clear();
   const int ndims = TF_NumDims(tensor);
   if (TF_TensorType(tensor) == TF_RESOURCE) {
@@ -354,13 +341,13 @@ absl::Status GetPyArrayDimensionsForTensor(
       *nelems *= dims->back();
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Determine the type description (PyArray_Descr) of a numpy ndarray to be
 // created to represent an output Tensor.
-absl::Status GetPyArrayDescrForTensor(const TF_Tensor* tensor,
-                                      PyArray_Descr** descr) {
+Status GetPyArrayDescrForTensor(const TF_Tensor* tensor,
+                                PyArray_Descr** descr) {
   if (TF_TensorType(tensor) == TF_RESOURCE) {
     PyObject* field = PyTuple_New(3);
 #if PY_MAJOR_VERSION < 3
@@ -385,7 +372,7 @@ absl::Status GetPyArrayDescrForTensor(const TF_Tensor* tensor,
     *descr = PyArray_DescrFromType(type_num);
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 inline void FastMemcpy(void* dst, const void* src, size_t size) {
@@ -425,8 +412,8 @@ inline void FastMemcpy(void* dst, const void* src, size_t size) {
 
 // TODO(slebedev): revise TF_TensorToPyArray usages and switch to the
 // aliased version where appropriate.
-absl::Status TF_TensorToMaybeAliasedPyArray(Safe_TF_TensorPtr tensor,
-                                            PyObject** out_ndarray) {
+Status TF_TensorToMaybeAliasedPyArray(Safe_TF_TensorPtr tensor,
+                                      PyObject** out_ndarray) {
   auto dtype = TF_TensorType(tensor.get());
   if (dtype == TF_STRING || dtype == TF_RESOURCE) {
     return TF_TensorToPyArray(std::move(tensor), out_ndarray);
@@ -434,7 +421,7 @@ absl::Status TF_TensorToMaybeAliasedPyArray(Safe_TF_TensorPtr tensor,
 
   TF_Tensor* moved = tensor.release();
   int64_t nelems = -1;
-  absl::InlinedVector<npy_intp, 4UL> dims;
+  gtl::InlinedVector<npy_intp, 4> dims;
   TF_RETURN_IF_ERROR(GetPyArrayDimensionsForTensor(moved, &dims, &nelems));
   return ArrayFromMemory(
       dims.size(), dims.data(), TF_TensorData(moved),
@@ -444,17 +431,16 @@ absl::Status TF_TensorToMaybeAliasedPyArray(Safe_TF_TensorPtr tensor,
 
 // Converts the given TF_Tensor to a numpy ndarray.
 // If the returned status is OK, the caller becomes the owner of *out_array.
-absl::Status TF_TensorToPyArray(Safe_TF_TensorPtr tensor,
-                                PyObject** out_ndarray) {
+Status TF_TensorToPyArray(Safe_TF_TensorPtr tensor, PyObject** out_ndarray) {
   // A fetched operation will correspond to a null tensor, and a None
   // in Python.
   if (tensor == nullptr) {
     Py_INCREF(Py_None);
     *out_ndarray = Py_None;
-    return absl::OkStatus();
+    return OkStatus();
   }
   int64_t nelems = -1;
-  absl::InlinedVector<npy_intp, 4UL> dims;
+  gtl::InlinedVector<npy_intp, 4> dims;
   TF_RETURN_IF_ERROR(
       GetPyArrayDimensionsForTensor(tensor.get(), &dims, &nelems));
 
@@ -467,7 +453,7 @@ absl::Status TF_TensorToPyArray(Safe_TF_TensorPtr tensor,
             static_cast<DataType>(TF_TensorType(moved)),
             [moved] { TF_DeleteTensor(moved); }, out_ndarray)
             .ok()) {
-      return absl::OkStatus();
+      return OkStatus();
     }
   }
   tensor.reset(original);
@@ -484,8 +470,7 @@ absl::Status TF_TensorToPyArray(Safe_TF_TensorPtr tensor,
       reinterpret_cast<PyArrayObject*>(safe_out_array.get());
 
   if (TF_TensorType(tensor.get()) == TF_STRING) {
-    absl::Status s =
-        CopyTF_TensorStringsToPyArray(tensor.get(), nelems, py_array);
+    Status s = CopyTF_TensorStringsToPyArray(tensor.get(), nelems, py_array);
     if (!s.ok()) {
       return s;
     }
@@ -512,11 +497,11 @@ absl::Status TF_TensorToPyArray(Safe_TF_TensorPtr tensor,
   }
 
   *out_ndarray = safe_out_array.release();
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status NdarrayToTensor(TFE_Context* ctx, PyObject* ndarray,
-                             Safe_TF_TensorPtr* ret) {
+Status NdarrayToTensor(TFE_Context* ctx, PyObject* ndarray,
+                       Safe_TF_TensorPtr* ret) {
   DCHECK(ret != nullptr);
 
   // Make sure we dereference this array object in case of error, etc.
@@ -530,7 +515,7 @@ absl::Status NdarrayToTensor(TFE_Context* ctx, PyObject* ndarray,
   TF_RETURN_IF_ERROR(PyArray_TYPE_to_TF_DataType(array, &dtype));
 
   int64_t nelems = 1;
-  absl::InlinedVector<int64_t, 4UL> dims;
+  gtl::InlinedVector<int64_t, 4> dims;
   for (int i = 0; i < PyArray_NDIM(array); ++i) {
     dims.push_back(PyArray_SHAPE(array)[i]);
     nelems *= dims[i];
@@ -588,24 +573,23 @@ absl::Status NdarrayToTensor(TFE_Context* ctx, PyObject* ndarray,
     }
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status TF_TensorToTensor(const TF_Tensor* src, Tensor* dst);
-TF_Tensor* TF_TensorFromTensor(const tensorflow::Tensor& src,
-                               absl::Status* status);
+Status TF_TensorToTensor(const TF_Tensor* src, Tensor* dst);
+TF_Tensor* TF_TensorFromTensor(const tensorflow::Tensor& src, Status* status);
 
-absl::Status NdarrayToTensor(PyObject* obj, Tensor* ret) {
+Status NdarrayToTensor(PyObject* obj, Tensor* ret) {
   Safe_TF_TensorPtr tf_tensor = make_safe(static_cast<TF_Tensor*>(nullptr));
-  absl::Status s = NdarrayToTensor(nullptr /*ctx*/, obj, &tf_tensor);
+  Status s = NdarrayToTensor(nullptr /*ctx*/, obj, &tf_tensor);
   if (!s.ok()) {
     return s;
   }
   return TF_TensorToTensor(tf_tensor.get(), ret);
 }
 
-absl::Status TensorToNdarray(const Tensor& t, PyObject** ret) {
-  absl::Status status;
+Status TensorToNdarray(const Tensor& t, PyObject** ret) {
+  Status status;
   Safe_TF_TensorPtr tf_tensor = make_safe(TF_TensorFromTensor(t, &status));
   if (!status.ok()) {
     return status;

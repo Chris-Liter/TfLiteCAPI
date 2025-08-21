@@ -15,9 +15,6 @@ limitations under the License.
 
 #include "tensorflow/core/tpu/tpu_compile.h"
 
-#include <algorithm>
-#include <cstddef>
-#include <cstdint>
 #include <map>
 #include <memory>
 #include <optional>
@@ -26,59 +23,24 @@ limitations under the License.
 #include <utility>
 #include <vector>
 
-#include "absl/container/flat_hash_set.h"
-#include "absl/container/inlined_vector.h"
-#include "absl/log/check.h"
-#include "absl/log/log.h"
-#include "absl/status/status.h"
 #include "absl/types/span.h"
 #include "tensorflow/compiler/jit/flags.h"
 #include "tensorflow/compiler/jit/shape_inference.h"
 #include "tensorflow/compiler/tf2xla/layout_util.h"
 #include "tensorflow/compiler/tf2xla/tf2xla_util.h"
-#include "tensorflow/compiler/tf2xla/type_util.h"
-#include "tensorflow/compiler/tf2xla/xla_compiler.h"
 #include "tensorflow/compiler/tf2xla/xla_helpers.h"
-#include "tensorflow/compiler/tf2xla/xla_resource.h"
-#include "xla/client/compile_only_client.h"
-#include "xla/hlo/ir/hlo_sharding.h"
-#include "xla/shape.h"
-#include "xla/shape_util.h"
-#include "xla/status_macros.h"
-#include "xla/xla_data.pb.h"
-#include "tensorflow/core/common_runtime/function_body.h"
-#include "tensorflow/core/common_runtime/function_utils.h"
+#include "tensorflow/compiler/xla/client/compile_only_client.h"
+#include "tensorflow/compiler/xla/xla_data.pb.h"
 #include "tensorflow/core/common_runtime/graph_constructor.h"
-#include "tensorflow/core/common_runtime/graph_optimizer.h"
 #include "tensorflow/core/framework/attr_value.pb.h"
-#include "tensorflow/core/framework/function.h"
-#include "tensorflow/core/framework/node_def_util.h"
-#include "tensorflow/core/framework/tensor_shape.h"
-#include "tensorflow/core/framework/types.h"
 #include "tensorflow/core/graph/graph.h"
-#include "tensorflow/core/platform/errors.h"
 #include "tensorflow/core/platform/status.h"
-#include "tensorflow/core/platform/strcat.h"
-#include "tensorflow/core/platform/types.h"
-#include "tensorflow/core/protobuf/tpu/compile_metadata.pb.h"
 #include "tensorflow/core/tpu/kernels/tpu_compile_op_support.h"
 #include "tensorflow/core/tpu/tpu_defs.h"
-#include "tsl/platform/errors.h"
-#include "tsl/platform/statusor.h"
 
 namespace tensorflow {
 namespace tpu {
 namespace {
-
-// For stateless RNGs ops, they are pure but device-dependent. Those ops are not
-// constant-foldable.
-// TODO(b/305092010) Use the operations' TF_NoConstantFold attribute instead.
-static absl::flat_hash_set<std::string>* kBlockList =
-    new absl::flat_hash_set<std::string>({
-        "StatelessRandomUniform",
-        "StatelessRandomNormal",
-        "StatelessTruncatedNormal",
-    });
 
 std::string CoreDevice(int core) {
   return strings::StrCat("/device:", DEVICE_TPU_REPLICATED_CORE, ":", core);
@@ -89,7 +51,7 @@ static constexpr char kRetvalOp[] = "_Retval";
 
 // Sets arg shape, arg core mapping, and per core arg shapes for a given
 // argument, depending on its sharding.
-absl::Status SetPerCoreArgShapes(
+Status SetPerCoreArgShapes(
     const tpu::TPUCompileMetadataProto::Arg& proto_arg, const int arg_index,
     xla::Shape* xla_arg_shape,
     std::vector<tpu::ShardingAndIndex>* arg_core_mapping,
@@ -120,8 +82,8 @@ absl::Status SetPerCoreArgShapes(
     }
   } else {
     TF_RET_CHECK(proto_arg.sharding().type() == xla::OpSharding::REPLICATED)
-        << "Unsupported argument sharding: " << " proto_arg="
-        << proto_arg.DebugString();
+        << "Unsupported argument sharding: "
+        << " proto_arg=" << proto_arg.DebugString();
     for (int core = 0; core < per_core_arg_shapes->size(); ++core) {
       (*arg_core_mapping)[arg_index].indices.push_back(
           (*per_core_arg_shapes)[core].size());
@@ -129,7 +91,7 @@ absl::Status SetPerCoreArgShapes(
     }
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Adds TPU_REPLICATED_CORE device assignments to the _Arg and _Retval
@@ -141,11 +103,10 @@ absl::Status SetPerCoreArgShapes(
 // them the compilation metadata.
 // Function arguments and return values lose their device assignments, so we
 // must recreate them.
-absl::Status AssignDevicesToArgsAndRetvals(
+Status AssignDevicesToArgsAndRetvals(
     absl::Span<const tpu::ShardingAndIndex> arg_core_mapping,
     absl::Span<const tpu::ShardingAndIndex> retval_core_mapping, Graph* graph) {
-  auto assign = [&](Node* node,
-                    const xla::OpSharding& sharding) -> absl::Status {
+  auto assign = [&](Node* node, const xla::OpSharding& sharding) -> Status {
     if (sharding.type() == xla::OpSharding::MAXIMAL) {
       const string device = CoreDevice(sharding.tile_assignment_devices(0));
       node->set_assigned_device_name(device);
@@ -157,7 +118,7 @@ absl::Status AssignDevicesToArgsAndRetvals(
           << sharding.DebugString();
     }
     node->AddAttr("_XlaSharding", sharding.SerializeAsString());
-    return absl::OkStatus();
+    return OkStatus();
   };
   for (Node* node : graph->op_nodes()) {
     if (node->type_string() == kArgOp) {
@@ -174,7 +135,7 @@ absl::Status AssignDevicesToArgsAndRetvals(
       TF_RETURN_IF_ERROR(assign(node, retval_core_mapping[index].sharding));
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 void ConvertGraphShapeInfoToShapeMap(
@@ -204,22 +165,12 @@ void ConvertGraphShapeInfoToShapeMap(
   }
 }
 
-bool DoNotConsiderOpsInBlockList(const Node* n) {
-  if (kBlockList->contains(n->type_string())) {
-    VLOG(2) << "Skip node [" << n->DebugString()
-            << "] for constant folding, it is in constant folding block list";
-    return false;
-  }
-  return true;
-}
-
 // Optimizes `graph`, given the argument descriptions in `metadata` and
 // `arg_shapes`.
-absl::Status OptimizeGraph(const tpu::TPUCompileMetadataProto& metadata,
-                           const std::vector<PartialTensorShape>& arg_shapes,
-                           std::unique_ptr<Graph>* graph,
-                           FunctionLibraryRuntime* flr,
-                           FunctionLibraryDefinition* fld) {
+Status OptimizeGraph(const tpu::TPUCompileMetadataProto& metadata,
+                     const std::vector<PartialTensorShape>& arg_shapes,
+                     std::unique_ptr<Graph>* graph, FunctionLibraryRuntime* flr,
+                     FunctionLibraryDefinition* fld) {
   // Sets up options for the optimization passes that need to be done. Notice
   // that CSE is not needed as XLA has its own CSE passes later in the
   // compilation stage.
@@ -239,7 +190,6 @@ absl::Status OptimizeGraph(const tpu::TPUCompileMetadataProto& metadata,
     optimizer_opts.inline_multi_device_functions = true;
     optimizer_opts.inline_impl_selection_group_functions = true;
     optimizer_opts.inline_with_single_device_body_placer = true;
-    optimizer_opts.cf_consider_fn = DoNotConsiderOpsInBlockList;
     // Infer shapes for each node in the computation. Shape inference can help
     // skip constant folding of large shapes.
     GraphShapeInfo shape_info;
@@ -262,17 +212,16 @@ absl::Status OptimizeGraph(const tpu::TPUCompileMetadataProto& metadata,
     ConvertGraphShapeInfoToShapeMap(**graph, shape_info, &shape_map);
     GraphOptimizer::Options optimizer_opts;
     optimizer_opts.shape_map = &shape_map;
-    optimizer_opts.cf_consider_fn = DoNotConsiderOpsInBlockList;
     optimizer.Optimize(flr, flr->env(), flr->device(), graph, optimizer_opts);
   }
 
   TF_RETURN_IF_ERROR(RewriteTensorListWithConstElement(graph->get(), fld));
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Populates the mapping from return value to ShardingAndIndex.
-absl::Status AssignReturnValueToCore(
+Status AssignReturnValueToCore(
     const tpu::TPUCompileMetadataProto& metadata,
     std::vector<tpu::ShardingAndIndex>* retval_core_mapping) {
   std::vector<int> per_core_retval_counts(metadata.num_cores_per_replica(), 0);
@@ -301,32 +250,12 @@ absl::Status AssignReturnValueToCore(
       }
     }
   }
-  return absl::OkStatus();
-}
-
-// If the metadata specifies any bounded dynamic shapes in the arg then create
-// the matching xla shape  for the Argument.
-absl::Status MaybeBuildBoundedDynamicArgValues(
-    const tpu::TPUCompileMetadataProto::Arg& proto_arg,
-    const TensorShape& shape, XlaCompiler::Argument& arg) {
-  // If any entry in the is_bounded_dynamic_dim list is true then we update the
-  // value_bound and value_dynamism fields to indicate that there is dynamism,
-  // the bounds, and which dimensions are dynamic.
-  std::vector<bool> is_dynamic_dim(proto_arg.is_bounded_dynamic_dim().begin(),
-                                   proto_arg.is_bounded_dynamic_dim().end());
-  if (std::any_of(is_dynamic_dim.begin(), is_dynamic_dim.end(),
-                  [](bool v) { return v; })) {
-    xla::PrimitiveType primitive_type;
-    TF_RETURN_IF_ERROR(DataTypeToPrimitiveType(arg.type, &primitive_type));
-    arg.shape = xla::ShapeUtil::MakeShape(primitive_type, shape.dim_sizes(),
-                                          is_dynamic_dim);
-  }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Populates the arguments, core mapping and per core argument shape for the
 // computation.
-absl::Status BuildComputationArgumentDescriptions(
+Status BuildComputationArgumentDescriptions(
     const std::vector<TensorShape>& arg_shapes,
     const GuaranteedConsts& guaranteed_constants, const XlaCompiler& compiler,
     const tpu::TPUCompileMetadataProto& metadata,
@@ -352,10 +281,6 @@ absl::Status BuildComputationArgumentDescriptions(
     switch (proto_arg.kind()) {
       case tpu::TPUCompileMetadataProto::Arg::PARAMETER:
         arg.kind = XlaCompiler::Argument::kParameter;
-        // TODO(b/308845592) Maybe do this with the XlaCompileOnDemand version
-        // of this method and maybe move whole method to a shared location.
-        TF_RETURN_IF_ERROR(
-            MaybeBuildBoundedDynamicArgValues(proto_arg, arg_shapes[i], arg));
         break;
       case tpu::TPUCompileMetadataProto::Arg::VARIABLE:
         arg.kind = XlaCompiler::Argument::kResource;
@@ -411,12 +336,12 @@ absl::Status BuildComputationArgumentDescriptions(
   TF_RET_CHECK(constant_count == guaranteed_constants_size)
       << "Not all of the constant tensors were consumed.";
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 }  // namespace
 
 namespace internal {
-absl::Status RunShapeInferenceOnComputation(
+Status RunShapeInferenceOnComputation(
     const tpu::TPUCompileMetadataProto& metadata,
     const std::vector<PartialTensorShape>& arg_shapes, Graph* graph,
     FunctionLibraryRuntime* flr, GraphShapeInfo* shape_info) {
@@ -449,10 +374,10 @@ absl::Status RunShapeInferenceOnComputation(
 }
 }  // namespace internal
 
-absl::Status CompileTFFunctionToHlo(
+Status CompileTFFunctionToHlo(
     const FunctionLibraryDefinition& flib_def, int graph_def_version,
     const XlaShapeLayoutHelpers::ShapeDeterminationFns shape_determination_fns,
-    const std::vector<TensorShape>& arg_shapes, const DeviceType& device_type,
+    const std::vector<TensorShape>& arg_shapes,
     const GuaranteedConsts& guaranteed_constants, const NameAttrList& function,
     const tpu::TPUCompileMetadataProto& metadata,
     xla::CompileOnlyClient* client,
@@ -461,7 +386,7 @@ absl::Status CompileTFFunctionToHlo(
     bool use_tuple_args, XlaCompiler::CompilationResult* compilation_result) {
   XlaCompiler::Options compiler_options;
   FunctionLibraryDefinition flib_definition(flib_def);
-  compiler_options.device_type = device_type;
+  compiler_options.device_type = DeviceType(DEVICE_TPU_XLA_JIT);
   compiler_options.client = client;
   compiler_options.flib_def = &flib_definition;
   compiler_options.allow_cpu_custom_calls = false;
@@ -497,7 +422,7 @@ absl::Status CompileTFFunctionToHlo(
     args[i].node_name = fbody->arg_nodes[i]->name();
   }
 
-  std::vector<absl::InlinedVector<int64_t, 4UL>> arg_shape_dims;
+  std::vector<gtl::InlinedVector<int64_t, 4>> arg_shape_dims;
   arg_shape_dims.reserve(arg_shapes.size());
   std::vector<PartialTensorShape> partial_arg_shapes(arg_shapes.size());
   for (const TensorShape& shape : arg_shapes) {
@@ -529,7 +454,7 @@ absl::Status CompileTFFunctionToHlo(
                                 args, compilation_result);
 }
 
-absl::Status GetShardingInfo(
+Status GetShardingInfo(
     const tpu::TPUCompileMetadataProto& metadata,
     absl::Span<const TensorShape> arg_shapes,
     const XlaShapeLayoutHelpers::ShapeDeterminationFns shape_determination_fns,
@@ -558,7 +483,7 @@ absl::Status GetShardingInfo(
     TF_RETURN_IF_ERROR(SetPerCoreArgShapes(
         proto_arg, i, &xla_arg_shape, arg_core_mapping, per_core_arg_shapes));
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace tpu

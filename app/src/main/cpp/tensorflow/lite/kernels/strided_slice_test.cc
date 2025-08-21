@@ -156,15 +156,6 @@ using DataTypes =
     ::testing::Types<float, uint8_t, uint32_t, int8_t, int16_t, int32_t>;
 TYPED_TEST_SUITE(StridedSliceOpTest, DataTypes);
 
-template <typename TypeParam, typename T = TypeParam>
-auto ElementsAreTypedArray(std::vector<T> x) {
-  if constexpr (std::is_floating_point_v<TypeParam>) {
-    return ElementsAreArray(ArrayFloatNear(std::move(x)));
-  } else {
-    return ElementsAreArray(std::move(x));
-  }
-}
-
 #if GTEST_HAS_DEATH_TEST
 TYPED_TEST(StridedSliceOpTest, UnsupportedInputSize) {
   EXPECT_DEATH(StridedSliceOpModel<TypeParam>({2, 2, 2, 2, 2, 2}, {5}, {5}, {5},
@@ -200,7 +191,7 @@ TYPED_TEST(StridedSliceOpTest, Offset) {
         0, 0, 0, 0, constant_tensors, /*offset=*/true);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({3}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({1, 2, 3}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({1, 2, 3}));
     if (constant_tensors) {
       EXPECT_THAT(m.GetOutputTensor(0)->allocation_type, kTfLitePersistentRo);
     } else {
@@ -221,7 +212,7 @@ TYPED_TEST(StridedSliceOpTest, OffsetArray) {
         {2, 2}, {1, 1}, 0, 0, 0, 0, 0, constant_tensors, /*offset=*/true);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({2, 2}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({1, 2, 5, 6}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({1, 2, 5, 6}));
     if (constant_tensors) {
       EXPECT_THAT(m.GetOutputTensor(0)->allocation_type, kTfLitePersistentRo);
     } else {
@@ -238,7 +229,7 @@ TYPED_TEST(StridedSliceOpTest, OffsetConstant) {
       /*offset=*/true);
   ASSERT_EQ(m.Invoke(), kTfLiteOk);
   EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({2, 2}));
-  EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({1, 2, 5, 6}));
+  EXPECT_THAT(m.GetOutput(), ElementsAreArray({1, 2, 5, 6}));
   EXPECT_THAT(m.GetOutputTensor(0)->allocation_type, kTfLiteArenaRw);
 }
 
@@ -254,7 +245,7 @@ TYPED_TEST(StridedSliceOpTest, OffsetConstantStride) {
                                    /*offset=*/true);
   ASSERT_EQ(m.Invoke(), kTfLiteOk);
   EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({2, 2}));
-  EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({1, 3, 13, 15}));
+  EXPECT_THAT(m.GetOutput(), ElementsAreArray({1, 3, 13, 15}));
   EXPECT_THAT(m.GetOutputTensor(0)->allocation_type, kTfLiteArenaRw);
 }
 
@@ -270,8 +261,7 @@ TYPED_TEST(StridedSliceOpTest, OffsetConstantNegativeStride) {
                                    /*offset=*/true);
   ASSERT_EQ(m.Invoke(), kTfLiteOk);
   EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({2, 2}));
-  EXPECT_THAT(m.GetOutput(),
-              ElementsAreTypedArray<TypeParam>({28, 26, 16, 14}));
+  EXPECT_THAT(m.GetOutput(), ElementsAreArray({28, 26, 16, 14}));
   EXPECT_THAT(m.GetOutputTensor(0)->allocation_type, kTfLiteArenaRw);
 }
 
@@ -285,7 +275,7 @@ TYPED_TEST(StridedSliceOpTest, In1D) {
                                      {1}, 0, 0, 0, 0, 0, constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({2}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({2, 3}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({2, 3}));
   }
 }
 
@@ -299,7 +289,7 @@ TYPED_TEST(StridedSliceOpTest, In1DConst) {
                                      {1}, 0, 0, 0, 0, 0, constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({2}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({2, 3}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({2, 3}));
   }
 }
 
@@ -318,7 +308,7 @@ TYPED_TEST(StridedSliceOpTest, In1D_Int32End) {
                                      constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({32768}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>(values));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray(values));
   }
 }
 
@@ -345,7 +335,7 @@ TYPED_TEST(StridedSliceOpTest, In1D_NegativeBegin) {
                                      {3}, {1}, 0, 0, 0, 0, 0, constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({2}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({2, 3}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({2, 3}));
   }
 }
 
@@ -359,7 +349,7 @@ TYPED_TEST(StridedSliceOpTest, In1D_OutOfRangeBegin) {
                                      {3}, {1}, 0, 0, 0, 0, 0, constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({3}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({1, 2, 3}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({1, 2, 3}));
   }
 }
 
@@ -374,7 +364,7 @@ TYPED_TEST(StridedSliceOpTest, In1D_NegativeEnd) {
                                      constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({1}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({2}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({2}));
   }
 }
 
@@ -388,7 +378,7 @@ TYPED_TEST(StridedSliceOpTest, In1D_OutOfRangeEnd) {
                                      {5}, {1}, 0, 0, 0, 0, 0, constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({3}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({2, 3, 4}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({2, 3, 4}));
   }
 }
 
@@ -402,7 +392,7 @@ TYPED_TEST(StridedSliceOpTest, In1D_BeginMask) {
                                      {1}, 1, 0, 0, 0, 0, constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({3}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({1, 2, 3}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({1, 2, 3}));
   }
 }
 
@@ -418,7 +408,7 @@ TYPED_TEST(StridedSliceOpTest, In1D_NegativeBeginNegativeStride) {
 
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({1}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({3}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({3}));
   }
 }
 
@@ -432,7 +422,7 @@ TYPED_TEST(StridedSliceOpTest, In1D_OutOfRangeBeginNegativeStride) {
                                      {-1}, 0, 0, 0, 0, 0, constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({1}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({4}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({4}));
   }
 }
 
@@ -447,7 +437,7 @@ TYPED_TEST(StridedSliceOpTest, In1D_NegativeEndNegativeStride) {
                                      constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({2}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({3, 2}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({3, 2}));
   }
 }
 
@@ -462,7 +452,7 @@ TYPED_TEST(StridedSliceOpTest, In1D_OutOfRangeEndNegativeStride) {
                                      constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({2}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({2, 1}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({2, 1}));
   }
 }
 
@@ -476,7 +466,7 @@ TYPED_TEST(StridedSliceOpTest, In1D_EndMask) {
                                      {1}, 0, 1, 0, 0, 0, constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({3}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({2, 3, 4}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({2, 3, 4}));
   }
 }
 
@@ -490,7 +480,7 @@ TYPED_TEST(StridedSliceOpTest, In1D_NegStride) {
                                      {-1}, 0, 0, 0, 0, 0, constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({3}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({3, 2, 1}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({3, 2, 1}));
   }
 }
 
@@ -504,7 +494,7 @@ TYPED_TEST(StridedSliceOpTest, In1D_EvenLenStride2) {
                                      0, 0, 0, 0, 0, constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({1}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({1}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({1}));
   }
 }
 
@@ -518,7 +508,7 @@ TYPED_TEST(StridedSliceOpTest, In1D_OddLenStride2) {
                                      {2}, 0, 0, 0, 0, 0, constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({2}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({1, 3}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({1, 3}));
   }
 }
 
@@ -533,8 +523,7 @@ TYPED_TEST(StridedSliceOpTest, In2D_Identity) {
                                      constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({2, 3}));
-    EXPECT_THAT(m.GetOutput(),
-                ElementsAreTypedArray<TypeParam>({1, 2, 3, 4, 5, 6}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({1, 2, 3, 4, 5, 6}));
   }
 }
 
@@ -549,7 +538,7 @@ TYPED_TEST(StridedSliceOpTest, In2D) {
                                      constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({1, 2}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({4, 5}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({4, 5}));
   }
 }
 
@@ -564,7 +553,7 @@ TYPED_TEST(StridedSliceOpTest, In2D_Stride2) {
                                      constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({1, 2}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({1, 3}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({1, 3}));
   }
 }
 
@@ -579,7 +568,7 @@ TYPED_TEST(StridedSliceOpTest, In2D_NegStride) {
                                      constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({1, 3}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({6, 5, 4}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({6, 5, 4}));
   }
 }
 
@@ -594,7 +583,7 @@ TYPED_TEST(StridedSliceOpTest, In2D_BeginMask) {
                                      constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({2, 2}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({1, 2, 4, 5}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({1, 2, 4, 5}));
   }
 }
 
@@ -609,7 +598,7 @@ TYPED_TEST(StridedSliceOpTest, In2D_EndMask) {
                                      constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({1, 3}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({4, 5, 6}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({4, 5, 6}));
   }
 }
 TYPED_TEST(StridedSliceOpTest, In2D_NegStrideBeginMask) {
@@ -623,7 +612,7 @@ TYPED_TEST(StridedSliceOpTest, In2D_NegStrideBeginMask) {
                                      constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({1, 3}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({6, 5, 4}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({6, 5, 4}));
   }
 }
 TYPED_TEST(StridedSliceOpTest, In2D_NegStrideEndMask) {
@@ -637,7 +626,7 @@ TYPED_TEST(StridedSliceOpTest, In2D_NegStrideEndMask) {
                                      constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({1, 2}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({5, 4}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({5, 4}));
   }
 }
 
@@ -683,7 +672,7 @@ TYPED_TEST(StridedSliceOpTest, In3D_Strided2) {
         {0, 0, 0}, {2, 3, 2}, {2, 2, 2}, 0, 0, 0, 0, 0, constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({1, 2, 1}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({1, 5}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({1, 5}));
   }
 }
 TYPED_TEST(StridedSliceOpTest, In1D_ShrinkAxisMask1) {
@@ -696,7 +685,7 @@ TYPED_TEST(StridedSliceOpTest, In1D_ShrinkAxisMask1) {
                                      {1}, 0, 0, 0, 0, 1, constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_TRUE(m.GetOutputShape().empty());
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({2}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({2}));
   }
 }
 TYPED_TEST(StridedSliceOpTest, In1D_ShrinkAxisMask1_NegativeSlice) {
@@ -711,7 +700,7 @@ TYPED_TEST(StridedSliceOpTest, In1D_ShrinkAxisMask1_NegativeSlice) {
 
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_TRUE(m.GetOutputShape().empty());
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({3}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({3}));
   }
 }
 TYPED_TEST(StridedSliceOpTest, In2D_ShrinkAxis3_NegativeSlice) {
@@ -727,7 +716,7 @@ TYPED_TEST(StridedSliceOpTest, In2D_ShrinkAxis3_NegativeSlice) {
 
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_TRUE(m.GetOutputShape().empty());
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({2}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({2}));
   }
 }
 TYPED_TEST(StridedSliceOpTest, In2D_ShrinkAxis2_BeginEndAxis1_NegativeSlice) {
@@ -743,7 +732,7 @@ TYPED_TEST(StridedSliceOpTest, In2D_ShrinkAxis2_BeginEndAxis1_NegativeSlice) {
 
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({4}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({0, 1, 2, 3}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({0, 1, 2, 3}));
   }
 }
 TYPED_TEST(StridedSliceOpTest, In1D_BeginMaskShrinkAxisMask1) {
@@ -756,7 +745,7 @@ TYPED_TEST(StridedSliceOpTest, In1D_BeginMaskShrinkAxisMask1) {
                                      {1}, 1, 0, 0, 0, 1, constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_TRUE(m.GetOutputShape().empty());
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({1}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({1}));
   }
 }
 TYPED_TEST(StridedSliceOpTest, In2D_ShrinkAxisMask1) {
@@ -770,7 +759,7 @@ TYPED_TEST(StridedSliceOpTest, In2D_ShrinkAxisMask1) {
                                      constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({3}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({1, 2, 3}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({1, 2, 3}));
   }
 }
 TYPED_TEST(StridedSliceOpTest, In2D_ShrinkAxisMask2) {
@@ -784,7 +773,7 @@ TYPED_TEST(StridedSliceOpTest, In2D_ShrinkAxisMask2) {
                                      constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({2}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({1, 4}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({1, 4}));
   }
 }
 TYPED_TEST(StridedSliceOpTest, In2D_ShrinkAxisMask3) {
@@ -798,7 +787,7 @@ TYPED_TEST(StridedSliceOpTest, In2D_ShrinkAxisMask3) {
                                      constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_TRUE(m.GetOutputShape().empty());
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({1}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({1}));
   }
 }
 TYPED_TEST(StridedSliceOpTest, In3D_IdentityShrinkAxis1) {
@@ -812,8 +801,7 @@ TYPED_TEST(StridedSliceOpTest, In3D_IdentityShrinkAxis1) {
         {0, 0, 0}, {1, 3, 2}, {1, 1, 1}, 0, 0, 0, 0, 1, constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({3, 2}));
-    EXPECT_THAT(m.GetOutput(),
-                ElementsAreTypedArray<TypeParam>({1, 2, 3, 4, 5, 6}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({1, 2, 3, 4, 5, 6}));
   }
 }
 TYPED_TEST(StridedSliceOpTest, In3D_IdentityShrinkAxis2) {
@@ -827,7 +815,7 @@ TYPED_TEST(StridedSliceOpTest, In3D_IdentityShrinkAxis2) {
         {0, 0, 0}, {2, 1, 2}, {1, 1, 1}, 0, 0, 0, 0, 2, constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({2, 2}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({1, 2, 7, 8}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({1, 2, 7, 8}));
   }
 }
 TYPED_TEST(StridedSliceOpTest, In3D_IdentityShrinkAxis3) {
@@ -841,7 +829,7 @@ TYPED_TEST(StridedSliceOpTest, In3D_IdentityShrinkAxis3) {
         {0, 0, 0}, {1, 1, 2}, {1, 1, 1}, 0, 0, 0, 0, 3, constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({2}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({1, 2}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({1, 2}));
   }
 }
 TYPED_TEST(StridedSliceOpTest, In3D_IdentityShrinkAxis4) {
@@ -855,8 +843,7 @@ TYPED_TEST(StridedSliceOpTest, In3D_IdentityShrinkAxis4) {
         {0, 0, 0}, {2, 3, 1}, {1, 1, 1}, 0, 0, 0, 0, 4, constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({2, 3}));
-    EXPECT_THAT(m.GetOutput(),
-                ElementsAreTypedArray<TypeParam>({1, 3, 5, 7, 9, 11}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({1, 3, 5, 7, 9, 11}));
   }
 }
 TYPED_TEST(StridedSliceOpTest, In3D_IdentityShrinkAxis5) {
@@ -870,7 +857,7 @@ TYPED_TEST(StridedSliceOpTest, In3D_IdentityShrinkAxis5) {
         {0, 0, 0}, {1, 3, 1}, {1, 1, 1}, 0, 0, 0, 0, 5, constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({3}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({1, 3, 5}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({1, 3, 5}));
   }
 }
 TYPED_TEST(StridedSliceOpTest, In3D_IdentityShrinkAxis6) {
@@ -884,7 +871,7 @@ TYPED_TEST(StridedSliceOpTest, In3D_IdentityShrinkAxis6) {
         {0, 0, 0}, {2, 1, 1}, {1, 1, 1}, 0, 0, 0, 0, 6, constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({2}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({1, 7}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({1, 7}));
   }
 }
 TYPED_TEST(StridedSliceOpTest, In3D_IdentityShrinkAxis7) {
@@ -894,7 +881,7 @@ TYPED_TEST(StridedSliceOpTest, In3D_IdentityShrinkAxis7) {
         {0, 0, 0}, {1, 1, 1}, {1, 1, 1}, 0, 0, 0, 0, 7, constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_TRUE(m.GetOutputShape().empty());
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({1}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({1}));
   }
 
   // This tests catches a very subtle bug that was fixed by cl/188403234.
@@ -905,7 +892,7 @@ TYPED_TEST(StridedSliceOpTest, RunTwice) {
                                    false);
 
   ASSERT_EQ(m.Invoke(), kTfLiteOk);
-  EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({1, 2, 4, 5}));
+  EXPECT_THAT(m.GetOutput(), ElementsAreArray({1, 2, 4, 5}));
 
   auto setup_inputs = [&m]() {
     m.template SetInput<TypeParam>({1, 2, 3, 4, 5, 6},
@@ -918,7 +905,7 @@ TYPED_TEST(StridedSliceOpTest, RunTwice) {
   setup_inputs();
   ASSERT_EQ(m.Invoke(), kTfLiteOk);
   // Prior to cl/188403234 this was {4, 5}.
-  EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({1, 2, 4, 5}));
+  EXPECT_THAT(m.GetOutput(), ElementsAreArray({1, 2, 4, 5}));
 }
 TYPED_TEST(StridedSliceOpTest, In3D_IdentityShrinkAxis1Uint8) {
   for (bool constant_tensors : {true, false}) {
@@ -931,8 +918,7 @@ TYPED_TEST(StridedSliceOpTest, In3D_IdentityShrinkAxis1Uint8) {
         {0, 0, 0}, {1, 3, 2}, {1, 1, 1}, 0, 0, 0, 0, 1, constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({3, 2}));
-    EXPECT_THAT(m.GetOutput(),
-                ElementsAreTypedArray<TypeParam>({1, 2, 3, 4, 5, 6}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({1, 2, 3, 4, 5, 6}));
   }
 }
 TYPED_TEST(StridedSliceOpTest, In3D_IdentityShrinkAxis1int8) {
@@ -946,8 +932,7 @@ TYPED_TEST(StridedSliceOpTest, In3D_IdentityShrinkAxis1int8) {
         {0, 0, 0}, {1, 3, 2}, {1, 1, 1}, 0, 0, 0, 0, 1, constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({3, 2}));
-    EXPECT_THAT(m.GetOutput(),
-                ElementsAreTypedArray<TypeParam>({1, 2, 3, 4, 5, 6}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({1, 2, 3, 4, 5, 6}));
   }
 }
 TYPED_TEST(StridedSliceOpTest, In5D_Identity) {
@@ -963,8 +948,7 @@ TYPED_TEST(StridedSliceOpTest, In5D_Identity) {
         constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({2, 1, 2, 1, 2}));
-    EXPECT_THAT(m.GetOutput(),
-                ElementsAreTypedArray<TypeParam>({1, 2, 3, 4, 9, 10, 11, 12}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({1, 2, 3, 4, 9, 10, 11, 12}));
   }
 }
 TYPED_TEST(StridedSliceOpTest, In5D_IdentityShrinkAxis1) {
@@ -980,7 +964,7 @@ TYPED_TEST(StridedSliceOpTest, In5D_IdentityShrinkAxis1) {
         constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({1, 2, 1, 2}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({1, 2, 3, 4}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({1, 2, 3, 4}));
   }
 }
 TYPED_TEST(StridedSliceOpTest, In3D_SmallBegin) {
@@ -994,8 +978,7 @@ TYPED_TEST(StridedSliceOpTest, In3D_SmallBegin) {
         {1}, {1}, 0, 0, 0, 0, 0, constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({1, 3, 2}));
-    EXPECT_THAT(m.GetOutput(),
-                ElementsAreTypedArray<TypeParam>({1, 2, 3, 4, 5, 6}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({1, 2, 3, 4, 5, 6}));
   }
 }
 TYPED_TEST(StridedSliceOpTest, In3D_SmallBeginWithhrinkAxis1) {
@@ -1009,8 +992,7 @@ TYPED_TEST(StridedSliceOpTest, In3D_SmallBeginWithhrinkAxis1) {
         {1}, {1}, 0, 0, 0, 0, 1, constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({3, 2}));
-    EXPECT_THAT(m.GetOutput(),
-                ElementsAreTypedArray<TypeParam>({1, 2, 3, 4, 5, 6}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({1, 2, 3, 4, 5, 6}));
   }
 }
 TYPED_TEST(StridedSliceOpTest, In3D_BackwardSmallBeginEndMask) {
@@ -1100,7 +1082,7 @@ TYPED_TEST(StridedSliceOpTest, In2D_ShrinkAxis_Endmask_AtSameAxis) {
 
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({1}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({1}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({1}));
   }
 }
 TYPED_TEST(StridedSliceOpTest, EllipsisMask1_NewAxisMask2) {
@@ -1115,8 +1097,7 @@ TYPED_TEST(StridedSliceOpTest, EllipsisMask1_NewAxisMask2) {
 
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({2, 3, 1, 1}));
-    EXPECT_THAT(m.GetOutput(),
-                ElementsAreTypedArray<TypeParam>({1, 3, 5, 7, 9, 11}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({1, 3, 5, 7, 9, 11}));
   }
 }
 TYPED_TEST(StridedSliceOpTest, EllipsisMask2_NewAxisMask1) {
@@ -1131,8 +1112,7 @@ TYPED_TEST(StridedSliceOpTest, EllipsisMask2_NewAxisMask1) {
 
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({1, 2, 3, 1}));
-    EXPECT_THAT(m.GetOutput(),
-                ElementsAreTypedArray<TypeParam>({1, 3, 5, 7, 9, 11}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({1, 3, 5, 7, 9, 11}));
   }
 }
 TYPED_TEST(StridedSliceOpTest, EllipsisMask2_NewAxisMask5) {
@@ -1163,7 +1143,7 @@ TYPED_TEST(StridedSliceOpTest, EllipsisMask2_NewAxisMask2) {
 
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({1, 3, 1}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({1, 3, 5}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({1, 3, 5}));
   }
 }
 TYPED_TEST(StridedSliceOpTest, EllipsisMask4_NewAxisMask2) {
@@ -1178,8 +1158,7 @@ TYPED_TEST(StridedSliceOpTest, EllipsisMask4_NewAxisMask2) {
 
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({1, 1, 3, 2}));
-    EXPECT_THAT(m.GetOutput(),
-                ElementsAreTypedArray<TypeParam>({1, 2, 3, 4, 5, 6}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({1, 2, 3, 4, 5, 6}));
   }
 }
 TYPED_TEST(StridedSliceOpTest, EllipsisMask2) {
@@ -1194,7 +1173,7 @@ TYPED_TEST(StridedSliceOpTest, EllipsisMask2) {
 
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({1, 3, 1}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({1, 3, 5}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({1, 3, 5}));
   }
 }
 TYPED_TEST(StridedSliceOpTest, NewAxisMask2) {
@@ -1209,7 +1188,7 @@ TYPED_TEST(StridedSliceOpTest, NewAxisMask2) {
 
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({1, 1, 1, 2}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({1, 2}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({1, 2}));
   }
 }
 TYPED_TEST(StridedSliceOpTest, NewAxisMask1) {
@@ -1224,7 +1203,7 @@ TYPED_TEST(StridedSliceOpTest, NewAxisMask1) {
 
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({1, 2, 1, 2}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({1, 2, 7, 8}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({1, 2, 7, 8}));
   }
 }
 TYPED_TEST(StridedSliceOpTest, NoInfiniteLoop) {
@@ -1250,7 +1229,7 @@ TYPED_TEST(StridedSliceOpTest, MinusThreeMinusFourMinusOne) {
                                      constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({1}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({2}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({2}));
   }
 }
 TYPED_TEST(StridedSliceOpTest, MinusFourMinusThreeOne) {
@@ -1264,7 +1243,7 @@ TYPED_TEST(StridedSliceOpTest, MinusFourMinusThreeOne) {
                                      constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({1}));
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({1}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({1}));
   }
 }
 TYPED_TEST(StridedSliceOpTest, OneOneOne) {
@@ -1289,7 +1268,7 @@ TYPED_TEST(StridedSliceOpTest, OneOneOneShrinkAxis) {
                                      {1}, 0, 0, 0, 0, 1, constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), IsEmpty());
-    EXPECT_THAT(m.GetOutput(), ElementsAreTypedArray<TypeParam>({2}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({2}));
   }
 }
 TYPED_TEST(StridedSliceOpTest, OneOneOneShrinkAxisOOB) {
@@ -1339,8 +1318,7 @@ TYPED_TEST(StridedSliceOpTest, NegEndMask) {
                                      0, constant_tensors);
     ASSERT_EQ(m.Invoke(), kTfLiteOk);
     EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({2, 3}));
-    EXPECT_THAT(m.GetOutput(),
-                ElementsAreTypedArray<TypeParam>({3, 2, 1, 6, 5, 4}));
+    EXPECT_THAT(m.GetOutput(), ElementsAreArray({3, 2, 1, 6, 5, 4}));
   }
 }
 TYPED_TEST(StridedSliceOpTest, NoopOffset) {
@@ -1348,8 +1326,7 @@ TYPED_TEST(StridedSliceOpTest, NoopOffset) {
                                    {0, -1}, {2, -3}, {1, -1}, 0, 0b10, 0, 0, 0);
   ASSERT_EQ(m.Invoke(), kTfLiteOk);
   EXPECT_THAT(m.GetOutputShape(), ElementsAreArray({2, 3}));
-  EXPECT_THAT(m.GetOutput(),
-              ElementsAreTypedArray<TypeParam>({3, 2, 1, 6, 5, 4}));
+  EXPECT_THAT(m.GetOutput(), ElementsAreArray({3, 2, 1, 6, 5, 4}));
 }
 }  // namespace
 }  // namespace tflite

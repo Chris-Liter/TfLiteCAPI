@@ -15,8 +15,6 @@ limitations under the License.
 
 #include "tensorflow/core/grappler/optimizers/data/meta_optimizer.h"
 
-#include <array>
-
 #include "absl/status/status.h"
 #include "absl/strings/str_split.h"
 #include "tensorflow/core/framework/dataset.h"
@@ -38,16 +36,15 @@ using ConfigMap =
     std::map<string, tensorflow::RewriterConfig_CustomGraphOptimizer>;
 
 // tf.data optimizations, in the order we want to perform them.
-// clang-format off
-constexpr std::array<const char*, 22> kTFDataOptimizations = {
+constexpr std::array<const char*, 19> kTFDataOptimizations = {
     "noop_elimination",
     "disable_intra_op_parallelism",
     "use_private_thread_pool",
     "shuffle_and_repeat_fusion",
-    "map_parallelization",
     "map_fusion",
     "filter_fusion",
     "map_and_filter_fusion",
+    "map_parallelization",
     "map_and_batch_fusion",
     "batch_parallelization",
     "filter_parallelization",
@@ -55,22 +52,18 @@ constexpr std::array<const char*, 22> kTFDataOptimizations = {
     "parallel_batch",
     "slack",
     "autotune_buffer_sizes",
-    "seq_interleave_prefetch",
     "inject_prefetch",
-    "inject_io_prefetch_eligible",
-    "inject_io_prefetch",
     "disable_prefetch_legacy_autotune",
     "enable_gradient_descent",
     "make_deterministic"};
-// clang-format on
 
 // Parses a list of string optimizer configurations into a map from
 // optimizer name -> rewriter config for that optimizer.
-absl::Status ToConfigMap(
+Status ToConfigMap(
     const tensorflow::RewriterConfig_CustomGraphOptimizer* config,
     ConfigMap* result) {
   auto found = gtl::FindOrNull(config->parameter_map(), "optimizer_configs");
-  if (!found) return absl::OkStatus();
+  if (!found) return OkStatus();
 
   auto& options = found->list().s();
   for (const auto& option_string : options) {
@@ -98,14 +91,13 @@ absl::Status ToConfigMap(
         config_value);
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace
 
-absl::Status TFDataMetaOptimizer::Optimize(Cluster* cluster,
-                                           const GrapplerItem& item,
-                                           GraphDef* output) {
+Status TFDataMetaOptimizer::Optimize(Cluster* cluster, const GrapplerItem& item,
+                                     GraphDef* output) {
   // Stores the optimized item so far.
   GrapplerItem optimized_item = item;
 
@@ -114,8 +106,7 @@ absl::Status TFDataMetaOptimizer::Optimize(Cluster* cluster,
     tensorflow::metrics::ScopedCounter<2> timings(
         tensorflow::metrics::GetGraphOptimizationCounter(),
         {"TFData", optimization});
-    absl::Status status =
-        ApplyOptimization(optimization, cluster, &optimized_item);
+    Status status = ApplyOptimization(optimization, cluster, &optimized_item);
     timings.ReportAndStop();
     if (!status.ok()) return status;
   }
@@ -165,22 +156,22 @@ absl::Status TFDataMetaOptimizer::Optimize(Cluster* cluster,
   if (optimized_functions) {
     *output->mutable_library() = flib.ToProto();
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status TFDataMetaOptimizer::ApplyOptimization(const string& name,
-                                                    Cluster* cluster,
-                                                    GrapplerItem* item) const {
+Status TFDataMetaOptimizer::ApplyOptimization(const string& name,
+                                              Cluster* cluster,
+                                              GrapplerItem* item) const {
   GRAPPLER_RETURN_IF_DEADLINE_EXCEEDED();
 
   const auto* optimizer = gtl::FindOrNull(enabled_optimizers_, name);
   if (!optimizer) {
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   GraphDef result;
   (*optimizer)->set_deadline_usec(this->deadline_usec());
-  absl::Status status = (*optimizer)->Optimize(cluster, *item, &result);
+  Status status = (*optimizer)->Optimize(cluster, *item, &result);
   if (status.ok()) {
     // The optimizer succeeded and wrote the optimized graph to result.
     item->graph.Swap(&result);
@@ -188,15 +179,15 @@ absl::Status TFDataMetaOptimizer::ApplyOptimization(const string& name,
     // A status of errors::Aborted just means that the optimizer was a no-op and
     // did not populate result. Swallow the error status and leave the original
     // graph in item.
-    status = absl::OkStatus();
+    status = OkStatus();
   }
 
   return status;
 }
 
-absl::Status TFDataMetaOptimizer::Init(
+Status TFDataMetaOptimizer::Init(
     const tensorflow::RewriterConfig_CustomGraphOptimizer* config) {
-  if (!config) return absl::OkStatus();
+  if (!config) return OkStatus();
 
   // Initialize custom tf.data optimizers based on config.
   auto& optimizers = config->parameter_map().at("optimizers").list().s();
@@ -218,7 +209,7 @@ absl::Status TFDataMetaOptimizer::Init(
     }
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 REGISTER_GRAPH_OPTIMIZER_AS(TFDataMetaOptimizer, "tf_data_meta_optimizer");

@@ -26,13 +26,13 @@ FunctionHandleCache::FunctionHandleCache(FunctionLibraryRuntime* lib)
           strings::Printf("%lld", static_cast<long long>(random::New64()))) {}
 
 FunctionHandleCache::~FunctionHandleCache() {
-  absl::Status s = Clear();
+  Status s = Clear();
   if (!s.ok()) {
     LOG(ERROR) << "Failed to clear function handle cache: " << s.ToString();
   }
 }
 
-absl::Status FunctionHandleCache::Instantiate(
+Status FunctionHandleCache::Instantiate(
     const string& function_name, AttrSlice attrs,
     FunctionLibraryRuntime::InstantiateOptions options,
     FunctionLibraryRuntime::Handle* handle) {
@@ -51,16 +51,16 @@ absl::Status FunctionHandleCache::Instantiate(
   } else {
     *handle = h;
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status FunctionHandleCache::Clear() {
+Status FunctionHandleCache::Clear() {
   mutex_lock l(mu_);
   for (const auto& entry : handles_) {
     TF_RETURN_IF_ERROR(lib_->ReleaseHandle(entry.second));
   }
   handles_.clear();
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace tensorflow

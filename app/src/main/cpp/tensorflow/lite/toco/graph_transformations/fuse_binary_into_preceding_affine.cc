@@ -17,9 +17,7 @@ limitations under the License.
 #include <unordered_map>
 #include <vector>
 
-#include "absl/status/status.h"
 #include "tensorflow/core/platform/logging.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/lite/toco/graph_transformations/graph_transformations.h"
 #include "tensorflow/lite/toco/model.h"
 #include "tensorflow/lite/toco/runtime/types.h"
@@ -205,9 +203,9 @@ void FuseMulOrDivParamsIntoPrecedingAffine(Model* model, Operator* preceding_op,
 }
 }  // namespace
 
-absl::Status FuseBinaryIntoPrecedingAffine::Run(Model* model,
-                                                std::size_t op_index,
-                                                bool* modified) {
+::tensorflow::Status FuseBinaryIntoPrecedingAffine::Run(Model* model,
+                                                        std::size_t op_index,
+                                                        bool* modified) {
   *modified = false;
   const auto binary_it = model->operators.begin() + op_index;
   const auto* binary_op = binary_it->get();
@@ -215,7 +213,7 @@ absl::Status FuseBinaryIntoPrecedingAffine::Run(Model* model,
       binary_op->type != OperatorType::kMul &&
       binary_op->type != OperatorType::kSub &&
       binary_op->type != OperatorType::kDiv) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   CHECK_EQ(binary_op->inputs.size(), 2);
@@ -233,12 +231,12 @@ absl::Status FuseBinaryIntoPrecedingAffine::Run(Model* model,
   };
   if (!is_input_constant[0] && !is_input_constant[1]) {
     // Neither input is constant, so nothing we can fuse into a constant.
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   if (is_input_constant[0] && is_input_constant[1]) {
     // Both inputs are constants. That's a job for constants
     // propagation, not for us to handle here.
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   const int index_of_constant_input = is_input_constant[0] ? 0 : 1;
   const int index_of_variable_input = is_input_constant[0] ? 1 : 0;
@@ -250,7 +248,7 @@ absl::Status FuseBinaryIntoPrecedingAffine::Run(Model* model,
     if (index_of_constant_input != 1) {
       AddMessageF("Not fusing %s because the denominator is not constant",
                   LogName(*binary_op));
-      return absl::OkStatus();
+      return ::tensorflow::OkStatus();
     }
   }
 
@@ -259,12 +257,12 @@ absl::Status FuseBinaryIntoPrecedingAffine::Run(Model* model,
   if (!preceding_op) {
     AddMessageF("Not fusing %s because it is not the output of another op",
                 LogName(*binary_op));
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   for (const std::string& output_array : model->flags.output_arrays()) {
     if (preceding_op->outputs[0] == output_array) {
-      return absl::OkStatus();
+      return ::tensorflow::OkStatus();
     }
   }
 
@@ -276,14 +274,14 @@ absl::Status FuseBinaryIntoPrecedingAffine::Run(Model* model,
         "Not fusing %s because the preceding %s is not of one of the supported "
         "types",
         LogName(*binary_op), LogName(*preceding_op));
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   if (preceding_op->type == OperatorType::kTransposeConv &&
       binary_op->type != OperatorType::kAdd) {
     AddMessageF("Not fusing %s to preceding %s", LogName(*binary_op),
                 LogName(*preceding_op));
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   if (preceding_op->fused_activation_function !=
@@ -292,14 +290,14 @@ absl::Status FuseBinaryIntoPrecedingAffine::Run(Model* model,
         "Not fusing %s because the preceding %s has a fused activation "
         "function",
         LogName(*binary_op), LogName(*preceding_op));
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   if (preceding_op->inputs.size() < 3) {
     AddMessageF(
         "Not fusing %s because the preceding %s does not have a bias vector",
         LogName(*binary_op), LogName(*preceding_op));
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   const auto& weights_name = preceding_op->inputs[1];
@@ -316,7 +314,7 @@ absl::Status FuseBinaryIntoPrecedingAffine::Run(Model* model,
         LogName(*binary_op), LogName(*preceding_op),
         ArrayDataTypeName(weights.data_type),
         ArrayDataTypeName(bias.data_type));
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   const int count_ops_consuming_bias = CountOpsWithInput(*model, bias_name);
@@ -330,14 +328,14 @@ absl::Status FuseBinaryIntoPrecedingAffine::Run(Model* model,
           "Not fusing %s because the preceding %s has a non-constant bias "
           "array",
           LogName(*binary_op), LogName(*preceding_op));
-      return absl::OkStatus();
+      return ::tensorflow::OkStatus();
     }
     if (count_ops_consuming_bias > 1) {
       AddMessageF(
           "Not fusing %s because the bias of the preceding %s is consumed by "
           "another op",
           LogName(*binary_op), LogName(*preceding_op));
-      return absl::OkStatus();
+      return ::tensorflow::OkStatus();
     }
   } else {
     if (!weights.buffer || !bias.buffer) {
@@ -345,14 +343,14 @@ absl::Status FuseBinaryIntoPrecedingAffine::Run(Model* model,
           "Not fusing %s because the preceding %s has non-constant weights or "
           "bias arrays",
           LogName(*binary_op), LogName(*preceding_op));
-      return absl::OkStatus();
+      return ::tensorflow::OkStatus();
     }
     if (count_ops_consuming_weights > 1 || count_ops_consuming_bias > 1) {
       AddMessageF(
           "Not fusing %s because the weights or bias of the preceding %s is "
           "consumed by another op",
           LogName(*binary_op), LogName(*preceding_op));
-      return absl::OkStatus();
+      return ::tensorflow::OkStatus();
     }
   }
 
@@ -364,7 +362,7 @@ absl::Status FuseBinaryIntoPrecedingAffine::Run(Model* model,
         "Not fusing %s because the output of the preceding %s is consumed by "
         "another op",
         LogName(*binary_op), LogName(*preceding_op));
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   AddMessageF("Fusing %s into the preceding %s", LogName(*binary_op),
@@ -388,7 +386,7 @@ absl::Status FuseBinaryIntoPrecedingAffine::Run(Model* model,
       binary_op->fused_activation_function;
   DeleteOpAndArrays(model, binary_op);
   *modified = true;
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 }  // namespace toco

@@ -15,9 +15,8 @@ limitations under the License.
 #include <fstream>
 #include <string>
 
-#include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include "tensorflow/lite/c/c_api_types.h"
+#include "benchmark/benchmark.h"  // from @com_google_benchmark
 #include "tensorflow/lite/kernels/acceleration_test_util.h"
 #include "tensorflow/lite/kernels/acceleration_test_util_internal.h"
 #include "tensorflow/lite/kernels/test_delegate_providers.h"
@@ -85,16 +84,7 @@ void ValidateAcceleration(const SingleOpModel& model) {
       GetAccelerationTestParam<DelegateTestSuiteAccelerationTestParams>(test_id)
           .has_value();
   if (!supported) {
-    // Note that the error `kTfLiteApplicationError` is accepted here.
-    // We only want to check the delegate is working properly, so an error due
-    // to incompatibility between the model and the delegate is not considered a
-    // failure here.
-    ASSERT_THAT(model.GetDelegateApplicationStatus().value_or(kTfLiteOk),
-                testing::AnyOf(kTfLiteOk, kTfLiteApplicationError));
     return;
-  } else {
-    ASSERT_EQ(model.GetDelegateApplicationStatus().value_or(kTfLiteOk),
-              kTfLiteOk);
   }
 
   // If we have multiple delegates applied, we would skip this check at the
@@ -107,10 +97,10 @@ void ValidateAcceleration(const SingleOpModel& model) {
     return;
   }
   TFLITE_LOG(INFO) << "Validating acceleration with the stable delegate";
-  ASSERT_GT(num_applied_delegates, 0) << "No delegates were applied.";
-  ASSERT_EQ(model.CountNumberOfDelegatedPartitions(), 1)
+  EXPECT_EQ(model.CountNumberOfDelegatedPartitions(), 1)
       << "Expecting operation to be accelerated but cannot find a partition "
          "associated to the stable delegate";
+  EXPECT_GT(num_applied_delegates, 0) << "No delegates were applied.";
 }
 
 bool InitKernelTest(int* argc, char** argv) {
@@ -145,7 +135,9 @@ bool InitKernelTest(int* argc, char** argv) {
   return true;
 }
 
-void DestroyKernelTest() { DelegateTestSuiteAccelerationTestParams::Destroy(); }
+void DestroyKernelTest() {
+  DelegateTestSuiteAccelerationTestParams::Destroy();
+}
 
 }  // namespace
 }  // namespace tflite
@@ -154,6 +146,7 @@ int main(int argc, char** argv) {
   tflite::LogToStderr();
   if (tflite::InitKernelTest(&argc, argv)) {
     testing::InitGoogleTest(&argc, argv);
+    benchmark::RunSpecifiedBenchmarks();
     int ret = RUN_ALL_TESTS();
     tflite::DestroyKernelTest();
     return ret;

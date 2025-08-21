@@ -21,10 +21,10 @@ limitations under the License.
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/strings/string_view.h"
-#include "xla/tsl/profiler/utils/timespan.h"
 #include "tensorflow/core/platform/types.h"
 #include "tensorflow/core/profiler/protobuf/op_metrics.pb.h"
 #include "tensorflow/core/profiler/protobuf/steps_db.pb.h"
+#include "tensorflow/tsl/profiler/utils/timespan.h"
 
 namespace tensorflow {
 namespace profiler {
@@ -102,7 +102,7 @@ enum GenericEventType {
 
 // Contains the type and timespan of an event.
 struct EventTypeSpan {
-  EventType type;                // type of this event.
+  EventType type;  // type of this event.
   tsl::profiler::Timespan span;  // timespan of this event.
   EventTypeSpan(EventType t, tsl::profiler::Timespan s) : type(t), span(s) {}
   // Equality test.
@@ -152,16 +152,11 @@ class StepDetails {
 
   const std::vector<StepMarker>& Markers() const { return markers_; }
   const std::vector<EventTypeSpan>& Events() const { return events_; }
-
   const absl::flat_hash_map<uint32, AllReduceDbResult>& Collectives() const {
     return collectives_;
   }
   const std::vector<DeviceMemoryTransfer>& DeviceMemoryTransfers() const {
     return device_memory_transfers_;
-  }
-
-  absl::flat_hash_map<uint32, OpMetricsDb>& PerCoreOpMetricsDb() {
-    return per_core_op_metrics_db_;
   }
   // Returns the step time.
   tsl::profiler::Timespan StepTime() const;
@@ -196,14 +191,10 @@ class StepDetails {
   // Returns a string that prints the content of this object.
   std::string DebugString() const;
 
-  void SetPerCoreOpMetricsDb(OpMetricsDb db, uint32 core_id) {
-    per_core_op_metrics_db_[core_id] = db;
-  }
-
  private:
   // Accumulates the device memory transfers from another step to this step.
   void AggregateDeviceMemoryTransfers(
-      const std::vector<DeviceMemoryTransfer>& device_memory_transfers);
+      const std::vector<DeviceMemoryTransfer> device_memory_transfers);
 
   // All step-markers found for marking this step in the traces. There could be
   // multiple step-markers for a single step for different reasons. One such
@@ -220,8 +211,6 @@ class StepDetails {
   // durations.
   std::vector<DeviceMemoryTransfer> device_memory_transfers_;
   std::string step_name_;
-
-  absl::flat_hash_map<uint32, OpMetricsDb> per_core_op_metrics_db_;
 };
 
 // Map from step_id to the events happened in that step.
@@ -245,11 +234,8 @@ std::string PrintStepMarker(const StepMarker& step_marker);
 // Returns a string that prints the given StepEvents.
 std::string PrintStepEvents(const StepEvents& step_events);
 
-// Unions the map of StepEvents and combines the src StepEvents into dst.
-void UnionCombineStepEvents(const StepEvents& src, StepEvents* dst);
-
-// Intersects the map of StepEvents and combines the src StepEvents into dst.
-void IntersectCombineStepEvents(const StepEvents& src, StepEvents* dst);
+// Combines the src StepEvents into dst.
+void CombineStepEvents(const StepEvents& src, StepEvents* dst);
 
 // Converts from overlapped events to non-overlapped events.
 std::vector<EventTypeSpan> ToNonOverlappedEvents(

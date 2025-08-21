@@ -21,17 +21,17 @@ limitations under the License.
 namespace tensorflow {
 namespace lookup {
 
-absl::Status LookupInterface::CheckKeyShape(const TensorShape& shape) {
+Status LookupInterface::CheckKeyShape(const TensorShape& shape) {
   if (!TensorShapeUtils::EndsWith(shape, key_shape())) {
     return errors::InvalidArgument("Input key shape ", shape.DebugString(),
                                    " must end with the table's key shape ",
                                    key_shape().DebugString());
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status LookupInterface::CheckKeyAndValueTypes(const Tensor& keys,
-                                                    const Tensor& values) {
+Status LookupInterface::CheckKeyAndValueTypes(const Tensor& keys,
+                                              const Tensor& values) {
   if (keys.dtype() != key_dtype()) {
     return errors::InvalidArgument("Key must be type ", key_dtype(),
                                    " but got ", keys.dtype());
@@ -40,11 +40,11 @@ absl::Status LookupInterface::CheckKeyAndValueTypes(const Tensor& keys,
     return errors::InvalidArgument("Value must be type ", value_dtype(),
                                    " but got ", values.dtype());
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status LookupInterface::CheckKeyAndValueTensorsHelper(
-    const Tensor& keys, const Tensor& values) {
+Status LookupInterface::CheckKeyAndValueTensorsHelper(const Tensor& keys,
+                                                      const Tensor& values) {
   TF_RETURN_IF_ERROR(CheckKeyAndValueTypes(keys, values));
   TF_RETURN_IF_ERROR(CheckKeyShape(keys.shape()));
 
@@ -58,20 +58,20 @@ absl::Status LookupInterface::CheckKeyAndValueTensorsHelper(
         "Expected shape ", expected_value_shape.DebugString(),
         " for value, got ", values.shape().DebugString());
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status LookupInterface::CheckKeyAndValueTensorsForInsert(
-    const Tensor& keys, const Tensor& values) {
+Status LookupInterface::CheckKeyAndValueTensorsForInsert(const Tensor& keys,
+                                                         const Tensor& values) {
   return CheckKeyAndValueTensorsHelper(keys, values);
 }
 
-absl::Status LookupInterface::CheckKeyAndValueTensorsForImport(
-    const Tensor& keys, const Tensor& values) {
+Status LookupInterface::CheckKeyAndValueTensorsForImport(const Tensor& keys,
+                                                         const Tensor& values) {
   return CheckKeyAndValueTensorsHelper(keys, values);
 }
 
-absl::Status LookupInterface::CheckKeyTensorForRemove(const Tensor& keys) {
+Status LookupInterface::CheckKeyTensorForRemove(const Tensor& keys) {
   if (keys.dtype() != key_dtype()) {
     return errors::InvalidArgument("Key must be type ", key_dtype(),
                                    " but got ", keys.dtype());
@@ -79,8 +79,8 @@ absl::Status LookupInterface::CheckKeyTensorForRemove(const Tensor& keys) {
   return CheckKeyShape(keys.shape());
 }
 
-absl::Status LookupInterface::CheckFindArguments(const Tensor& key,
-                                                 const Tensor& default_value) {
+Status LookupInterface::CheckFindArguments(const Tensor& key,
+                                           const Tensor& default_value) {
   TF_RETURN_IF_ERROR(CheckKeyAndValueTypes(key, default_value));
   TF_RETURN_IF_ERROR(CheckKeyShape(key.shape()));
   TensorShape fullsize_value_shape = key.shape();
@@ -95,7 +95,7 @@ absl::Status LookupInterface::CheckFindArguments(const Tensor& key,
         fullsize_value_shape.DebugString(), " for default value, got ",
         default_value.shape().DebugString());
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace lookup

@@ -14,11 +14,10 @@ limitations under the License.
 ==============================================================================*/
 #include "tensorflow/lite/tools/evaluation/stages/image_preprocessing_stage.h"
 
-#include <cstdint>
+#include <memory>
 #include <string>
 
 #include <gtest/gtest.h>
-#include "tensorflow/lite/c/c_api_types.h"
 #include "tensorflow/lite/tools/evaluation/proto/evaluation_config.pb.h"
 #include "tensorflow/lite/tools/evaluation/proto/evaluation_stages.pb.h"
 

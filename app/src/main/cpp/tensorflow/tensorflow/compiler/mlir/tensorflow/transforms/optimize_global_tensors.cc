@@ -94,7 +94,7 @@ GlobalTensorUsesMap CreateGlobalTensorUsesMap(ModuleOp module) {
         continue;
       }
       auto global_tensor = symbol_table.lookup<GlobalTensorOp>(
-          mlir::cast<FlatSymbolRefAttr>(sym).getValue());
+          sym.cast<FlatSymbolRefAttr>().getValue());
       if (!global_tensor) {
         continue;
       }

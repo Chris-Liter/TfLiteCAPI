@@ -26,26 +26,21 @@ namespace quantization {
 
 // mlir_dump_file_prefix is an optional field that is used for debugging to save
 // mlir dump files.
-void AddQuantizeQatPasses(mlir::OpPassManager &pm,
+void AddQuantizeQatPasses(mlir::PassManager &pm,
                           const QuantizationOptions &quantization_options,
                           std::optional<const absl::string_view>
                               mlir_dump_file_prefix = std::nullopt);
 
 void AddQuantizePtqDynamicRangePasses(
-    mlir::OpPassManager &pm, const QuantizationOptions &quantization_options,
-    std::optional<const absl::string_view> mlir_dump_file_prefix =
-        std::nullopt);
-
-void AddQuantizeWeightOnlyPasses(
-    mlir::OpPassManager &pm, const QuantizationOptions &quantization_options,
+    mlir::PassManager &pm, const QuantizationOptions &quantization_options,
     std::optional<const absl::string_view> mlir_dump_file_prefix =
         std::nullopt);
 
 void AddQuantizePtqPreCalibrationPasses(
-    mlir::OpPassManager &pm, const QuantizationOptions &quantization_options);
+    mlir::PassManager &pm, const QuantizationOptions &quantization_options);
 
 void AddQuantizePtqPostCalibrationPasses(
-    mlir::OpPassManager &pm, const QuantizationOptions &quantization_options,
+    mlir::PassManager &pm, const QuantizationOptions &quantization_options,
     std::optional<const absl::string_view> mlir_dump_file_prefix =
         std::nullopt);
 

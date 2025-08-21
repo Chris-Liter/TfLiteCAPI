@@ -152,7 +152,7 @@ TEST_F(PatternMatcherTest, Tree) {
   //    }
   //  }
 
-  absl::Status status;
+  ::tensorflow::Status status;
   GraphDef graph = CreateGraph({{"e", "E", {"c", "d"}},
                                 {"c", "C", {"b"}},
                                 {"d", "D", {}},
@@ -184,7 +184,7 @@ TEST_F(PatternMatcherTest, Tree) {
   bool all_indices_matched = true;
   for (auto it = matched_nodes_map.begin(); it != matched_nodes_map.begin();
        it++) {
-    auto label = absl::StripPrefix(it->first, "my_");
+    auto label = str_util::StripPrefix(it->first, "my_");
     int matched_node_idx = it->second;
     int expected_node_idx = graph_view.GetNode(label)->node_index();
     if (matched_node_idx != expected_node_idx) {
@@ -226,7 +226,7 @@ TEST_F(PatternMatcherTest, DAG) {
   //    }
   //  }
 
-  absl::Status status;
+  ::tensorflow::Status status;
   GraphDef graph = CreateGraph({{"e", "E", {"c", "d"}},
                                 {"c", "C", {"b"}},
                                 {"d", "D", {"b"}},
@@ -268,7 +268,7 @@ TEST_F(PatternMatcherTest, DAG) {
   bool all_indices_matched = true;
   for (auto it = matched_nodes_map.begin(); it != matched_nodes_map.begin();
        it++) {
-    auto label = absl::StripPrefix(it->first, "my_");
+    auto label = str_util::StripPrefix(it->first, "my_");
     int matched_node_idx = it->second;
     int expected_node_idx = graph_view.GetNode(label)->node_index();
     if (matched_node_idx != expected_node_idx) {
@@ -325,7 +325,7 @@ TEST_F(PatternMatcherTest, DAGExternalDependent) {
   //    }
   //  }
 
-  absl::Status status;
+  ::tensorflow::Status status;
   GraphDef graph = CreateGraph({{"f", "F", {"d"}},
                                 {"e", "E", {"c", "d"}},
                                 {"c", "C", {"b"}},
@@ -365,7 +365,7 @@ TEST_F(PatternMatcherTest, DAGExternalDependent) {
 }
 
 TEST_F(PatternMatcherTest, MatMulBiasAddGelu) {
-  absl::Status status;
+  ::tensorflow::Status status;
   GraphDef graph;
   GetMatMulBiasAddGeluGraph(&graph);
   OpTypePattern pattern = GetMatMulBiasAddGeluPattern();
@@ -387,7 +387,7 @@ TEST_F(PatternMatcherTest, MatMulBiasAddGelu) {
   bool all_indices_matched = true;
   for (auto it = matched_nodes_map.begin(); it != matched_nodes_map.begin();
        it++) {
-    auto label = absl::StripPrefix(it->first, "my_");
+    auto label = str_util::StripPrefix(it->first, "my_");
     int matched_node_idx = it->second;
     int expected_node_idx = graph_view.GetNode(label)->node_index();
     if (matched_node_idx != expected_node_idx) {
@@ -401,7 +401,7 @@ TEST_F(PatternMatcherTest, MatMulBiasAddGelu) {
 // Pattern should not be matched if any of candidate remove nodes has external
 // dependent.
 TEST_F(PatternMatcherTest, MatMulBiasAddGeluExternalDependent) {
-  absl::Status status;
+  ::tensorflow::Status status;
   GraphDef graph;
   GetMatMulBiasAddGeluGraph(&graph, /*add_external_dependent=*/true);
   OpTypePattern pattern = GetMatMulBiasAddGeluPattern();
@@ -422,7 +422,7 @@ TEST_F(PatternMatcherTest, MatMulBiasAddGeluExternalDependent) {
 }
 
 TEST_F(PatternMatcherTest, MatMulBiasAddGeluMutation) {
-  absl::Status status;
+  ::tensorflow::Status status;
   GraphDef graph;
   GetMatMulBiasAddGeluGraph(&graph);
   OpTypePattern pattern = GetMatMulBiasAddGeluPattern();
@@ -513,7 +513,7 @@ TEST_F(PatternMatcherTest, CommutativeInputs) {
   //     }
   //   }
 
-  absl::Status status;
+  ::tensorflow::Status status;
   std::vector<string> commutative_ops = {"Mul", "Add", "AddV2"};
   for (string op : commutative_ops) {
     for (bool should_swap : {false, true}) {
@@ -561,7 +561,7 @@ TEST_F(PatternMatcherTest, CommutativeInputs) {
       bool all_indices_matched = true;
       for (auto it = matched_nodes_map.begin(); it != matched_nodes_map.begin();
            it++) {
-        auto label = absl::StripPrefix(it->first, "my_");
+        auto label = str_util::StripPrefix(it->first, "my_");
         int matched_node_idx = it->second;
         int expected_node_idx = graph_view.GetNode(label)->node_index();
         if (matched_node_idx != expected_node_idx) {

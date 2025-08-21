@@ -18,7 +18,6 @@ limitations under the License.
 #include <memory>
 #include <string>
 #include <unordered_set>
-#include <utility>
 
 #include "absl/types/optional.h"
 #include "tensorflow/c/eager/tfe_context_internal.h"
@@ -99,7 +98,7 @@ TF_ConcreteFunction* TF_GetSavedModelConcreteFunction(TF_SavedModel* model,
                                                       const char* function_path,
                                                       TF_Status* status) {
   tensorflow::ConcreteFunction* result = nullptr;
-  absl::Status get_function_status =
+  tensorflow::Status get_function_status =
       tensorflow::unwrap(model)->GetFunction(function_path, &result);
   status->status.Update(get_function_status);
   if (!get_function_status.ok()) {
@@ -113,7 +112,7 @@ TF_GetSavedModelSignatureDefFunction(TF_SavedModel* model,
                                      const char* signature_def_key,
                                      TF_Status* status) {
   tensorflow::SignatureDefFunction* result = nullptr;
-  absl::Status get_function_status =
+  tensorflow::Status get_function_status =
       tensorflow::unwrap(model)->GetSignatureDefFunction(signature_def_key,
                                                          &result);
   status->status.Update(get_function_status);

@@ -17,12 +17,12 @@
 
 # Keeps Bazel versions of the build scripts.
 # LINT.IfChange
-LATEST_BAZEL_VERSION=6.5.0
+LATEST_BAZEL_VERSION=6.1.0
 # LINT.ThenChange(
 #   //tensorflow/opensource_only/.bazelversion,
 #   //tensorflow/tools/ci_build/install/install_bazel.sh,
 #   //tensorflow/tools/ci_build/install/install_bazel_from_source.sh,
-#   //tensorflow/tools/toolchains/cross_compile/cc/cc_toolchain_config.bzl)
+#   //tensorflow_estimator/google/kokoro/common.sh)
 
 # Run flaky functions with retries.
 # run_with_retry cmd
@@ -105,7 +105,8 @@ function update_bazel_linux {
   which bazel
   bazel version
 }
-# LINT.ThenChange()
+# LINT.ThenChange(
+#   //tensorflow_estimator/google/kokoro/common.sh)
 
 function install_ubuntu_16_pip_deps {
   PIP_CMD="pip"

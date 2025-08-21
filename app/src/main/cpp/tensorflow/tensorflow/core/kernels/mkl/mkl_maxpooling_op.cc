@@ -430,7 +430,6 @@ class MklMaxPoolingGradOp : public MklPoolingBackwardOpBase<T> {
 
 TF_CALL_float(REGISTER_MKL_MAXPOOL3D_KERNELS);
 TF_CALL_bfloat16(REGISTER_MKL_MAXPOOL3D_KERNELS);
-TF_CALL_half(REGISTER_MKL_MAXPOOL3D_KERNELS);
 
 #define REGISTER_MKL_MAXPOOL_KERNELS(T)                                       \
   REGISTER_KERNEL_BUILDER(                                                    \
@@ -458,7 +457,6 @@ TF_CALL_half(REGISTER_MKL_MAXPOOL3D_KERNELS);
 
 TF_CALL_float(REGISTER_MKL_MAXPOOL_KERNELS);
 TF_CALL_bfloat16(REGISTER_MKL_MAXPOOL_KERNELS);
-TF_CALL_half(REGISTER_MKL_MAXPOOL_KERNELS);
 
 REGISTER_KERNEL_BUILDER(Name("_MklQuantizedMaxPool")
                             .Device(DEVICE_CPU)

@@ -49,13 +49,13 @@ void CredentialsFactory::Register(CredentialsFactory* factory) {
   }
 }
 
-absl::Status CredentialsFactory::Get(absl::string_view protocol,
-                                     CredentialsFactory** out) {
+Status CredentialsFactory::Get(absl::string_view protocol,
+                               CredentialsFactory** out) {
   mutex_lock l(*get_lock());
   auto it = credentials_factories().find(std::string(protocol));
   if (it != credentials_factories().end()) {
     *out = it->second;
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   std::vector<string> available_types;
@@ -69,22 +69,22 @@ absl::Status CredentialsFactory::Get(absl::string_view protocol,
                           absl::StrJoin(available_types, ", "), " ]");
 }
 
-absl::Status CredentialsFactory::CreateServerCredentials(
+Status CredentialsFactory::CreateServerCredentials(
     absl::string_view protocol,
     std::shared_ptr<::grpc::ServerCredentials>* out) {
   CredentialsFactory* factory;
   TF_RETURN_IF_ERROR(CredentialsFactory::Get(protocol, &factory));
   TF_RETURN_IF_ERROR(factory->CreateServerCredentials(out));
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status CredentialsFactory::CreateClientCredentials(
+Status CredentialsFactory::CreateClientCredentials(
     absl::string_view protocol,
     std::shared_ptr<::grpc::ChannelCredentials>* out) {
   CredentialsFactory* factory;
   TF_RETURN_IF_ERROR(CredentialsFactory::Get(protocol, &factory));
   TF_RETURN_IF_ERROR(factory->CreateClientCredentials(out));
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 bool CredentialsFactory::Exists(absl::string_view protocol) {
@@ -97,16 +97,16 @@ class InsecureCredentialsFactory : public CredentialsFactory {
  public:
   std::string Protocol() override { return "grpc"; }
 
-  absl::Status CreateServerCredentials(
+  Status CreateServerCredentials(
       std::shared_ptr<::grpc::ServerCredentials>* out) override {
     *out = ::grpc::InsecureServerCredentials();
-    return absl::OkStatus();
+    return OkStatus();
   }
 
-  absl::Status CreateClientCredentials(
+  Status CreateClientCredentials(
       std::shared_ptr<::grpc::ChannelCredentials>* out) override {
     *out = ::grpc::InsecureChannelCredentials();
-    return absl::OkStatus();
+    return OkStatus();
   }
 };
 

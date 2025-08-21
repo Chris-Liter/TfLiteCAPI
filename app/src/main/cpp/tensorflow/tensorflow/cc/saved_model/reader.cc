@@ -21,7 +21,6 @@ limitations under the License.
 #include <utility>
 
 #include "absl/memory/memory.h"
-#include "absl/status/statusor.h"
 #include "tensorflow/cc/saved_model/constants.h"
 #include "tensorflow/cc/saved_model/metrics.h"
 #include "tensorflow/cc/saved_model/util.h"
@@ -37,8 +36,6 @@ limitations under the License.
 #include "tensorflow/core/platform/file_system_helper.h"
 #include "tensorflow/core/platform/path.h"
 #include "tensorflow/core/platform/statusor.h"
-#include "tensorflow/core/platform/types.h"
-#include "tensorflow/core/protobuf/meta_graph.pb.h"
 #include "tensorflow/core/protobuf/saved_model.pb.h"
 #include "tensorflow/core/util/tensor_bundle/byte_swap_tensor.h"
 // Placeholder for protosplitter merger include.
@@ -46,9 +43,11 @@ limitations under the License.
 #define IS_OSS true
 
 namespace tensorflow {
+namespace {
 
-absl::StatusOr<MetaGraphDef*> FindMetaGraphDef(
-    const std::unordered_set<string>& tags, SavedModel* saved_model_proto) {
+Status FindMetaGraphDef(const std::unordered_set<string>& tags,
+                        SavedModel* saved_model_proto,
+                        MetaGraphDef* meta_graph_def) {
   LOG(INFO) << "Reading meta graph with tags { " << absl::StrJoin(tags, " ")
             << " }";
   for (MetaGraphDef& graph_def : *saved_model_proto->mutable_meta_graphs()) {
@@ -59,12 +58,12 @@ absl::StatusOr<MetaGraphDef*> FindMetaGraphDef(
     }
     // Match with the set of tags provided.
     if (graph_tags == tags) {
-      MetaGraphDef* meta_graph_def = &graph_def;
+      *meta_graph_def = std::move(graph_def);
       // Correct the endiness of Tensor content on big-endian system
       if (!port::kLittleEndian) {
         TF_RETURN_IF_ERROR(ByteSwapTensorContentInMetaGraphDef(meta_graph_def));
       }
-      return meta_graph_def;
+      return OkStatus();
     }
   }
   return Status(
@@ -75,6 +74,7 @@ absl::StatusOr<MetaGraphDef*> FindMetaGraphDef(
           " }. To inspect available tag-sets in the SavedModel, please "
           "use the SavedModel CLI: `saved_model_cli`"));
 }
+}  // namespace
 
 // Reads the SavedModel proto from saved_model.pb in `export_dir`.
 // Returns a failure status when the SavedModel file does not exist.
@@ -130,19 +130,18 @@ Status ReadSavedModel(absl::string_view export_dir,
                       "permissions for accessing it."));
 }
 
-Status ReadMetaGraphDefFromSavedModel(absl::string_view export_dir,
+Status ReadMetaGraphDefFromSavedModel(const string& export_dir,
                                       const std::unordered_set<string>& tags,
                                       MetaGraphDef* const meta_graph_def) {
   SavedModel saved_model_proto;
   TF_RETURN_IF_ERROR(ReadSavedModel(export_dir, &saved_model_proto));
-  TF_ASSIGN_OR_RETURN(MetaGraphDef * m,
-                      FindMetaGraphDef(tags, &saved_model_proto));
-  *meta_graph_def = std::move(*m);
-  return absl::OkStatus();
+  TF_RETURN_IF_ERROR(
+      FindMetaGraphDef(tags, &saved_model_proto, meta_graph_def));
+  return OkStatus();
 }
 
 Status ReadSavedModelDebugInfoIfPresent(
-    absl::string_view export_dir,
+    const string& export_dir,
     std::unique_ptr<GraphDebugInfo>* debug_info_proto) {
   LOG(INFO) << "Reading SavedModel debug info (if present) from: "
             << export_dir;
@@ -157,7 +156,7 @@ Status ReadSavedModelDebugInfoIfPresent(
         ReadBinaryProto(Env::Default(), debug_info_pb_path, &debug_info));
     *debug_info_proto = std::make_unique<GraphDebugInfo>(std::move(debug_info));
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace tensorflow

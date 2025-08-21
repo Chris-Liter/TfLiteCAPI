@@ -565,8 +565,7 @@ TFE_Context* CreateContext(const std::string& serialized_server_def,
   EXPECT_EQ(TF_GetCode(status), TF_OK) << TF_Message(status);
   TFE_ContextSetServerDefWithTimeout(ctx, 0, serialized_server_def.data(),
                                      serialized_server_def.size(),
-                                     init_timeout_in_ms, status,
-                                     /*clear_existing_contexts=*/false);
+                                     init_timeout_in_ms, status);
   EXPECT_EQ(TF_GetCode(status), TF_OK) << TF_Message(status);
   TFE_DeleteContextOptions(opts);
   TF_DeleteStatus(status);

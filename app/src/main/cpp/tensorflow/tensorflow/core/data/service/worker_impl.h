@@ -55,17 +55,16 @@ class DataServiceWorkerImpl {
   // constructor because the worker may be binding to port `0`, in which case
   // the address isn't known until the worker has started and decided which port
   // to bind to.
-  absl::Status Start(
-      const std::string& worker_address,
-      const std::vector<DataTransferServerInfo>& transfer_servers);
+  Status Start(const std::string& worker_address,
+               const std::vector<DataTransferServerInfo>& transfer_servers);
   // Stops the worker, attempting a clean shutdown by rejecting new requests
   // and waiting for outstanding requests to complete.
   void Stop();
 
   // Serves a GetElement request, storing the result in `*result`. See
   // worker.proto for GetElement API documentation.
-  absl::Status GetElementResult(const GetElementRequest* request,
-                                GetElementResult* result);
+  Status GetElementResult(const GetElementRequest* request,
+                          GetElementResult* result);
 
   // Deletes the local task and iterator. Only called by local clients to delete
   // unused task iterators assuming the task is not read by remote clients. This
@@ -75,15 +74,15 @@ class DataServiceWorkerImpl {
   // See worker.proto for API documentation.
 
   /// Dispatcher-facing API.
-  absl::Status ProcessTask(const ProcessTaskRequest* request,
-                           ProcessTaskResponse* response);
+  Status ProcessTask(const ProcessTaskRequest* request,
+                     ProcessTaskResponse* response);
 
   /// Client-facing API.
-  absl::Status GetElement(const GetElementRequest* request,
-                          GetElementResponse* response);
-  absl::Status GetWorkerTasks(const GetWorkerTasksRequest* request,
-                              GetWorkerTasksResponse* response);
-  absl::Status GetSnapshotTaskProgresses(
+  Status GetElement(const GetElementRequest* request,
+                    GetElementResponse* response);
+  Status GetWorkerTasks(const GetWorkerTasksRequest* request,
+                        GetWorkerTasksResponse* response);
+  Status GetSnapshotTaskProgresses(
       const GetSnapshotTaskProgressesRequest* request,
       GetSnapshotTaskProgressesResponse* response);
 
@@ -122,16 +121,16 @@ class DataServiceWorkerImpl {
   };
 
   // Validates the worker config.
-  absl::Status ValidateWorkerConfig() const;
+  Status ValidateWorkerConfig() const;
   // Creates and initializes a dispatcher client.
-  absl::StatusOr<std::unique_ptr<DataServiceDispatcherClient>>
+  StatusOr<std::unique_ptr<DataServiceDispatcherClient>>
   CreateDispatcherClient() const TF_LOCKS_EXCLUDED(mu_);
   // Sends task status to the dispatcher and checks for dispatcher commands.
-  absl::Status SendTaskUpdates() TF_LOCKS_EXCLUDED(mu_);
+  Status SendTaskUpdates() TF_LOCKS_EXCLUDED(mu_);
   // Creates an iterator to process a task.
-  absl::Status ProcessTaskInternal(const TaskDef& task)
+  Status ProcessTaskInternal(const TaskDef& task)
       TF_EXCLUSIVE_LOCKS_REQUIRED(mu_);
-  absl::Status EnsureTaskInitialized(Task& task);
+  Status EnsureTaskInitialized(Task& task);
   // Stops a task, cancelling the task's outstanding requests and waiting for
   // them to finish.
   void StopTask(Task& task) TF_LOCKS_EXCLUDED(mu_);
@@ -140,10 +139,7 @@ class DataServiceWorkerImpl {
   // A thread for doing periodic heartbeats to the dispatcher.
   void HeartbeatThread() TF_LOCKS_EXCLUDED(mu_);
   // Performs a heartbeat to the dispatcher.
-  absl::Status Heartbeat();
-  // Check with the dispatcher to see whether or not to disable compression.
-  absl::StatusOr<bool> DisableCompressionAtRuntime(
-      const std::string& dataset_id) const;
+  Status Heartbeat();
   // Returns the active tasks of this worker.
   std::vector<ActiveTask> GetActiveTasks() const TF_LOCKS_EXCLUDED(mu_);
   // Returns the task IDs of `active_tasks`.
@@ -156,21 +152,21 @@ class DataServiceWorkerImpl {
   void UpdateTasks(const WorkerHeartbeatResponse& response)
       TF_LOCKS_EXCLUDED(mu_);
   // Updates the distributed snapshot tasks according to the heartbeat response.
-  absl::Status UpdateSnapshotWriters(const WorkerHeartbeatResponse& response)
+  Status UpdateSnapshotWriters(const WorkerHeartbeatResponse& response)
       TF_LOCKS_EXCLUDED(mu_);
   // Creates an dataset iterator for snapshot writers.
-  absl::StatusOr<std::unique_ptr<StandaloneTaskIterator>>
-  MakeSnapshotTaskIterator(const SnapshotTaskDef& snapshot_task,
-                           const DatasetDef& dataset_def) const;
+  StatusOr<std::unique_ptr<StandaloneTaskIterator>> MakeSnapshotTaskIterator(
+      const SnapshotTaskDef& snapshot_task,
+      const DatasetDef& dataset_def) const;
   // Gets the snapshot task progress from the snapshot writers.
   std::vector<SnapshotTaskProgress> GetSnapshotTaskProgress() const;
   // Gets the DatasetDef for `task_def`.
-  absl::StatusOr<DatasetDef> GetDatasetDef(const TaskDef& task_def) const;
+  StatusOr<DatasetDef> GetDatasetDef(const TaskDef& task_def) const;
   // Creates a dataset from `dataset_def`.
-  absl::StatusOr<std::unique_ptr<standalone::Dataset>> MakeDataset(
+  StatusOr<std::unique_ptr<standalone::Dataset>> MakeDataset(
       const DatasetDef& dataset_def, const TaskDef& task_def) const;
   // Creates an iterator for `dataset`.
-  absl::StatusOr<std::unique_ptr<standalone::Iterator>> MakeDatasetIterator(
+  StatusOr<std::unique_ptr<standalone::Iterator>> MakeDatasetIterator(
       standalone::Dataset& dataset, const TaskDef& task_def) const;
 
   const experimental::WorkerConfig config_;
@@ -211,8 +207,7 @@ class DataServiceWorkerImpl {
   // A thread for performing regular heartbeats to the dispatcher.
   std::unique_ptr<Thread> heartbeat_thread_;
 
-  DataServiceWorkerImpl(const DataServiceWorkerImpl&) = delete;
-  void operator=(const DataServiceWorkerImpl&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(DataServiceWorkerImpl);
 };
 
 // Local in-process workers shared among clients and servers. If clients and

@@ -21,9 +21,9 @@ limitations under the License.
 namespace tensorflow {
 namespace {
 
-absl::Status PickDeviceHelper(bool allow_mixing_unknown_and_cpu,
-                              absl::Span<const absl::string_view> device_names,
-                              string* result) {
+Status PickDeviceHelper(bool allow_mixing_unknown_and_cpu,
+                        absl::Span<const absl::string_view> device_names,
+                        string* result) {
   jit::DeviceInfoCache cache;
   jit::DeviceSet device_set;
   for (absl::string_view name : device_names) {
@@ -35,7 +35,7 @@ absl::Status PickDeviceHelper(bool allow_mixing_unknown_and_cpu,
       jit::DeviceId result_id,
       PickDeviceForXla(cache, device_set, allow_mixing_unknown_and_cpu));
   *result = string(cache.GetNameFor(result_id));
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 void CheckPickDeviceResult(absl::string_view expected_result,

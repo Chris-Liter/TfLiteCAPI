@@ -58,17 +58,16 @@ class Dataset : public DatasetBase {
     return sparse_tensor_.shape()[0];
   }
 
-  absl::Status InputDatasets(
-      std::vector<const DatasetBase*>* inputs) const override {
-    return absl::OkStatus();
+  Status InputDatasets(std::vector<const DatasetBase*>* inputs) const override {
+    return OkStatus();
   }
 
-  absl::Status CheckExternalState() const override { return absl::OkStatus(); }
+  Status CheckExternalState() const override { return OkStatus(); }
 
  protected:
-  absl::Status AsGraphDefInternal(SerializationContext* ctx,
-                                  DatasetGraphDefBuilder* b,
-                                  Node** output) const override {
+  Status AsGraphDefInternal(SerializationContext* ctx,
+                            DatasetGraphDefBuilder* b,
+                            Node** output) const override {
     Node* indices_node;
     TF_RETURN_IF_ERROR(b->AddTensor(sparse_tensor_.indices(), &indices_node));
     Node* value_node;
@@ -84,7 +83,7 @@ class Dataset : public DatasetBase {
     TF_RETURN_IF_ERROR(
         b->AddDataset(this, {indices_node, value_node, dense_shape_node},
                       {{"Tvalues", val_dtype}}, output));
-    return absl::OkStatus();
+    return OkStatus();
   }
 
  private:
@@ -102,13 +101,13 @@ class Dataset : public DatasetBase {
       }
     }
 
-    absl::Status GetNextInternal(IteratorContext* ctx,
-                                 std::vector<Tensor>* out_tensors,
-                                 bool* end_of_sequence) override {
+    Status GetNextInternal(IteratorContext* ctx,
+                           std::vector<Tensor>* out_tensors,
+                           bool* end_of_sequence) override {
       mutex_lock l(mu_);
       if (i_ == num_elements_) {
         *end_of_sequence = true;
-        return absl::OkStatus();
+        return OkStatus();
       }
 
       out_tensors->clear();
@@ -159,7 +158,7 @@ class Dataset : public DatasetBase {
 
       ++i_;
       *end_of_sequence = false;
-      return absl::OkStatus();
+      return OkStatus();
     }
 
    protected:
@@ -168,8 +167,8 @@ class Dataset : public DatasetBase {
       return model::MakeSourceNode(std::move(args));
     }
 
-    absl::Status SaveInternal(SerializationContext* ctx,
-                              IteratorStateWriter* writer) override {
+    Status SaveInternal(SerializationContext* ctx,
+                        IteratorStateWriter* writer) override {
       mutex_lock l(mu_);
       TF_RETURN_IF_ERROR(writer->WriteScalar(Iterator::prefix(), "i", i_));
       TF_RETURN_IF_ERROR(
@@ -182,11 +181,11 @@ class Dataset : public DatasetBase {
         TF_RETURN_IF_ERROR(writer->WriteTensor(Iterator::prefix(),
                                                "next_values_", next_values_));
       }
-      return absl::OkStatus();
+      return OkStatus();
     }
 
-    absl::Status RestoreInternal(IteratorContext* ctx,
-                                 IteratorStateReader* reader) override {
+    Status RestoreInternal(IteratorContext* ctx,
+                           IteratorStateReader* reader) override {
       mutex_lock l(mu_);
       TF_RETURN_IF_ERROR(reader->ReadScalar(Iterator::prefix(), "i", &i_));
       int64_t iter_loc;
@@ -201,7 +200,7 @@ class Dataset : public DatasetBase {
         TF_RETURN_IF_ERROR(reader->ReadTensor(Iterator::prefix(),
                                               "next_values_", &next_values_));
       }
-      return absl::OkStatus();
+      return OkStatus();
     }
 
    private:
@@ -281,7 +280,7 @@ class SparseTensorSliceDatasetOp : public DatasetOpKernel {
                                 "is not currently supported."));
       previous_batch_index = next_batch_index;
     }
-    absl::InlinedVector<int64_t, 8UL> std_order(dense_shape->NumElements(), 0);
+    gtl::InlinedVector<int64_t, 8> std_order(dense_shape->NumElements(), 0);
     TensorShape shape;
     OP_REQUIRES_OK(ctx, TensorShape::BuildTensorShape(
                             dense_shape->vec<int64_t>(), &shape));

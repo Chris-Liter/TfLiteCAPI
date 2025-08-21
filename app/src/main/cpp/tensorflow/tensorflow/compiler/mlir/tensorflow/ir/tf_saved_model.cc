@@ -33,8 +33,6 @@ limitations under the License.
 #include "mlir/IR/PatternMatch.h"  // from @llvm-project
 #include "mlir/IR/SymbolTable.h"  // from @llvm-project
 #include "mlir/IR/TypeUtilities.h"  // from @llvm-project
-#include "mlir/IR/Visitors.h"  // from @llvm-project
-#include "mlir/Support/LLVM.h"  // from @llvm-project
 #include "mlir/Support/LogicalResult.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_ops.h"
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_types.h"
@@ -47,11 +45,11 @@ namespace tf_saved_model {
 //===----------------------------------------------------------------------===//
 
 static bool IsStrArrayAttr(Attribute attr) {
-  auto array = mlir::dyn_cast<ArrayAttr>(attr);
+  auto array = attr.dyn_cast<ArrayAttr>();
   if (!array) return false;
 
-  return llvm::all_of(
-      array, [](Attribute attr) { return mlir::isa<StringAttr>(attr); });
+  return llvm::all_of(array,
+                      [](Attribute attr) { return attr.isa<StringAttr>(); });
 }
 
 //===----------------------------------------------------------------------===//
@@ -59,11 +57,10 @@ static bool IsStrArrayAttr(Attribute attr) {
 //===----------------------------------------------------------------------===//
 
 LogicalResult VerifyTensorTypesCompatible(Type t1, Type t2) {
-  if (!mlir::isa<TensorType>(t1) || !mlir::isa<TensorType>(t2)) {
+  if (!t1.isa<TensorType>() || !t2.isa<TensorType>()) {
     return failure();
   }
-  return verifyCompatibleShape(mlir::cast<TensorType>(t1),
-                               mlir::cast<TensorType>(t2));
+  return verifyCompatibleShape(t1.cast<TensorType>(), t2.cast<TensorType>());
 }
 
 LogicalResult GlobalTensorOp::verify() {
@@ -77,7 +74,7 @@ LogicalResult GlobalTensorOp::verify() {
     }
   }
   if (!global_tensor.getIsMutable()) {
-    if (!mlir::cast<TensorType>(global_tensor.getType()).hasStaticShape()) {
+    if (!global_tensor.getType().cast<TensorType>().hasStaticShape()) {
       return global_tensor.emitError()
              << "'type' attribute for immutable 'tf_saved_model.global_tensor' "
                 "should have a static shape";
@@ -93,7 +90,7 @@ LogicalResult SessionInitializerOp::verify() {
 
   for (auto sym_ref : session_initializer.getInitializers()) {
     auto init_func_op = symbol_table.lookup<mlir::func::FuncOp>(
-        mlir::cast<FlatSymbolRefAttr>(sym_ref).getValue());
+        sym_ref.cast<FlatSymbolRefAttr>().getValue());
 
     if (!init_func_op)
       return session_initializer.emitOpError()
@@ -145,16 +142,16 @@ TensorFlowSavedModelDialect::TensorFlowSavedModelDialect(MLIRContext *context)
 }
 
 static LogicalResult VerifyIndexPath(Operation *op, NamedAttribute named_attr) {
-  auto attr = mlir::dyn_cast<ArrayAttr>(named_attr.getValue());
+  auto attr = named_attr.getValue().dyn_cast<ArrayAttr>();
   if (!attr) {
     return op->emitError() << "'" << kTfSavedModelIndexPathAttr
                            << "' attribute should be an ArrayAttr";
   }
   for (auto element : attr) {
-    if (mlir::isa<StringAttr>(element)) {
+    if (element.isa<StringAttr>()) {
       continue;
     }
-    if (auto integer = mlir::dyn_cast<IntegerAttr>(element)) {
+    if (auto integer = element.dyn_cast<IntegerAttr>()) {
       if (integer.getValue().getBitWidth() == 64) {
         continue;
       }
@@ -167,7 +164,7 @@ static LogicalResult VerifyIndexPath(Operation *op, NamedAttribute named_attr) {
 
 Type GetBoundInputArgTypeFor(mlir::Operation *op) {
   if (auto global_tensor = llvm::dyn_cast<GlobalTensorOp>(op)) {
-    auto type = mlir::cast<TensorType>(global_tensor.getType());
+    auto type = global_tensor.getType().cast<TensorType>();
     return RankedTensorType::get(
         {}, TF::ResourceType::get({type}, type.getContext()));
   }
@@ -198,12 +195,12 @@ LogicalResult TensorFlowSavedModelDialect::verifyRegionArgAttribute(
     Operation *op, unsigned region_index, unsigned arg_index,
     NamedAttribute named_attr) {
   if (named_attr.getName() == "tf_saved_model.bound_input") {
-    if (!mlir::isa<FlatSymbolRefAttr>(named_attr.getValue())) {
+    if (!named_attr.getValue().isa<FlatSymbolRefAttr>()) {
       return op->emitError() << "'tf_saved_model.bound_input' attribute should "
                                 "be a FlatSymbolRefAttr";
     }
     auto symbol_name =
-        mlir::cast<FlatSymbolRefAttr>(named_attr.getValue()).getValue();
+        named_attr.getValue().cast<FlatSymbolRefAttr>().getValue();
     auto module = op->getParentOfType<ModuleOp>();
     mlir::Operation *symbol_op = module.lookupSymbol(symbol_name);
     if (!symbol_op) {
@@ -294,8 +291,8 @@ static LogicalResult VerifySavedModelModule(
             &op, {exported_names_ident, attr}))) {
       return failure();
     }
-    for (auto str : mlir::cast<ArrayAttr>(attr)) {
-      auto exported_name = mlir::cast<StringAttr>(str).getValue();
+    for (auto str : attr.cast<ArrayAttr>()) {
+      auto exported_name = str.cast<StringAttr>().getValue();
       auto p = exported_name_to_op.insert({exported_name, &op});
       if (!p.second) {
         return op.emitError()
@@ -343,8 +340,7 @@ static LogicalResult VerifySavedModelModule(
     auto init_syms = (*session_initializers.begin()).getInitializers();
     return std::any_of(
         init_syms.begin(), init_syms.end(), [&](Attribute sym_ref) {
-          return mlir::cast<FlatSymbolRefAttr>(sym_ref).getValue() ==
-                 func.getName();
+          return sym_ref.cast<FlatSymbolRefAttr>().getValue() == func.getName();
         });
   };
 
@@ -442,7 +438,7 @@ LogicalResult VerifyInitializerTypeAttr(Operation *op,
 
   // Validate the attribute value.
   auto initializer_type_attr_value =
-      mlir::dyn_cast_or_null<StringAttr>(named_attr.getValue());
+      named_attr.getValue().dyn_cast_or_null<StringAttr>();
   if (!initializer_type_attr_value) {
     return op->emitError() << "Attribute tf_saved_model.initializer_type "
                            << "should be a StringAttr.";
@@ -507,7 +503,7 @@ SmallVector<StringRef, 2> GetExportedNames(Operation *op) {
       op->getAttrOfType<ArrayAttr>(kTfSavedModelExportedNamesAttr);
   if (exported_names) {
     for (auto name : exported_names) {
-      ret.push_back(mlir::cast<StringAttr>(name).getValue());
+      ret.push_back(name.cast<StringAttr>().getValue());
     }
   }
   return ret;
@@ -550,7 +546,7 @@ class OptimizeSessionInitializerPattern
     SmallVector<mlir::Attribute, 2> to_keep;
     for (auto sym_ref : op.getInitializers()) {
       auto init_func_op = symbol_table.lookup<mlir::func::FuncOp>(
-          mlir::cast<FlatSymbolRefAttr>(sym_ref).getValue());
+          sym_ref.cast<FlatSymbolRefAttr>().getValue());
 
       // The init function can only be referenced from the SessionInitializerOp.
       // And there is at most one SessionInitializerOp in the module. So if both
@@ -593,7 +589,7 @@ SmallVector<StringRef, 2> GetSessionInitializerExportedName(ModuleOp op) {
   SmallVector<StringRef, 2> results;
   for (auto sym_ref : session_initializer_op.getInitializers()) {
     auto init_func_op = symbol_table.lookup<mlir::func::FuncOp>(
-        mlir::cast<FlatSymbolRefAttr>(sym_ref).getValue());
+        sym_ref.cast<FlatSymbolRefAttr>().getValue());
     auto exported_names = GetExportedNames(init_func_op);
     assert(exported_names.size() == 1);
     results.push_back(exported_names[0]);
@@ -635,15 +631,5 @@ func::FuncOp GetInitializerFunction(ModuleOp module_op,
   return init_func_itr == init_func_ops.end() ? nullptr : *init_func_itr;
 }
 
-bool IsRestoreGraph(ModuleOp module) {
-  return module
-      .walk([](mlir::Operation *op) {
-        if (llvm::isa<mlir::TF::RestoreV2Op>(op)) {
-          return mlir::WalkResult::interrupt();
-        }
-        return mlir::WalkResult::advance();
-      })
-      .wasInterrupted();
-}
 }  // namespace tf_saved_model
 }  // namespace mlir

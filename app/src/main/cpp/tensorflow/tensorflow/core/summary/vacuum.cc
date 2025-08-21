@@ -14,7 +14,6 @@ limitations under the License.
 ==============================================================================*/
 #include <iostream>
 
-#include "absl/log/log.h"
 #include "tensorflow/core/lib/db/sqlite.h"
 #include "tensorflow/core/platform/init_main.h"
 #include "tensorflow/core/util/command_line_flags.h"

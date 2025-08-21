@@ -36,20 +36,20 @@ class TensorDatasetParams : public DatasetParams {
 
   std::vector<Tensor> GetInputTensors() const override { return components_; }
 
-  absl::Status GetInputNames(std::vector<string>* input_names) const override {
+  Status GetInputNames(std::vector<string>* input_names) const override {
     input_names->reserve(components_.size());
     for (int i = 0; i < components_.size(); ++i) {
       input_names->emplace_back(
           absl::StrCat(TensorDatasetOp::kComponents, "_", i));
     }
-    return absl::OkStatus();
+    return OkStatus();
   }
 
-  absl::Status GetAttributes(AttributeVector* attr_vector) const override {
+  Status GetAttributes(AttributeVector* attr_vector) const override {
     *attr_vector = {{"Toutput_types", output_dtypes_},
                     {"output_shapes", output_shapes_},
                     {"metadata", ""}};
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   string dataset_type() const override { return TensorDatasetOp::kDatasetType; }

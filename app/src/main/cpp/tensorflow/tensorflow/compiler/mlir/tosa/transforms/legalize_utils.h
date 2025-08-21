@@ -26,7 +26,7 @@ limitations under the License.
 #include <optional>
 
 #include "mlir/Dialect/Func/IR/FuncOps.h"  // from @llvm-project
-#include "mlir/Dialect/Quant/IR/QuantTypes.h"  // from @llvm-project
+#include "mlir/Dialect/Quant/QuantTypes.h"  // from @llvm-project
 #include "mlir/Dialect/Tosa/Utils/ShapeUtils.h"  // from @llvm-project
 #include "mlir/IR/BuiltinAttributes.h"  // from @llvm-project
 #include "mlir/IR/BuiltinTypes.h"  // from @llvm-project
@@ -54,14 +54,6 @@ std::optional<Value> buildReshapeWithDynamicDims(PatternRewriter& rewriter,
                                                  ShapedType output_type,
                                                  llvm::ArrayRef<Value> dims);
 
-// Create a TOSA rescale op from TFLite scaling multiplier, scaling shift, zero
-// points and rounding mode
-Value buildRescale(PatternRewriter& rewriter, Operation* op,
-                   ShapedType output_type, Value input_val,
-                   int32_t scale_multiplier, int32_t scale_shit,
-                   int64_t input_zp, int64_t output_zp, bool double_round,
-                   bool scale32);
-
 // Create a TOSA rescale op from TFLite scaling, zero points and rounding mode
 Value buildRescale(PatternRewriter& rewriter, Operation* op,
                    ShapedType output_type, Value input_val, double scale,
@@ -71,11 +63,6 @@ Value buildRescale(PatternRewriter& rewriter, Operation* op,
 // Removes the zero point and cast to int32, no need to handle roundings modes
 Value removeZeroPointAndCastToInt32(PatternRewriter& rewriter, Operation* op,
                                     Value input_val, int64_t input_zp);
-
-// Creates TOSA rescale op with int32 output
-Value buildRescaleToInt32(PatternRewriter& rewriter, Operation* op,
-                          Value input_val, int32_t input_scale_multiplier,
-                          int32_t input_scale_shift, int64_t input_zp);
 
 // Creates TOSA rescale op with int32 output
 Value buildRescaleToInt32(PatternRewriter& rewriter, Operation* op,
@@ -103,16 +90,13 @@ Value getTosaConst16bitTable(PatternRewriter& rewriter, Operation* op,
                              std::function<double(double)> func, double min,
                              double max);
 
-// Create a 32-bit TOSA TABLE for Softmax Exp
-void getTosaConst32bitSoftmaxExpTable(PatternRewriter& rewriter, Operation* op,
-                                      double beta, double input_scale,
-                                      Value& first_const, Value& second_const,
-                                      Value& third_const, Value& fourth_const);
-
-// Create 8 bit TOSA TABLE constant tensor for the RSqrt operator
-Value getTosaConstRsqrt8bitTable(PatternRewriter& rewriter, Operation* op,
-                                 float input_scale, int32_t input_zp,
-                                 float output_scale, int32_t output_zp);
+// Create a 32-bit TOSA TABLE constant tensor
+// Output is restricted to [-1.0, 1.0] as s0.31 format
+void getTosaConst32bitTable(PatternRewriter& rewriter, Operation* op,
+                            double input_scale, int32_t input_zp,
+                            std::function<double(double)> func,
+                            Value& first_const, Value& second_const,
+                            Value& third_const, Value& fourth_const);
 
 // Create a 32-bit float constant operator from a float
 Value getTosaConstTensorSingleF32(PatternRewriter& rewriter, Operation* op,
@@ -202,7 +186,7 @@ TosaOp CreateOpAndInfer(ImplicitLocOpBuilder& builder, Type result_ty,
 
   // Compute the knowledge based on the inferred type.
   auto inferredKnowledge = ValueKnowledge::getPessimisticValueState();
-  inferredKnowledge.dtype = mlir::cast<ShapedType>(result_ty).getElementType();
+  inferredKnowledge.dtype = result_ty.cast<ShapedType>().getElementType();
   inferredKnowledge.hasRank = predictedShape.hasRank();
   if (predictedShape.hasRank()) {
     for (auto dim : predictedShape.getDims()) {
@@ -244,14 +228,6 @@ void TrimQuantizedIntegerRangeMax(mlir::quant::UniformQuantizedType dtype,
 
 void TrimQuantizedIntegerRange(mlir::quant::UniformQuantizedType dtype,
                                int64_t& val_min, int64_t& val_max);
-
-inline bool IsTFLDoubleRoundingMode() {
-#if TFLITE_SINGLE_ROUNDING
-  return false;
-#else
-  return true;
-#endif  // TFLITE_SINGLE_ROUNDING
-}
 
 }  // namespace tosa
 }  // namespace mlir

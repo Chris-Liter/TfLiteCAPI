@@ -101,8 +101,7 @@ struct RankFormatter {
   }
 };
 
-absl::Status CheckUserSpecifiedRanks(
-    const std::vector<CollGroupMember> members) {
+Status CheckUserSpecifiedRanks(const std::vector<CollGroupMember> members) {
   absl::flat_hash_set<int> user_ranks = {};
   bool at_least_one_member_with_no_rank = false;
   bool at_least_one_member_with_user_rank = false;
@@ -128,7 +127,7 @@ absl::Status CheckUserSpecifiedRanks(
         "Duplicate ranks specified for group members. Received ranks: ",
         received_ranks);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 }  // namespace
 
@@ -140,7 +139,7 @@ void CollectiveParamResolverLocal::CompleteGroupLocal(
   std::vector<StatusCallback> to_be_called;
 
   GroupRec* gr = nullptr;
-  absl::Status status;
+  Status status;
   {
     mutex_lock l(group_mu_);
     auto it = group_table_.find(group_params->group_key);
@@ -183,7 +182,7 @@ void CollectiveParamResolverLocal::CompleteGroupLocal(
       return;
     }
     done = [cancel_mgr, token,
-            original_done = std::move(done)](const absl::Status& status) {
+            original_done = std::move(done)](const Status& status) {
       cancel_mgr->TryDeregisterCallback(token);
       original_done(status);
     };
@@ -613,7 +612,7 @@ CollectiveParamResolverLocal::GetOrCreateInstanceRec(CollectiveParams* cp,
       instance_table_[cp->group.group_key][key].reset(irec);
     }
   }
-  absl::Status status;
+  Status status;
   {
     mutex_lock l(status_mu_);
     status = status_;
@@ -625,8 +624,8 @@ CollectiveParamResolverLocal::GetOrCreateInstanceRec(CollectiveParams* cp,
   return irec;
 }
 
-absl::Status CollectiveParamResolverLocal::LookupGroup(int32_t group_key,
-                                                       CollGroupParams* group) {
+Status CollectiveParamResolverLocal::LookupGroup(int32_t group_key,
+                                                 CollGroupParams* group) {
   mutex_lock l(group_mu_);
   auto group_rec = group_table_.find(group_key);
   if (group_rec == group_table_.end()) {
@@ -645,7 +644,7 @@ absl::Status CollectiveParamResolverLocal::LookupGroup(int32_t group_key,
         group_rec->second->status.ToString());
   }
   *group = group_rec->second->group;
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 void CollectiveParamResolverLocal::CompleteParamsAsync(
@@ -655,7 +654,7 @@ void CollectiveParamResolverLocal::CompleteParamsAsync(
           << cp->ToString();
   if (cp->run_group_initialization) {
     CompleteGroupLocal(device, &cp->group, cancel_mgr,
-                       [this, device, cp, done](const absl::Status& s) {
+                       [this, device, cp, done](const Status& s) {
                          if (s.ok()) {
                            CompleteInstanceLocal(device.name(), cp, done);
                          } else {
@@ -732,7 +731,7 @@ void CollectiveParamResolverLocal::CompleteInstanceFromInitializedIRec(
     const string& device, CollectiveParams* cp, InstanceRec* ir,
     const StatusCallback& done) {
   auto expected_shape = cp->instance.shape;
-  absl::Status status;
+  Status status;
   // Populate the fields common across instance.
   {
     mutex_lock l(ir->mu);
@@ -772,7 +771,7 @@ void CollectiveParamResolverLocal::CompleteInstanceFromInitializedIRec(
   //  discovery.
   if (cp->instance.type == BROADCAST_COLLECTIVE) {
     WaitForGroup(ir, cp, [col_impl, ir, device, cp, done](InstanceRec* irec) {
-      absl::Status s;
+      Status s;
       if (ir != irec) {
         s = errors::Internal("Expected ir ", ir, " and irec ", irec,
                              " to be equal");
@@ -842,7 +841,7 @@ void CollectiveParamResolverLocal::WaitForGroup(InstanceRec* ir,
   }
 }
 
-void CollectiveParamResolverLocal::StartAbort(const absl::Status& s) {
+void CollectiveParamResolverLocal::StartAbort(const Status& s) {
   {
     mutex_lock l(status_mu_);
     if (!status_.ok()) {
@@ -856,7 +855,7 @@ void CollectiveParamResolverLocal::StartAbort(const absl::Status& s) {
   StartAbortLocal(s);
 }
 
-void CollectiveParamResolverLocal::StartAbortLocal(const absl::Status& s) {
+void CollectiveParamResolverLocal::StartAbortLocal(const Status& s) {
   std::vector<StatusCallback> pending_done;
   {
     mutex_lock l(group_mu_);

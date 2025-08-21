@@ -14,11 +14,12 @@ limitations under the License.
 ==============================================================================*/
 
 #include "tensorflow/compiler/tf2xla/mlir_xla_op_kernel.h"
+#include "tensorflow/compiler/tf2xla/shape_util.h"
+#include "tensorflow/compiler/tf2xla/type_util.h"
 #include "tensorflow/compiler/tf2xla/xla_op_kernel.h"
 #include "tensorflow/compiler/tf2xla/xla_op_registry.h"
-#include "xla/hlo/builder/lib/comparators.h"
-#include "xla/hlo/builder/xla_builder.h"
-#include "tensorflow/core/framework/op_kernel.h"
+#include "tensorflow/compiler/xla/client/lib/comparators.h"
+#include "tensorflow/compiler/xla/client/xla_builder.h"
 
 namespace tensorflow {
 namespace {

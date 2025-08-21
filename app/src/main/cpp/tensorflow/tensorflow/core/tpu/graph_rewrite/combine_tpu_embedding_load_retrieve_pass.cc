@@ -16,36 +16,30 @@ limitations under the License.
 #include "tensorflow/core/tpu/graph_rewrite/combine_tpu_embedding_load_retrieve_pass.h"
 
 #include <algorithm>
-#include <array>
+#include <iterator>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
-#include "absl/status/status.h"
-#include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
-#include "absl/strings/string_view.h"
-#include "xla/status_macros.h"
+#include "tensorflow/compiler/xla/status_macros.h"
 #include "tensorflow/core/common_runtime/optimization_registry.h"
 #include "tensorflow/core/framework/node_def.pb.h"
 #include "tensorflow/core/framework/node_def_util.h"
 #include "tensorflow/core/framework/tensor.pb.h"
 #include "tensorflow/core/framework/tensor_util.h"
-#include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/graph/graph.h"
 #include "tensorflow/core/graph/node_builder.h"
+#include "tensorflow/core/lib/core/errors.h"
+#include "tensorflow/core/lib/core/status.h"
 #include "tensorflow/core/lib/gtl/map_util.h"
-#include "tensorflow/core/platform/errors.h"
-#include "tensorflow/core/platform/status.h"
-#include "tensorflow/core/protobuf/tpu/optimization_parameters.pb.h"
+#include "tensorflow/core/platform/stream_executor.h"
 #include "tensorflow/core/protobuf/tpu/tpu_embedding_configuration.pb.h"
 #include "tensorflow/core/tpu/graph_rewrite/tpu_embedding_rewrite_pass_utils.h"
 #include "tensorflow/core/tpu/ops/tpu_embedding_ops.h"
 #include "tensorflow/core/tpu/tpu_embedding_optimization_parameters_utils.h"
-#include "tsl/platform/errors.h"
-#include "tsl/platform/logging.h"  // IWYU pragma: keep
 
 namespace tensorflow {
 
@@ -67,7 +61,7 @@ absl::flat_hash_set<std::string> GetLoadRetrieveNodeNames() {
 }
 
 // Gets TPUEmbeddingConfiguration proto from embedding ops.
-absl::Status GetTPUEmbeddingConfiguration(
+Status GetTPUEmbeddingConfiguration(
     Graph* graph,
     tensorflow::tpu::TPUEmbeddingConfiguration* tpu_embedding_config,
     std::string* tpu_embedding_config_str) {
@@ -105,11 +99,11 @@ absl::Status GetTPUEmbeddingConfiguration(
   if (!have_config) {
     return errors::InvalidArgument("No TPU embedding config provided");
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Validates that all of the table names are distinct and non-empty.
-absl::Status ValidateEmbeddingTableNames(
+Status ValidateEmbeddingTableNames(
     const tensorflow::tpu::TPUEmbeddingConfiguration& tpu_embedding_config) {
   // Map from table names to first occurrences.
   TableNameToIntegerMap table_name_map;
@@ -128,7 +122,7 @@ absl::Status ValidateEmbeddingTableNames(
                           table_name_map[name], table_id, name.c_str()));
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Gets single-table load-TPUEmbedding-parameter nodes in the graph.
@@ -188,7 +182,7 @@ absl::flat_hash_set<Node*> GetRetrieveNodes(Graph* graph) {
 //
 // Returns: Status (OK if successful; otherwise, an error status).
 //
-absl::Status GetLoadOrRetrieveNodesByTable(
+Status GetLoadOrRetrieveNodesByTable(
     const absl::flat_hash_set<Node*>& candidate_nodes,
     const tensorflow::tpu::TPUEmbeddingConfiguration& tpu_embedding_config,
     const TableNameToIntegerMap& table_name_to_id_map,
@@ -266,7 +260,7 @@ absl::Status GetLoadOrRetrieveNodesByTable(
           tpu_embedding_config.table_descriptor(table_id).name(), table_id));
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Pair of a node and an input or output number used to record edge endpoints.
@@ -280,7 +274,7 @@ using LoadCombinedParametersType =
 
 // Computes an array of ports containing the source of each table/parameter
 // combination. Fills in any unused ports with {nullptr, 0}.
-absl::Status CombinePerTableParametersForLoad(
+Status CombinePerTableParametersForLoad(
     const absl::flat_hash_set<Node*>& load_nodes,
     std::vector<Node*>* nodes_per_table,
     std::vector<bool>* is_debug_load_retrieve_node,
@@ -303,7 +297,7 @@ absl::Status CombinePerTableParametersForLoad(
                                  .optimization_parameters();
 
     std::vector<tpu::StateVariableSpecification> state_variable_specs;
-    absl::Status status = tpu::GetOptimizationAlgorithmStateVariables(
+    Status status = tpu::GetOptimizationAlgorithmStateVariables(
         opt_params, &state_variable_specs);
 
     if (!status.ok()) {
@@ -350,7 +344,7 @@ absl::Status CombinePerTableParametersForLoad(
       }
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Removes edges between individual load/retrieve nodes that are added by
@@ -378,14 +372,14 @@ void RemoveEdgesBetweenIndividualNodes(
 
 }  // namespace
 
-absl::Status CombineTPUEmbeddingLoadRetrievePass::Run(
+Status CombineTPUEmbeddingLoadRetrievePass::Run(
     const GraphOptimizationPassOptions& options) {
   VLOG(2) << "Starting CombineTPUEmbeddingLoadRetrievePass";
   Graph* graph = options.graph->get();
 
   tensorflow::tpu::TPUEmbeddingConfiguration tpu_embedding_config;
   std::string tpu_embedding_config_str;
-  const absl::Status tpu_embedding_config_error = GetTPUEmbeddingConfiguration(
+  const Status tpu_embedding_config_error = GetTPUEmbeddingConfiguration(
       graph, &tpu_embedding_config, &tpu_embedding_config_str);
   TF_RETURN_IF_ERROR(ValidateEmbeddingTableNames(tpu_embedding_config));
 
@@ -744,7 +738,7 @@ absl::Status CombineTPUEmbeddingLoadRetrievePass::Run(
   VLOG(2) << "Generated " << num_combined_nodes_added
           << " combined load or retrieve nodes.";
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace tensorflow

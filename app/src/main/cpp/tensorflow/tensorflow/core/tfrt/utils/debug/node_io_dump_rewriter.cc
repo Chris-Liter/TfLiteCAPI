@@ -20,8 +20,6 @@ limitations under the License.
 #include <vector>
 
 #include "absl/container/flat_hash_set.h"
-#include "absl/status/status.h"
-#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "tensorflow/core/common_runtime/function_body.h"
@@ -34,15 +32,16 @@ limitations under the License.
 #include "tensorflow/core/graph/node_builder.h"
 #include "tensorflow/core/lib/core/errors.h"
 #include "tensorflow/core/platform/status.h"
+#include "tensorflow/core/platform/statusor.h"
 #include "tensorflow/core/protobuf/meta_graph.pb.h"
-#include "tsl/platform/errors.h"
-#include "tsl/platform/statusor.h"
+#include "tensorflow/tsl/platform/errors.h"
+#include "tensorflow/tsl/platform/statusor.h"
 
 namespace tensorflow {
 namespace tfrt_stub {
 namespace {
 
-absl::StatusOr<std::string> GetDumpDir(absl::string_view dump_dir) {
+StatusOr<std::string> GetDumpDir(absl::string_view dump_dir) {
   if (!dump_dir.empty()) return std::string(dump_dir);
   const char* prefix = getenv("TF_DUMP_GRAPH_PREFIX");
   if (prefix != nullptr) return std::string(prefix);
@@ -72,7 +71,7 @@ Status InsertDumpOpsForNode(Graph& graph, Node& node,
       TF_RETURN_IF_ERROR(
           graph.UpdateEdge(dump_node, 0, edge->dst(), edge->dst_input()));
     }
-    return absl::OkStatus();
+    return OkStatus();
   };
 
   // Make a copy of the edges to avoid modifying edges while iterating.
@@ -80,7 +79,7 @@ Status InsertDumpOpsForNode(Graph& graph, Node& node,
                             {node.in_edges().begin(), node.in_edges().end()}));
   TF_RETURN_IF_ERROR(insert(
       /*is_input=*/false, {node.out_edges().begin(), node.out_edges().end()}));
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace
@@ -95,7 +94,7 @@ Status InsertDumpOps(Graph& graph,
         TF_RETURN_IF_ERROR(InsertDumpOpsForNode(graph, *node, dir));
       }
     }
-    return absl::OkStatus();
+    return OkStatus();
   };
 
   TF_RETURN_IF_ERROR(insert(graph));
@@ -112,7 +111,7 @@ Status InsertDumpOps(Graph& graph,
     TF_RETURN_IF_ERROR(
         graph.mutable_flib_def()->ReplaceFunction(fname, new_fdef));
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 Status InsertDumpOps(MetaGraphDef& meta_graph_def,
@@ -123,7 +122,7 @@ Status InsertDumpOps(MetaGraphDef& meta_graph_def,
       ConvertGraphDefToGraph({}, meta_graph_def.graph_def(), &graph));
   TF_RETURN_IF_ERROR(InsertDumpOps(graph, nodes_to_dump, dump_dir));
   graph.ToGraphDef(meta_graph_def.mutable_graph_def());
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace tfrt_stub

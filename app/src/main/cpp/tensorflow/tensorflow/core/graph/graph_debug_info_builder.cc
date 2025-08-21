@@ -18,20 +18,18 @@ limitations under the License.
 #include <memory>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/hash/hash.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_format.h"
 #include "absl/types/span.h"
-#include "tensorflow/core/config/flag_defs.h"
 #include "tensorflow/core/framework/function.h"
 #include "tensorflow/core/framework/graph_debug_info.pb.h"
 #include "tensorflow/core/framework/logging.h"
 #include "tensorflow/core/platform/errors.h"
 #include "tensorflow/core/platform/stack_frame.h"
-#include "tsl/platform/path.h"
+#include "tensorflow/tsl/platform/path.h"
 
 namespace tensorflow {
 
@@ -97,10 +95,6 @@ FrozenStackTrace::FrozenStackTrace(
 }
 
 absl::Span<StackFrame const> FrozenStackTrace::ToFrames() const {
-  return frames_;
-}
-
-std::vector<StackFrame> FrozenStackTrace::ToUncachedFrames() const {
   return frames_;
 }
 
@@ -179,19 +173,10 @@ void GraphDebugInfoBuilder::AccumulateStackTrace(
         AppendToStackTraceProto(stack_frame, stack_trace_proto);
       }
     } else {
-      if (flags::Global()
-              .enable_graph_debug_info_caching_for_stack_frames.value()) {
-        frame_to_index_.reserve(frame_to_index_.size() +
-                                trace->ToFrames().size());
-        for (const auto& stack_frame : trace->ToFrames()) {
-          AppendToStackTraceProto(stack_frame, stack_trace_proto);
-        }
-      } else {
-        frame_to_index_.reserve(frame_to_index_.size() +
-                                trace->ToUncachedFrames().size());
-        for (const auto& stack_frame : trace->ToUncachedFrames()) {
-          AppendToStackTraceProto(stack_frame, stack_trace_proto);
-        }
+      frame_to_index_.reserve(frame_to_index_.size() +
+                              trace->ToFrames().size());
+      for (const auto& stack_frame : trace->ToFrames()) {
+        AppendToStackTraceProto(stack_frame, stack_trace_proto);
       }
     }
   }

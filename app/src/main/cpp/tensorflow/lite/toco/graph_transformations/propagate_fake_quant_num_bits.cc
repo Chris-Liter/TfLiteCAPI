@@ -17,13 +17,11 @@ limitations under the License.
 #include <unordered_map>
 #include <vector>
 
-#include "absl/status/status.h"
-#include "tensorflow/core/platform/logging.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/lite/toco/graph_transformations/graph_transformations.h"
 #include "tensorflow/lite/toco/graph_transformations/quantization_util.h"
 #include "tensorflow/lite/toco/model.h"
 #include "tensorflow/lite/toco/tooling_util.h"
+#include "tensorflow/core/platform/logging.h"
 
 namespace toco {
 
@@ -279,13 +277,14 @@ bool RecursivelyForwardPropagateDataType(GraphTransformation* transformation,
 // nice logging and integration with the graphviz video dumping mode.
 // In general you should not copy this style of transformation and stick to
 // local-only changes as seen in the other transformations.
-absl::Status PropagateFakeQuantNumBits::Run(Model* model, std::size_t op_index,
-                                            bool* modified) {
+::tensorflow::Status PropagateFakeQuantNumBits::Run(Model* model,
+                                                    std::size_t op_index,
+                                                    bool* modified) {
   *modified = false;
   auto it = model->operators.begin() + op_index;
   auto* op = it->get();
   if (op->type != OperatorType::kFakeQuant) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   auto* fakequant_op = static_cast<FakeQuantOperator*>(op);
 
@@ -294,7 +293,7 @@ absl::Status PropagateFakeQuantNumBits::Run(Model* model, std::size_t op_index,
                                            &quantized_data_type)) {
     AddMessageF("FakeQuant op %s num_bits=%d is out of range, ignoring",
                 LogName(*op), fakequant_op->num_bits);
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   const auto& final_minmax = *fakequant_op->minmax;
 
@@ -316,7 +315,7 @@ absl::Status PropagateFakeQuantNumBits::Run(Model* model, std::size_t op_index,
       RecursivelyForwardPropagateDataType(this, model, op, quantized_data_type);
 
   *modified = did_change;
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 }  // namespace toco

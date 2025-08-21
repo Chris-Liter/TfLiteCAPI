@@ -21,12 +21,9 @@ limitations under the License.
 #include <utility>
 #include <vector>
 
-#include "tensorflow/core/platform/logging.h"
-#include "tensorflow/core/platform/status.h"
-#include "tensorflow/lite/toco/format_port.h"
-#include "tensorflow/lite/toco/model.h"
-#include "tensorflow/lite/toco/model_flags.pb.h"
+#include "tensorflow/lite/toco/toco_port.h"
 #include "tensorflow/lite/toco/tooling_util.h"
+#include "tensorflow/core/platform/logging.h"
 
 namespace toco {
 
@@ -132,7 +129,7 @@ void DiscardUselessConnectedComponentsAndRNNBackEdges(Model* model) {
 
 bool GraphTransformationsPass(int increment, Model* model,
                               const GraphTransformationsSet& transformations,
-                              absl::Status* status) {
+                              tensorflow::Status* status) {
   CHECK(increment == 1 || increment == -1);
   bool changed = false;
   if (model->operators.empty()) {
@@ -193,12 +190,12 @@ bool GraphTransformationsPass(int increment, Model* model,
 
 }  // namespace
 
-absl::Status RunGraphTransformationsWithStatus(
+tensorflow::Status RunGraphTransformationsWithStatus(
     Model* model, const std::string& msg,
     const GraphTransformationsSet& transformations) {
   PrintModelStats(toco::port::StringF("Before %s", msg), *model);
   int pass_index = 0;
-  absl::Status status;
+  tensorflow::Status status;
   while (GraphTransformationsPass((pass_index % 2) ? -1 : 1, model,
                                   transformations, &status)) {
     pass_index++;

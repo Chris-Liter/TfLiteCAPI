@@ -35,14 +35,13 @@ limitations under the License.
 namespace tensorflow {
 
 template <typename T>
-static absl::Status ReadEntireFile(Env* env, const string& filename,
-                                   T* contents) {
+static Status ReadEntireFile(Env* env, const string& filename, T* contents) {
   std::unique_ptr<RandomAccessFile> file;
   TF_RETURN_IF_ERROR(env->NewRandomAccessFile(filename, &file));
   io::RandomAccessInputStream input_stream(file.get());
   io::BufferedInputStream in(&input_stream, 1 << 20);
   TF_RETURN_IF_ERROR(in.ReadAll(contents));
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 class WholeFileReader : public ReaderBase {
@@ -51,32 +50,32 @@ class WholeFileReader : public ReaderBase {
       : ReaderBase(strings::StrCat("WholeFileReader '", node_name, "'")),
         env_(env) {}
 
-  absl::Status ReadLocked(tstring* key, tstring* value, bool* produced,
-                          bool* at_end) override {
+  Status ReadLocked(tstring* key, tstring* value, bool* produced,
+                    bool* at_end) override {
     *key = current_work();
     TF_RETURN_IF_ERROR(ReadEntireFile(env_, *key, value));
     *produced = true;
     *at_end = true;
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   // Stores state in a ReaderBaseState proto, since WholeFileReader has
   // no additional state beyond ReaderBase.
-  absl::Status SerializeStateLocked(tstring* state) override {
+  Status SerializeStateLocked(tstring* state) override {
     ReaderBaseState base_state;
     SaveBaseState(&base_state);
     SerializeToTString(base_state, state);
-    return absl::OkStatus();
+    return OkStatus();
   }
 
-  absl::Status RestoreStateLocked(const tstring& state) override {
+  Status RestoreStateLocked(const tstring& state) override {
     ReaderBaseState base_state;
     if (!ParseProtoUnlimited(&base_state, state)) {
       return errors::InvalidArgument("Could not parse state for ", name(), ": ",
                                      absl::CEscape(state));
     }
     TF_RETURN_IF_ERROR(RestoreBaseState(base_state));
-    return absl::OkStatus();
+    return OkStatus();
   }
 
  private:

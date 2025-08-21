@@ -27,7 +27,7 @@ limitations under the License.
 #include "tensorflow/core/framework/metrics.h"
 #include "tensorflow/core/platform/errors.h"
 #include "tensorflow/core/platform/status.h"
-#include "tsl/platform/mutex.h"
+#include "tensorflow/tsl/platform/mutex.h"
 
 namespace tensorflow {
 namespace {
@@ -72,7 +72,7 @@ DeviceCompilationProfiler::~DeviceCompilationProfiler() {
   cluster_compile_stats_.clear();
 }
 
-absl::StatusOr<DeviceCompilationProfiler::ClusterCompileStats>
+StatusOr<DeviceCompilationProfiler::ClusterCompileStats>
 DeviceCompilationProfiler::GetCompileStats(const NameAttrList& function) const {
   mutex_lock lock(mu_);
 
@@ -94,7 +94,7 @@ void DeviceCompilationProfiler::RegisterExecution(
   RegisterExecutionForCluster(function, &it->second);
 }
 
-absl::Status DeviceCompilationProfiler::RegisterCompilation(
+Status DeviceCompilationProfiler::RegisterCompilation(
     const NameAttrList& function, int64_t compile_time_us,
     bool used_persistent_cache) {
   metrics::UpdateXlaCompilationTime(compile_time_us);

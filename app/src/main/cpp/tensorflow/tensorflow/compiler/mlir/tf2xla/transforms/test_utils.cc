@@ -15,14 +15,15 @@ limitations under the License.
 
 #include "tensorflow/compiler/mlir/tf2xla/transforms/test_utils.h"
 
-#include "absl/status/statusor.h"
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 #include "absl/strings/string_view.h"
 #include "llvm/ADT/StringRef.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/register_common_dialects.h"
 #include "tensorflow/compiler/mlir/tensorflow/dialect_registration.h"
 #include "tensorflow/compiler/mlir/tensorflow/utils/serialize_mlir_module_utils.h"
-#include "tsl/platform/statusor.h"
+#include "tensorflow/tsl/platform/statusor.h"
 
 namespace mlir {
 namespace mhlo {
@@ -34,7 +35,7 @@ using ::mlir::ModuleOp;
 using ::mlir::OwningOpRef;
 using ::tsl::StatusOr;
 
-absl::StatusOr<OwningOpRef<ModuleOp>> GetMlirModuleFromString(
+StatusOr<OwningOpRef<ModuleOp>> GetMlirModuleFromString(
     absl::string_view module_string, MLIRContext* context) {
   DialectRegistry mlir_registry;
   RegisterCommonToolingDialects(mlir_registry);

@@ -17,32 +17,16 @@ limitations under the License.
 
 #include "tensorflow/core/tpu/graph_rewrite/distributed_tpu_rewrite_helpers.h"
 
-#include <algorithm>
-#include <functional>
-#include <unordered_set>
-#include <utility>
 #include <vector>
 
-#include "absl/log/check.h"
-#include "absl/status/status.h"
-#include "absl/strings/str_join.h"
-#include "xla/status_macros.h"
 #include "tensorflow/core/common_runtime/device_set.h"
-#include "tensorflow/core/framework/device.h"
-#include "tensorflow/core/framework/node_def.pb.h"
-#include "tensorflow/core/framework/types.h"
-#include "tensorflow/core/graph/graph.h"
-#include "tensorflow/core/platform/errors.h"
-#include "tensorflow/core/platform/status.h"
-#include "tensorflow/core/platform/strcat.h"
-#include "tensorflow/core/platform/types.h"
+#include "tensorflow/core/tpu/tpu_defs.h"
 #include "tensorflow/core/util/device_name_utils.h"
-#include "tsl/platform/errors.h"
 
 namespace tensorflow {
 
 // LINT.IfChange
-absl::Status DistributedTPURewriteHelpers::GetSystemDevice(
+Status DistributedTPURewriteHelpers::GetSystemDevice(
     const string& system_spec_string, const DeviceSet& device_set,
     DeviceNameUtils::ParsedName* system_spec, Device** system_device) {
   if (!DeviceNameUtils::ParseFullName(system_spec_string, system_spec)) {
@@ -81,7 +65,7 @@ absl::Status DistributedTPURewriteHelpers::GetSystemDevice(
       return errors::InvalidArgument(
           "System devices cannot be part "
           "of multiple different jobs.  Found: ",
-          absl::StrJoin(job_names, ","));
+          str_util::Join(job_names, ","));
     }
 
     // Identify the lexicographically first device from the list of
@@ -104,12 +88,12 @@ absl::Status DistributedTPURewriteHelpers::GetSystemDevice(
                                    (*system_device)->name(),
                                    " as a device spec.");
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 // LINT.ThenChange(//tensorflow/compiler/mlir/tensorflow/utils/tpu_rewrite_device_util.cc)
 
 // LINT.IfChange
-absl::Status DistributedTPURewriteHelpers::GetHostSystemDevices(
+Status DistributedTPURewriteHelpers::GetHostSystemDevices(
     const DeviceNameUtils::ParsedName& system_spec, const DeviceSet& device_set,
     std::vector<Device*>* host_system_devices) {
   DeviceNameUtils::ParsedName host_spec;
@@ -158,12 +142,12 @@ absl::Status DistributedTPURewriteHelpers::GetHostSystemDevices(
               auto j_name = j->parsed_name();
               return i_name.task < j_name.task;
             });
-  return absl::OkStatus();
+  return OkStatus();
 }
 // LINT.ThenChange(//tensorflow/compiler/mlir/tensorflow/utils/tpu_rewrite_device_util.cc)
 
 // LINT.IfChange
-absl::Status DistributedTPURewriteHelpers::GetTPUDevices(
+Status DistributedTPURewriteHelpers::GetTPUDevices(
     const DeviceNameUtils::ParsedName& system_spec, const DeviceSet& device_set,
     int* num_tpus_per_host, std::vector<std::vector<Device*>>* tpu_devices) {
   // GetHostSystemDevices returns the CPU device on each host that is
@@ -209,19 +193,19 @@ absl::Status DistributedTPURewriteHelpers::GetTPUDevices(
     }
     tpu_devices->push_back(std::move(host_tpu_devices));
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 // LINT.ThenChange(//tensorflow/compiler/mlir/tensorflow/utils/tpu_rewrite_device_util.cc)
 
-absl::Status DistributedTPURewriteHelpers::ForConfigurationNodeMatchingType(
+Status DistributedTPURewriteHelpers::ForConfigurationNodeMatchingType(
     const string& node_type, Graph* graph, const DeviceSet& device_set,
     const std::function<
-        absl::Status(const NodeDef& configuration_node_def,
-                     const string& configuration_device_name,
-                     const std::vector<Device*>& host_devices,
-                     const std::vector<Node*>& input_dependencies,
-                     const std::vector<OutputDependency>& output_dependencies,
-                     Graph* graph)>& action) {
+        Status(const NodeDef& configuration_node_def,
+               const string& configuration_device_name,
+               const std::vector<Device*>& host_devices,
+               const std::vector<Node*>& input_dependencies,
+               const std::vector<OutputDependency>& output_dependencies,
+               Graph* graph)>& action) {
   // Find all the matching nodes before mutating the graph.
   std::vector<Node*> nodes;
   for (Node* node : graph->nodes()) {
@@ -265,7 +249,7 @@ absl::Status DistributedTPURewriteHelpers::ForConfigurationNodeMatchingType(
                               input_dependencies, output_dependencies, graph));
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace tensorflow

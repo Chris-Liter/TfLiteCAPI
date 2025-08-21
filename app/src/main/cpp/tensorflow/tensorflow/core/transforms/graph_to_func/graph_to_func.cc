@@ -17,7 +17,7 @@ limitations under the License.
 
 #include <string>
 
-#include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallVector.h"
 #include "mlir/IR/Attributes.h"  // from @llvm-project
@@ -48,9 +48,9 @@ static ArrayAttr createLiftedValueAttr(OpBuilder &builder, OpResult value) {
   return builder.getArrayAttr(attrs);
 }
 
-absl::Status GraphToFunc(GraphOp graph, ArrayRef<Value> feeds,
-                         ArrayRef<Value> fetches,
-                         ArrayRef<Value> control_rets) {
+tensorflow::Status GraphToFunc(GraphOp graph, ArrayRef<Value> feeds,
+                               ArrayRef<Value> fetches,
+                               ArrayRef<Value> control_rets) {
   OpBuilder builder(graph);
   ControlType control_ty = ControlType::get(graph.getContext());
   llvm::SmallVector<Type> arg_types;
@@ -86,11 +86,11 @@ absl::Status GraphToFunc(GraphOp graph, ArrayRef<Value> feeds,
     feed.replaceAllUsesWith(body->addArgument(feed.getType(), loc));
     body->addArgument(control_ty, loc);
     llvm::SmallVector<NamedAttribute> arg_attrs;
-    std::string slot = OpResultToSlotName(mlir::cast<OpResult>(feed));
+    std::string slot = OpResultToSlotName(feed.cast<OpResult>());
     arg_attrs.push_back(NamedAttribute(tfg_name, builder.getStringAttr(slot)));
-    arg_attrs.push_back(NamedAttribute(
-        lifted_value_name,
-        createLiftedValueAttr(builder, mlir::cast<OpResult>(feed))));
+    arg_attrs.push_back(
+        NamedAttribute(lifted_value_name,
+                       createLiftedValueAttr(builder, feed.cast<OpResult>())));
     args_rets_attrs.push_back(builder.getDictionaryAttr(arg_attrs));
     args_rets_attrs.push_back(Attribute{});
   }
@@ -99,14 +99,14 @@ absl::Status GraphToFunc(GraphOp graph, ArrayRef<Value> feeds,
   args_rets_attrs.clear();
   for (Value fetch : fetches) {
     llvm::SmallVector<NamedAttribute> arg_attrs;
-    std::string slot = OpResultToSlotName(mlir::cast<OpResult>(fetch));
+    std::string slot = OpResultToSlotName(fetch.cast<OpResult>());
     arg_attrs.push_back(NamedAttribute(tfg_name, builder.getStringAttr(slot)));
     args_rets_attrs.push_back(builder.getDictionaryAttr(arg_attrs));
   }
   func_op.setAllResultAttrs(args_rets_attrs);
 
   graph.erase();
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 Status GraphToFunc(GraphOp graph, ArrayRef<std::string> feeds_names,

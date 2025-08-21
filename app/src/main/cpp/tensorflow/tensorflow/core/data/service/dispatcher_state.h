@@ -26,9 +26,9 @@ limitations under the License.
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/strings/string_view.h"
+#include "tensorflow/core/data/service/auto_shard_rewriter.h"
 #include "tensorflow/core/data/service/common.h"
 #include "tensorflow/core/data/service/common.pb.h"
-#include "tensorflow/core/data/service/graph_rewriters.h"
 #include "tensorflow/core/data/service/journal.h"
 #include "tensorflow/core/data/service/journal.pb.h"
 #include "tensorflow/core/platform/status.h"
@@ -71,7 +71,7 @@ class DispatcherState {
   DispatcherState& operator=(const DispatcherState&) = delete;
 
   // Applies the given update to the dispatcher's state.
-  absl::Status Apply(const Update& update);
+  Status Apply(const Update& update);
 
   // A dataset registered with the dispatcher.
   struct Dataset {
@@ -229,38 +229,38 @@ class DispatcherState {
   std::string NextAvailableDatasetId() const;
 
   // Gets a dataset by id. Returns NOT_FOUND if there is no such dataset.
-  absl::Status DatasetFromId(const std::string& id,
-                             std::shared_ptr<const Dataset>& dataset) const;
+  Status DatasetFromId(const std::string& id,
+                       std::shared_ptr<const Dataset>& dataset) const;
 
   // Gets a worker by address. Returns NOT_FOUND if there is no such worker.
-  absl::Status WorkerFromAddress(const std::string& address,
-                                 std::shared_ptr<const Worker>& worker) const;
+  Status WorkerFromAddress(const std::string& address,
+                           std::shared_ptr<const Worker>& worker) const;
   // Lists all workers registered with the dispatcher.
   std::vector<std::shared_ptr<const Worker>> ListWorkers() const;
 
   // Returns the next available job id.
   int64_t NextAvailableJobId() const;
   // Gets a job by id. Returns NOT_FOUND if there is no such job.
-  absl::Status JobFromId(int64_t job_id, std::shared_ptr<const Job>& job) const;
+  Status JobFromId(int64_t job_id, std::shared_ptr<const Job>& job) const;
   // Gets a job by name. Returns NOT_FOUND if there is no such job.
-  absl::Status JobByName(const std::string& job_name,
-                         std::shared_ptr<const Job>& job) const;
+  Status JobByName(const std::string& job_name,
+                   std::shared_ptr<const Job>& job) const;
 
   // Returns the next available iteration id.
   int64_t NextAvailableIterationId() const;
   // Returns a list of all iterations.
   std::vector<std::shared_ptr<const Iteration>> ListIterations() const;
   // Gets an iteration by id. Returns NOT_FOUND if there is no such iteration.
-  absl::Status IterationFromId(
-      int64_t id, std::shared_ptr<const Iteration>& iteration) const;
+  Status IterationFromId(int64_t id,
+                         std::shared_ptr<const Iteration>& iteration) const;
   // Gets an iteration by key. Returns NOT_FOUND if there is no such iteration.
-  absl::Status IterationByKey(
-      IterationKey key, std::shared_ptr<const Iteration>& iteration) const;
+  Status IterationByKey(IterationKey key,
+                        std::shared_ptr<const Iteration>& iteration) const;
 
   // Returns the iteration associated with the given iteration client id.
   // Returns NOT_FOUND if the iteration_client_id is unknown or has been
   // released.
-  absl::Status IterationForIterationClientId(
+  Status IterationForIterationClientId(
       int64_t iteration_client_id, std::shared_ptr<const Iteration>& iteration);
   // Returns a list of all active client ids.
   std::vector<int64_t> ListActiveClientIds();
@@ -270,38 +270,31 @@ class DispatcherState {
   // Returns the next available task id.
   int64_t NextAvailableTaskId() const;
   // Gets a task by id. Returns NOT_FOUND if there is no such task.
-  absl::Status TaskFromId(int64_t id, std::shared_ptr<const Task>& task) const;
+  Status TaskFromId(int64_t id, std::shared_ptr<const Task>& task) const;
   // Stores a list of all tasks for the given iteration to `tasks`. Returns
   // NOT_FOUND if there is no such iteration.
-  absl::Status TasksForIteration(
+  Status TasksForIteration(
       int64_t iteration_id,
       std::vector<std::shared_ptr<const Task>>& tasks) const;
   // Stores a list of all tasks for the given worker to `tasks`. Returns
   // NOT_FOUND if there is no such worker.
-  absl::Status TasksForWorker(
-      const absl::string_view worker_address,
-      std::vector<std::shared_ptr<const Task>>& tasks) const;
+  Status TasksForWorker(const absl::string_view worker_address,
+                        std::vector<std::shared_ptr<const Task>>& tasks) const;
 
   // If the dispatcher config explicitly specifies a list of workers, validates
   // `worker_address` is in the list.
-  absl::Status ValidateWorker(absl::string_view worker_address) const;
+  Status ValidateWorker(absl::string_view worker_address) const;
 
   // If the dispatcher config specifies worker addresses, `GetWorkerIndex`
   // returns the worker index according to the list. This is useful for
   // deterministically sharding a dataset among a fixed set of workers.
-  absl::StatusOr<int64_t> GetWorkerIndex(
-      absl::string_view worker_address) const;
+  StatusOr<int64_t> GetWorkerIndex(absl::string_view worker_address) const;
 
   // Returns the paths of all snapshots initiated during the lifetime of this
   // journal.
   const absl::flat_hash_set<std::string>& ListSnapshotPaths() const {
     return snapshot_paths_;
   }
-
-  // Returns a bool describing whether or not compression was disabled at
-  // runtime for the given dataset, if such a decision has been made.
-  std::optional<bool> CompressionDisabledAtRuntime(
-      const std::string& dataset_id) const;
 
   // Returns the current number of registered workers.
   int64_t GetNumberOfRegisteredWorkers() const { return workers_.size(); }
@@ -324,8 +317,6 @@ class DispatcherState {
   void CreateTask(const CreateTaskUpdate& create_task);
   void FinishTask(const FinishTaskUpdate& finish_task);
   void Snapshot(const SnapshotUpdate& snapshot);
-  void CompressionDisabledAtRuntime(const CompressionDisabledAtRuntimeUpdate&
-                                        compression_disabled_at_runtime);
 
   // Updates the next available dataset ID.
   void UpdateNextAvailableDatasetId();
@@ -370,9 +361,6 @@ class DispatcherState {
   absl::flat_hash_map<std::string, TasksById> tasks_by_worker_;
   // Paths for all snapshots initiated during the lifetime of this journal.
   absl::flat_hash_set<std::string> snapshot_paths_;
-  // A mapping of dataset id to a boolean describing whether or not compression
-  // was disabled at runtime for that dataset.
-  absl::flat_hash_map<std::string, bool> compression_disabled_at_runtime_;
 };
 
 }  // namespace data

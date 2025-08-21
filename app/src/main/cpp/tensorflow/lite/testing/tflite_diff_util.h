@@ -19,7 +19,6 @@ limitations under the License.
 #include <vector>
 
 #include "tensorflow/lite/string_type.h"
-#include "tensorflow/lite/testing/test_runner.h"
 #include "tensorflow/lite/testing/tflite_driver.h"
 
 namespace tflite {

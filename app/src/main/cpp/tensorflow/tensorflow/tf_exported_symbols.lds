@@ -6,6 +6,7 @@
 *TF_*
 *Eager*
 *TFE_*
+*nsync_*
 *stream_executor*
 *xla*
 *PyInit_*
@@ -14,4 +15,3 @@
 *tsl*
 *lite*
 *TFL*
-*quantization*

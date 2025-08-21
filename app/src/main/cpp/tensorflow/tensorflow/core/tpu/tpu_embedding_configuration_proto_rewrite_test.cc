@@ -19,27 +19,28 @@ limitations under the License.
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include "absl/status/status.h"
 #include "absl/strings/string_view.h"
-#include "xla/tsl/lib/core/status_test_util.h"
-#include "tensorflow/core/platform/errors.h"
+#include "tensorflow/core/lib/core/errors.h"
+#include "tensorflow/core/lib/core/status.h"
+#include "tensorflow/core/lib/core/status_test_util.h"
+#include "tensorflow/core/platform/casts.h"
+#include "tensorflow/core/platform/protobuf.h"
 #include "tensorflow/core/platform/status.h"
 #include "tensorflow/core/platform/status_matchers.h"
+#include "tensorflow/core/protobuf/error_codes.pb.h"
 #include "tensorflow/core/protobuf/tpu/tpu_embedding_configuration.pb.h"
-#include "tsl/platform/protobuf.h"  // IWYU pragma: keep
-#include "tsl/platform/test.h"
 
 namespace tensorflow {
 namespace {
 
-absl::Status ParseTextProto(absl::string_view text_proto,
-                            tpu::TPUEmbeddingConfiguration* parsed_proto) {
-  tsl::protobuf::TextFormat::Parser parser;
+Status ParseTextProto(absl::string_view text_proto,
+                      protobuf::Message* parsed_proto) {
+  protobuf::TextFormat::Parser parser;
   // Attempt to parse as text.
-  tsl::protobuf::io::ArrayInputStream input_stream(text_proto.data(),
-                                                   text_proto.size());
+  protobuf::io::ArrayInputStream input_stream(text_proto.data(),
+                                              text_proto.size());
   if (parser.Parse(&input_stream, parsed_proto)) {
-    return absl::OkStatus();
+    return OkStatus();
   }
   parsed_proto->Clear();
   return errors::InvalidArgument("Could not parse text proto: ", text_proto);

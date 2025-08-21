@@ -41,23 +41,23 @@ class StringWritableFile : public WritableFile {
  public:
   explicit StringWritableFile(string* str) : str_(*str) {}
 
-  absl::Status Append(StringPiece data) override {
+  Status Append(StringPiece data) override {
     absl::StrAppend(&str_, data);
-    return absl::OkStatus();
+    return OkStatus();
   }
 
-  absl::Status Close() override { return absl::OkStatus(); }
+  Status Close() override { return OkStatus(); }
 
-  absl::Status Flush() override { return absl::OkStatus(); }
+  Status Flush() override { return OkStatus(); }
 
-  absl::Status Name(StringPiece* result) const override {
+  Status Name(StringPiece* result) const override {
     *result = "(string)";
-    return absl::OkStatus();
+    return OkStatus();
   }
 
-  absl::Status Sync() override { return absl::OkStatus(); }
+  Status Sync() override { return OkStatus(); }
 
-  absl::Status Tell(int64_t* position) override {
+  Status Tell(int64_t* position) override {
     return errors::Unimplemented("Stream not seekable");
   }
 

@@ -51,7 +51,7 @@ static bool IsOk(const TF_Status* s) {
   return false;
 }
 
-static bool IsOk(const absl::Status& s) {
+static bool IsOk(const Status& s) {
   if (s.ok()) return true;
   VLOG(2) << s.message();
   return false;
@@ -102,7 +102,7 @@ mlir::LogicalResult EvaluateOperation(
     RETURN_FAILURE_IF_ERROR(status);
   }
 
-  VLOG(1) << "Start to evaluate node: " << *node_def;
+  VLOG(1) << "Start to evaluate node: " << node_def->DebugString();
 
   // Adds inputs to the TF operation.
   for (const auto operand : operands) {

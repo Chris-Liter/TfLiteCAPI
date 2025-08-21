@@ -16,7 +16,6 @@ limitations under the License.
 
 #include <sstream>
 
-#include "tensorflow/lite/c/c_api_types.h"
 #include "tensorflow/lite/delegates/hexagon/hexagon_delegate.h"
 
 extern "C" {

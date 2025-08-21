@@ -9,7 +9,6 @@ tf_proto {
       type: TYPE_INT64
       options {
         packed: true
-        jstype: JS_STRING
       }
     }
   }

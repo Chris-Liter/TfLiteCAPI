@@ -53,7 +53,7 @@ class PaddingFIFOQueueOp : public TypedQueueOp {
   }
 
  private:
-  absl::Status CreateResource(QueueInterface** ret) override
+  Status CreateResource(QueueInterface** ret) override
       TF_EXCLUSIVE_LOCKS_REQUIRED(mu_) {
     PaddingFIFOQueue* queue = new PaddingFIFOQueue(
         capacity_, component_types_, component_shapes_, cinfo_.name());
@@ -62,8 +62,7 @@ class PaddingFIFOQueueOp : public TypedQueueOp {
 
   std::vector<PartialTensorShape> component_shapes_;
 
-  PaddingFIFOQueueOp(const PaddingFIFOQueueOp&) = delete;
-  void operator=(const PaddingFIFOQueueOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(PaddingFIFOQueueOp);
 };
 
 REGISTER_KERNEL_BUILDER(Name("PaddingFIFOQueue").Device(DEVICE_CPU),

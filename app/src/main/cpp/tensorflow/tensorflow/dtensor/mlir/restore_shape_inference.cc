@@ -15,24 +15,12 @@ limitations under the License.
 
 #include <memory>
 
-#include "absl/status/status.h"
-#include "llvm/Support/Casting.h"
 #include "llvm/Support/FormatVariadic.h"
-#include "llvm/Support/LogicalResult.h"
-#include "mlir/IR/Builders.h"  // from @llvm-project
+#include "mlir/Dialect/Func/IR/FuncOps.h"  // from @llvm-project
 #include "mlir/IR/BuiltinOps.h"  // from @llvm-project
-#include "mlir/IR/BuiltinTypes.h"  // from @llvm-project
-#include "mlir/IR/Operation.h"  // from @llvm-project
-#include "mlir/IR/Types.h"  // from @llvm-project
-#include "mlir/IR/Value.h"  // from @llvm-project
-#include "mlir/IR/Visitors.h"  // from @llvm-project
 #include "mlir/Pass/Pass.h"  // from @llvm-project
-#include "mlir/Support/LLVM.h"  // from @llvm-project
 #include "mlir/Support/LogicalResult.h"  // from @llvm-project
-#include "tensorflow/compiler/mlir/tensorflow/ir/tf_attributes.h"
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_ops.h"
-#include "tensorflow/dtensor/cc/dstatus.h"
-#include "tensorflow/dtensor/mlir/dtensor_dialect/ir/dtensor_attributes.h"
 #include "tensorflow/dtensor/mlir/dtensor_send_recv.h"
 #include "tensorflow/dtensor/mlir/ir/tf_dtensor.h"
 #include "tensorflow/dtensor/mlir/shape_utils.h"
@@ -93,7 +81,9 @@ mlir::LogicalResult BackwardShapeInferenceToRestoreOp(mlir::ModuleOp module,
     // the type to the operand element type.
     mlir::RankedTensorType new_type = mlir::RankedTensorType::get(
         GetShapeOfValue(new_cast_op.getResult()).value(),
-        mlir::cast<mlir::TensorType>(new_cast_op.getOperand().getType())
+        new_cast_op.getOperand()
+            .getType()
+            .cast<mlir::TensorType>()
             .getElementType());
 
     // Recursively shape inference to the input of the cast op with the
@@ -130,7 +120,7 @@ mlir::LogicalResult BackwardShapeInferenceToRestoreOp(mlir::ModuleOp module,
     auto new_recv_op = builder->create<mlir::TF::DTensorRecv>(
         recv_op.getLoc(), type, builder->getStringAttr(recv_op.getKey()),
         mlir::TF::ShapeAttr::get(builder->getContext(),
-                                 mlir::dyn_cast<mlir::TensorType>(type)),
+                                 type.dyn_cast<mlir::TensorType>()),
         mlir::dtensor::MeshAttr::get(builder->getContext(), recv_op.getMesh()));
 
     recv_op.replaceAllUsesWith(new_recv_op.getOutput());
@@ -140,7 +130,7 @@ mlir::LogicalResult BackwardShapeInferenceToRestoreOp(mlir::ModuleOp module,
         module, new_recv_op);
 
     if (!send_op.ok())
-      return recv_op.emitOpError(absl::StatusMessageAsCStr(send_op.status()));
+      return recv_op.emitOpError(tsl::NullTerminatedMessage(send_op.status()));
 
     // Recursively shape inference to the input of the send op.
     return BackwardShapeInferenceToRestoreOp(

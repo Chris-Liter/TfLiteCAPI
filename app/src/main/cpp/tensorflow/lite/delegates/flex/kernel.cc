@@ -66,7 +66,6 @@ namespace tflite {
 namespace flex {
 
 constexpr char kReadVariableOp[] = "ReadVariableOp";
-constexpr char kInterOpParallelismAttrName[] = "use_inter_op_parallelism";
 
 struct OpNode;
 
@@ -156,14 +155,14 @@ class OpOutputs {
 
   int TfLiteIndex(int i) const { return outputs_[i]; }
 
-  absl::InlinedVector<tensorflow::Tensor, 2UL>* GetTensors() {
+  tensorflow::gtl::InlinedVector<tensorflow::Tensor, 2>* GetTensors() {
     return &vector_;
   }
 
  private:
   std::vector<int> outputs_;
   std::vector<bool> subgraph_outputs_;
-  absl::InlinedVector<tensorflow::Tensor, 2UL> vector_;
+  tensorflow::gtl::InlinedVector<tensorflow::Tensor, 2> vector_;
 };
 
 // This struct holds information such as tensor lifecycle and BufferMap which
@@ -238,23 +237,7 @@ class OpNode {
         tensorflow::OpRegistry::Global()->LookUp(nodedef_.op(), &op_reg_data_));
     AddDefaultsToNodeDef(op_reg_data_->op_def, &nodedef_);
 
-    // Force disable the use of inter op parallelism to prevent deadlocks in
-    // Tensorflow Function Library Runtime when only one thread is allowed.
-    // This changes the threadpool that is used by TF's data ops by passing it
-    // to the CapturedFunction instantiate function.
-    //
-    // It should be ok to remove this when/if the tensorflow::Executor::Run
-    // function is changed not to call the RunAsync function and wait on its
-    // completion. See b/304799442 for more context.
-    const auto& op_def = op_reg_data_->op_def;
-    for (const auto& attr : op_def.attr()) {
-      if (attr.name() == kInterOpParallelismAttrName) {
-        (*nodedef_.mutable_attr())[kInterOpParallelismAttrName].set_b(false);
-        break;
-      }
-    }
-
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   tensorflow::Status BuildOpKernelRunner(
@@ -265,12 +248,12 @@ class OpNode {
                             name_, inputs_.Size(), /*attr_builder=*/
                             [this](tensorflow::AttrValueMap* attr_value_map) {
                               *attr_value_map = nodedef_.attr();
-                              return absl::OkStatus();
+                              return ::tensorflow::OkStatus();
                             },
                             *eager_context->pflr(),
                             eager_context->local_device_mgr()->HostCPU()));
 
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   tensorflow::Status BuildOpKernelInputs(
@@ -305,7 +288,7 @@ class OpNode {
       run_state->input_tf_tensor_values[i].tensor =
           &run_state->input_tf_tensors[i];
     }
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   // Returns whether an output tensor should be preserved in the buffer map by
@@ -382,7 +365,7 @@ class OpNode {
         }
       }
     }
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
  private:

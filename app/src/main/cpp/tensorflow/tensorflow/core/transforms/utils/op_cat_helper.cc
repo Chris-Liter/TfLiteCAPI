@@ -15,7 +15,6 @@ limitations under the License.
 
 #include "tensorflow/core/transforms/utils/op_cat_helper.h"
 
-#include "mlir/Support/LLVM.h"  // from @llvm-project
 #include "tensorflow/core/framework/op.h"
 #include "tensorflow/core/framework/types.h"
 #include "tensorflow/core/ir/dialect.h"
@@ -56,22 +55,22 @@ bool SplatElementsAttrHasValue(SplatElementsAttr attr, float v) {
     IF_SPLAT_VALUE_IS(tensorflow::DT_DOUBLE, v);
   } else if (type.isBF16()) {
     IF_SPLAT_VALUE_IS(tensorflow::DT_BFLOAT16, v);
-  } else if (mlir::isa<ComplexType>(type)) {
-    ComplexType complex_type = mlir::cast<ComplexType>(type);
+  } else if (type.isa<ComplexType>()) {
+    ComplexType complex_type = type.cast<ComplexType>();
     if (complex_type.getElementType().isF32()) {
       IF_SPLAT_VALUE_IS(tensorflow::DT_COMPLEX64, v);
     } else if (complex_type.getElementType().isF64()) {
       IF_SPLAT_VALUE_IS(tensorflow::DT_COMPLEX128, v);
     }
-  } else if (mlir::isa<tf_type::Qint8Type>(type)) {
+  } else if (type.isa<tf_type::Qint8Type>()) {
     IF_SPLAT_VALUE_IS(tensorflow::DT_QINT8, v);
-  } else if (mlir::isa<tf_type::Qint16Type>(type)) {
+  } else if (type.isa<tf_type::Qint16Type>()) {
     IF_SPLAT_VALUE_IS(tensorflow::DT_QINT16, v);
-  } else if (mlir::isa<tf_type::Qint32Type>(type)) {
+  } else if (type.isa<tf_type::Qint32Type>()) {
     IF_SPLAT_VALUE_IS(tensorflow::DT_QINT32, v);
-  } else if (mlir::isa<tf_type::Quint8Type>(type)) {
+  } else if (type.isa<tf_type::Quint8Type>()) {
     IF_SPLAT_VALUE_IS(tensorflow::DT_QUINT8, v);
-  } else if (mlir::isa<tf_type::Quint16Type>(type)) {
+  } else if (type.isa<tf_type::Quint16Type>()) {
     IF_SPLAT_VALUE_IS(tensorflow::DT_QUINT16, v);
   }
 #undef IF_SPLAT_VALUE_IS
@@ -83,10 +82,10 @@ bool SplatElementsAttrHasValue(SplatElementsAttr attr, float v) {
 bool OpCatHelper::IsAggregate(TFOp op) {
   if (dialect_->IsAdd(op)) {
     auto attr = op->getAttrOfType<TypeAttr>("T");
-    return !attr || !mlir::isa<StringType>(attr.getValue());
+    return !attr || !attr.getValue().isa<StringType>();
   }
   const tensorflow::OpDef *op_def = nullptr;
-  absl::Status status = tensorflow::OpRegistry::Global()->LookUpOpDef(
+  tensorflow::Status status = tensorflow::OpRegistry::Global()->LookUpOpDef(
       op->getName().stripDialect().data(), &op_def);
   return status.ok() && op_def->is_aggregate();
 }
@@ -94,10 +93,10 @@ bool OpCatHelper::IsAggregate(TFOp op) {
 bool OpCatHelper::IsCommutative(TFOp op) {
   if (dialect_->IsAdd(op)) {
     auto attr = op->getAttrOfType<TypeAttr>("T");
-    return !attr || !mlir::isa<StringType>(attr.getValue());
+    return !attr || !attr.getValue().isa<StringType>();
   }
   const tensorflow::OpDef *op_def = nullptr;
-  absl::Status status = tensorflow::OpRegistry::Global()->LookUpOpDef(
+  tensorflow::Status status = tensorflow::OpRegistry::Global()->LookUpOpDef(
       op->getName().stripDialect().data(), &op_def);
   return status.ok() && op_def->is_commutative();
 }

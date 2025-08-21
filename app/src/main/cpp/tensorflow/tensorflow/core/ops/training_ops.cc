@@ -49,22 +49,17 @@ ShapeHandle ShapeOrHandleShape<true>(InferenceContext* c, int input) {
 // <s> is an input+output parameter, containing the current known input shape to
 // the gradient.
 template <bool is_sparse, bool is_resource>
-static absl::Status HandleGradAndIndicesInputs(InferenceContext* c,
-                                               int grad_idx, ShapeHandle* s) {
+static Status HandleGradAndIndicesInputs(InferenceContext* c, int grad_idx,
+                                         ShapeHandle* s) {
   ShapeHandle grad = ShapeOrHandleShape<is_resource>(c, grad_idx);
   if (!is_sparse) {
     TF_RETURN_IF_ERROR(c->Merge(*s, grad, s));
-    return absl::OkStatus();
+    return OkStatus();
   }
   // Indices is a vector where indices.dim[0].rank == grad[0].rank.
   ShapeHandle indices;
   TF_RETURN_IF_ERROR(c->WithRank(c->input(grad_idx + 1), 1, &indices));
   DimensionHandle unused;
-  const auto rank = c->Rank(grad);
-  if (!rank) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Argument grad must not be a scalar. ", "Got grad with rank ", rank));
-  }
   TF_RETURN_IF_ERROR(c->Merge(c->Dim(indices, 0), c->Dim(grad, 0), &unused));
   // Trailing part of grad matches trailing part of *s.
   ShapeHandle grad_unknown_first;
@@ -72,11 +67,11 @@ static absl::Status HandleGradAndIndicesInputs(InferenceContext* c,
       c->ReplaceDim(grad, 0, c->UnknownDim(), &grad_unknown_first));
   TF_RETURN_IF_ERROR(c->Merge(*s, grad_unknown_first, s));
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 template <bool is_resource>
-static absl::Status ApplyGradientDescentShapeFn(InferenceContext* c) {
+static Status ApplyGradientDescentShapeFn(InferenceContext* c) {
   ShapeHandle unused;
   ShapeHandle s = ShapeOrHandleShape<is_resource>(c, 0);     // var
   TF_RETURN_IF_ERROR(c->WithRank(c->input(1), 0, &unused));  // alpha
@@ -84,7 +79,7 @@ static absl::Status ApplyGradientDescentShapeFn(InferenceContext* c) {
   if (c->num_outputs() > 0) {
     c->set_output(0, s);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 REGISTER_OP("ApplyGradientDescent")
@@ -105,7 +100,7 @@ REGISTER_OP("ResourceApplyGradientDescent")
     .SetShapeFn(ApplyGradientDescentShapeFn<true>);
 
 template <bool is_sparse, bool is_resource>
-absl::Status ApplyProximalGradientDescentShapeFn(InferenceContext* c) {
+Status ApplyProximalGradientDescentShapeFn(InferenceContext* c) {
   ShapeHandle unused;
   ShapeHandle s = ShapeOrHandleShape<is_resource>(c, 0);     // var
   TF_RETURN_IF_ERROR(c->WithRank(c->input(1), 0, &unused));  // alpha
@@ -116,7 +111,7 @@ absl::Status ApplyProximalGradientDescentShapeFn(InferenceContext* c) {
   if (c->num_outputs() > 0) {
     c->set_output(0, s);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 REGISTER_OP("ApplyProximalGradientDescent")
@@ -170,7 +165,7 @@ REGISTER_OP("ResourceSparseApplyProximalGradientDescent")
                                                     /*is_resource=*/true>);
 
 template <bool is_sparse, bool is_resource>
-static absl::Status ApplyAdadeltaShapeFn(InferenceContext* c) {
+static Status ApplyAdadeltaShapeFn(InferenceContext* c) {
   ShapeHandle unused;
   ShapeHandle s = ShapeOrHandleShape<is_resource>(c, 0);  // var
   TF_RETURN_IF_ERROR(
@@ -185,7 +180,7 @@ static absl::Status ApplyAdadeltaShapeFn(InferenceContext* c) {
   if (c->num_outputs() > 0) {
     c->set_output(0, s);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 REGISTER_OP("ApplyAdadelta")
@@ -246,7 +241,7 @@ REGISTER_OP("ResourceSparseApplyAdadelta")
     .SetShapeFn(ApplyAdadeltaShapeFn</*is_sparse=*/true, /*is_resource=*/true>);
 
 template <bool is_sparse, bool is_resource>
-static absl::Status ApplyAdagradShapeFn(InferenceContext* c) {
+static Status ApplyAdagradShapeFn(InferenceContext* c) {
   ShapeHandle unused;
   ShapeHandle s = ShapeOrHandleShape<is_resource>(c, 0);  // var
   TF_RETURN_IF_ERROR(
@@ -257,7 +252,7 @@ static absl::Status ApplyAdagradShapeFn(InferenceContext* c) {
   if (c->num_outputs() > 0) {
     c->set_output(0, s);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 REGISTER_OP("ApplyAdagrad")
@@ -308,7 +303,7 @@ REGISTER_OP("ResourceSparseApplyAdagrad")
     .SetShapeFn(ApplyAdagradShapeFn</*is_sparse=*/true, /*is_resource=*/true>);
 
 template <bool is_sparse, bool is_resource>
-static absl::Status ApplyAdagradV2ShapeFn(InferenceContext* c) {
+static Status ApplyAdagradV2ShapeFn(InferenceContext* c) {
   ShapeHandle unused;
   ShapeHandle s = ShapeOrHandleShape<is_resource>(c, 0);  // var
   TF_RETURN_IF_ERROR(
@@ -320,7 +315,7 @@ static absl::Status ApplyAdagradV2ShapeFn(InferenceContext* c) {
   if (c->num_outputs() > 0) {
     c->set_output(0, s);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 REGISTER_OP("ApplyAdagradV2")
@@ -378,7 +373,7 @@ REGISTER_OP("ResourceSparseApplyAdagradV2")
         ApplyAdagradV2ShapeFn</*is_sparse=*/true, /*is_resource=*/true>);
 
 template <bool is_sparse, bool is_resource>
-static absl::Status ApplyProximalAdagradShapeFn(InferenceContext* c) {
+static Status ApplyProximalAdagradShapeFn(InferenceContext* c) {
   ShapeHandle unused;
   ShapeHandle s = ShapeOrHandleShape<is_resource>(c, 0);  // var
   TF_RETURN_IF_ERROR(
@@ -391,7 +386,7 @@ static absl::Status ApplyProximalAdagradShapeFn(InferenceContext* c) {
   if (c->num_outputs() > 0) {
     c->set_output(0, s);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 REGISTER_OP("ApplyProximalAdagrad")
@@ -449,7 +444,7 @@ REGISTER_OP("ResourceSparseApplyProximalAdagrad")
         ApplyProximalAdagradShapeFn</*is_sparse=*/true, /*is_resource=*/true>);
 
 template <bool is_sparse, bool is_resource>
-static absl::Status ApplyAdagradDAShapeFn(InferenceContext* c) {
+static Status ApplyAdagradDAShapeFn(InferenceContext* c) {
   ShapeHandle unused;
   ShapeHandle s = ShapeOrHandleShape<is_resource>(c, 0);  // var
   TF_RETURN_IF_ERROR(c->Merge(s, ShapeOrHandleShape<is_resource>(c, 1),
@@ -466,7 +461,7 @@ static absl::Status ApplyAdagradDAShapeFn(InferenceContext* c) {
   if (c->num_outputs() > 0) {
     c->set_output(0, s);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 REGISTER_OP("ApplyAdagradDA")
@@ -532,7 +527,7 @@ REGISTER_OP("ResourceSparseApplyAdagradDA")
         ApplyAdagradDAShapeFn</*is_sparse=*/true, /*is_resource=*/true>);
 
 template <bool is_sparse, bool is_resource>
-static absl::Status ApplyFtrlShapeFn(InferenceContext* c) {
+static Status ApplyFtrlShapeFn(InferenceContext* c) {
   ShapeHandle unused;
   ShapeHandle s = ShapeOrHandleShape<is_resource>(c, 0);  // var
   TF_RETURN_IF_ERROR(
@@ -549,7 +544,7 @@ static absl::Status ApplyFtrlShapeFn(InferenceContext* c) {
   if (c->num_outputs() > 0) {
     c->set_output(0, s);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 REGISTER_OP("ApplyFtrl")
@@ -681,7 +676,7 @@ REGISTER_OP("ResourceSparseApplyFtrlV2")
     .SetShapeFn(ApplyFtrlShapeFn</*is_sparse=*/true, /*is_resource=*/true>);
 
 template <bool is_sparse, bool is_resource>
-static absl::Status ApplyMomentumShapeFn(InferenceContext* c) {
+static Status ApplyMomentumShapeFn(InferenceContext* c) {
   ShapeHandle unused;
   ShapeHandle s = ShapeOrHandleShape<is_resource>(c, 0);  // var
   TF_RETURN_IF_ERROR(
@@ -694,7 +689,7 @@ static absl::Status ApplyMomentumShapeFn(InferenceContext* c) {
   if (c->num_outputs() > 0) {
     c->set_output(0, s);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 REGISTER_OP("ApplyMomentum")
@@ -776,7 +771,7 @@ REGISTER_OP("ResourceSparseApplyKerasMomentum")
     .SetShapeFn(ApplyMomentumShapeFn</*is_sparse=*/true, /*is_resource=*/true>);
 
 template <bool is_resource>
-static absl::Status ApplyAdamShapeFn(InferenceContext* c) {
+static Status ApplyAdamShapeFn(InferenceContext* c) {
   ShapeHandle unused;
   ShapeHandle s = ShapeOrHandleShape<is_resource>(c, 0);  // var
   TF_RETURN_IF_ERROR(
@@ -795,7 +790,7 @@ static absl::Status ApplyAdamShapeFn(InferenceContext* c) {
   if (c->num_outputs() > 0) {
     c->set_output(0, s);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 REGISTER_OP("ApplyAdam")
@@ -832,7 +827,7 @@ REGISTER_OP("ResourceApplyAdam")
     .SetShapeFn(ApplyAdamShapeFn</*is_resource=*/true>);
 
 template <bool is_resource>
-static absl::Status ApplyAdamWithAmsgradShapeFn(InferenceContext* c) {
+static Status ApplyAdamWithAmsgradShapeFn(InferenceContext* c) {
   ShapeHandle unused;
   ShapeHandle s = ShapeOrHandleShape<is_resource>(c, 0);  // var
   TF_RETURN_IF_ERROR(
@@ -853,7 +848,7 @@ static absl::Status ApplyAdamWithAmsgradShapeFn(InferenceContext* c) {
   if (c->num_outputs() > 0) {
     c->set_output(0, s);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 REGISTER_OP("ResourceApplyAdamWithAmsgrad")
@@ -873,7 +868,7 @@ REGISTER_OP("ResourceApplyAdamWithAmsgrad")
     .SetShapeFn(ApplyAdamWithAmsgradShapeFn</*is_resource=*/true>);
 
 template <bool is_resource>
-static absl::Status ApplyAdaMaxShapeFn(InferenceContext* c) {
+static Status ApplyAdaMaxShapeFn(InferenceContext* c) {
   ShapeHandle unused;
   ShapeHandle s = ShapeOrHandleShape<is_resource>(c, 0);  // var
   TF_RETURN_IF_ERROR(
@@ -891,7 +886,7 @@ static absl::Status ApplyAdaMaxShapeFn(InferenceContext* c) {
   if (c->num_outputs() > 0) {
     c->set_output(0, s);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 REGISTER_OP("ApplyAdaMax")
@@ -924,7 +919,7 @@ REGISTER_OP("ResourceApplyAdaMax")
     .SetShapeFn(ApplyAdaMaxShapeFn</*is_resource=*/true>);
 
 template <bool is_sparse, bool is_resource>
-static absl::Status ApplyRMSPropShapeFn(InferenceContext* c) {
+static Status ApplyRMSPropShapeFn(InferenceContext* c) {
   ShapeHandle unused;
   ShapeHandle s = ShapeOrHandleShape<is_resource>(c, 0);  // var
   TF_RETURN_IF_ERROR(
@@ -940,7 +935,7 @@ static absl::Status ApplyRMSPropShapeFn(InferenceContext* c) {
   if (c->num_outputs() > 0) {
     c->set_output(0, s);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 REGISTER_OP("ApplyRMSProp")
@@ -1003,7 +998,7 @@ REGISTER_OP("ResourceSparseApplyRMSProp")
     .SetShapeFn(ApplyRMSPropShapeFn</*is_sparse=*/true, /*is_resource=*/true>);
 
 template <bool is_sparse, bool is_resource>
-static absl::Status ApplyCenteredRMSPropShapeFn(InferenceContext* c) {
+static Status ApplyCenteredRMSPropShapeFn(InferenceContext* c) {
   ShapeHandle unused;
   ShapeHandle s = ShapeOrHandleShape<is_resource>(c, 0);  // var
   TF_RETURN_IF_ERROR(
@@ -1021,7 +1016,7 @@ static absl::Status ApplyCenteredRMSPropShapeFn(InferenceContext* c) {
   if (c->num_outputs() > 0) {
     c->set_output(0, s);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 REGISTER_OP("ApplyCenteredRMSProp")
@@ -1091,7 +1086,7 @@ REGISTER_OP("ResourceSparseApplyCenteredRMSProp")
         ApplyCenteredRMSPropShapeFn</*is_sparse=*/true, /*is_resource=*/true>);
 
 template <bool is_resource>
-static absl::Status ApplyAddSignShapeFn(InferenceContext* c) {
+static Status ApplyAddSignShapeFn(InferenceContext* c) {
   ShapeHandle unused;
   ShapeHandle s = ShapeOrHandleShape<is_resource>(c, 0);  // var
   TF_RETURN_IF_ERROR(
@@ -1106,7 +1101,7 @@ static absl::Status ApplyAddSignShapeFn(InferenceContext* c) {
   if (c->num_outputs() > 0) {
     c->set_output(0, s);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 REGISTER_OP("ApplyAddSign")
@@ -1135,7 +1130,7 @@ REGISTER_OP("ResourceApplyAddSign")
     .SetShapeFn(ApplyAddSignShapeFn</*is_resource=*/true>);
 
 template <bool is_resource>
-static absl::Status ApplyPowerSignShapeFn(InferenceContext* c) {
+static Status ApplyPowerSignShapeFn(InferenceContext* c) {
   ShapeHandle unused;
   ShapeHandle s = ShapeOrHandleShape<is_resource>(c, 0);  // var
   TF_RETURN_IF_ERROR(
@@ -1150,7 +1145,7 @@ static absl::Status ApplyPowerSignShapeFn(InferenceContext* c) {
   if (c->num_outputs() > 0) {
     c->set_output(0, s);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 REGISTER_OP("ApplyPowerSign")

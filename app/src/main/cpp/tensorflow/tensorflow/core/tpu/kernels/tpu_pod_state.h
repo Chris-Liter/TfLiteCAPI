@@ -46,20 +46,19 @@ class TpuPodState : public ResourceBase {
 };
 
 // Returns the TPU pod state or an error.
-absl::Status GetTPUPodState(const ResourceMgr* rmgr, TpuPodState** pod_state);
+Status GetTPUPodState(const ResourceMgr* rmgr, TpuPodState** pod_state);
 
 // Checks whether the TPU POD state configuration is present within the resource
 // manager.
 bool HasTPUPodState(const ResourceMgr* rmgr);
 
 // Construct TpuPodState.
-absl::Status ConstructTpuPodState(
+Status ConstructTpuPodState(
     ResourceMgr* rmgr, const std::vector<int32_t>& num_devices_per_host,
     tpu::TpuCompilationCacheInterface* compilation_cache,
     std::string* host_config_proto);
 
-absl::Status GetServerAddressAndPort(std::string* server_address,
-                                     int* serving_port);
+Status GetServerAddressAndPort(std::string* server_address, int* serving_port);
 }  // namespace tensorflow
 
 #endif  // TENSORFLOW_CORE_TPU_KERNELS_TPU_POD_STATE_H_

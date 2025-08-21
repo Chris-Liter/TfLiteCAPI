@@ -16,20 +16,18 @@ limitations under the License.
 #include "tensorflow/dtensor/mlir/dtensor_dialect/ir/ops.h"
 
 #include <string>
+#include <typeinfo>
 
-#include "mlir/IR/Attributes.h"  // from @llvm-project
-#include "mlir/IR/Diagnostics.h"  // from @llvm-project
+#include "absl/strings/string_view.h"
 #include "mlir/IR/Dialect.h"  // from @llvm-project
 #include "mlir/IR/DialectImplementation.h"  // from @llvm-project
 #include "mlir/IR/MLIRContext.h"  // from @llvm-project
-#include "mlir/Support/LLVM.h"  // from @llvm-project
-#include "tensorflow/dtensor/cc/dstatus.h"
+#include "tensorflow/compiler/mlir/utils/string_container_utils.h"
 #include "tensorflow/dtensor/cc/tensor_layout.h"
 #include "tensorflow/dtensor/mlir/dtensor_dialect/ir/dialect.h"
 
 // Generated dialect defs.
 #include "tensorflow/dtensor/mlir/dtensor_dialect/ir/dialect.cc.inc"
-#include "tensorflow/dtensor/mlir/dtensor_dialect/ir/dtensor_attributes.h"
 
 namespace mlir {
 namespace dtensor {
@@ -119,9 +117,9 @@ Attribute DTensorDialect::parseAttribute(DialectAsmParser &parser,
   StringRef spec = parser.getFullSymbolSpec();
   Location loc = parser.getEncodedSourceLoc(parser.getNameLoc());
 
-  if (spec.starts_with("mesh")) return ParseMeshAttr(getContext(), spec, loc);
+  if (spec.startswith("mesh")) return ParseMeshAttr(getContext(), spec, loc);
 
-  if (spec.starts_with("layout"))
+  if (spec.startswith("layout"))
     return ParseLayoutAttr(getContext(), spec, loc);
 
   return (emitError(loc, "unknown DTensor attribute: " + spec), nullptr);
@@ -146,10 +144,9 @@ static void printLayoutAttr(LayoutAttr attr, DialectAsmPrinter &os) {
 void DTensorDialect::printAttribute(Attribute attr,
                                     DialectAsmPrinter &os) const {
   // Cast into correct attribute and print
-  if (auto mesh_attr = mlir::dyn_cast<MeshAttr>(attr))
-    printMeshAttr(mesh_attr, os);
+  if (auto mesh_attr = attr.dyn_cast<MeshAttr>()) printMeshAttr(mesh_attr, os);
 
-  if (auto layout_attr = mlir::dyn_cast<LayoutAttr>(attr))
+  if (auto layout_attr = attr.dyn_cast<LayoutAttr>())
     printLayoutAttr(layout_attr, os);
 }
 }  // namespace dtensor

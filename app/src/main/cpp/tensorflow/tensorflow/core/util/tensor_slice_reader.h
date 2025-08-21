@@ -62,7 +62,7 @@ class TensorSliceReader {
     virtual ~Table();
     virtual bool Get(const string& key, string* value) = 0;
   };
-  typedef std::function<absl::Status(const string&, Table**)> OpenTableFunction;
+  typedef std::function<Status(const string&, Table**)> OpenTableFunction;
 
   static constexpr int kLoadAllShards = -1;
   TensorSliceReader(const string& filepattern);
@@ -78,7 +78,7 @@ class TensorSliceReader {
   int num_files() const { return sss_.size(); }
 
   // Get the status of the reader.
-  absl::Status status() const { return status_; }
+  Status status() const { return status_; }
 
   // Checks if the reader contains any slice of a tensor. In case the reader
   // does contain the tensor, if "shape" is not nullptr, fill "shape" with the
@@ -101,8 +101,8 @@ class TensorSliceReader {
 
   // Returns value for one tensor. Only single slice checkpoints are supported
   // at the moment.
-  absl::Status GetTensor(const string& name,
-                         std::unique_ptr<tensorflow::Tensor>* out_tensor) const;
+  Status GetTensor(const string& name,
+                   std::unique_ptr<tensorflow::Tensor>* out_tensor) const;
 
   typedef std::unordered_map<string, TensorShape> VarToShapeMap;
   typedef std::unordered_map<string, DataType> VarToDataTypeMap;
@@ -136,14 +136,13 @@ class TensorSliceReader {
   mutable bool all_shards_loaded_ = false;
   mutable std::vector<std::unique_ptr<Table>> sss_;
   mutable std::unordered_map<string, TensorSliceSet*> tensors_;
-  mutable absl::Status status_;
+  mutable Status status_;
 
-  TensorSliceReader(const TensorSliceReader&) = delete;
-  void operator=(const TensorSliceReader&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(TensorSliceReader);
 };
 
-absl::Status OpenTableTensorSliceReader(const string& fname,
-                                        TensorSliceReader::Table** result);
+Status OpenTableTensorSliceReader(const string& fname,
+                                  TensorSliceReader::Table** result);
 
 template <typename T>
 bool TensorSliceReader::CopySliceData(const string& name,
@@ -187,7 +186,7 @@ bool TensorSliceReader::CopySliceData(const string& name,
     }
     // Ensure the TensorSlice contains the expected amount of data.
     TensorShape shp_s;
-    absl::Status s = slice_s.SliceTensorShape(tss->shape(), &shp_s);
+    Status s = slice_s.SliceTensorShape(tss->shape(), &shp_s);
     if (!s.ok()) {
       VLOG(1) << "Failed to slice tensor " << name << ", slice "
               << slice_s.DebugString() << ": " << s;

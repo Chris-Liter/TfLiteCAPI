@@ -104,7 +104,7 @@ TEST_P(SavedVariableLoadingTest, LoadSavedVariableWithInvalidDevice) {
       shape.AsProto(saved_variable.mutable_shape());
 
   std::unique_ptr<Variable> var;
-  ASSERT_NE(absl::OkStatus(),
+  ASSERT_NE(OkStatus(),
             internal::LoadSavedVariable(context(), saved_variable, &var));
 }
 
@@ -117,7 +117,7 @@ TEST_P(SavedVariableLoadingTest, AssignAndReadVariableSuccesful) {
   TensorShape shape(shape_vector);
 
   // Create the variable.
-  absl::Status status;
+  Status status;
   std::unique_ptr<Variable> var;
   TF_EXPECT_OK(Variable::CreateUninitialized(context(), dtype, shape,
                                              absl::nullopt, nullptr, {}, &var));

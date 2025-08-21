@@ -18,9 +18,7 @@
 import os
 import random
 import string
-from typing import Optional
 
-from absl.testing import parameterized
 import riegeli
 
 from tensorflow.python.platform import test
@@ -74,10 +72,9 @@ class SplitRepeatedStringTest(test.TestCase):
   def testWrite(self):
     path = os.path.join(self.create_tempdir(), "split-repeat")
     data = [_random_string(5), _random_string(10), _random_string(15)]
-    returned_path = RepeatedStringSplitter(
-        test_message_pb2.RepeatedString(strings=data)
-    ).write(path)
-    self.assertEqual(returned_path, f"{path}.cpb")
+    RepeatedStringSplitter(test_message_pb2.RepeatedString(strings=data)).write(
+        path
+    )
 
     with riegeli.RecordReader(open(f"{path}.cpb", "rb")) as reader:
       self.assertTrue(reader.check_file_format())
@@ -146,17 +143,15 @@ class NoOpSplitter(split.ComposableSplitter):
     pass
 
 
-class NoOpSplitterTest(test.TestCase, parameterized.TestCase):
+class NoOpSplitterTest(test.TestCase):
 
-  @parameterized.parameters([None, "uncompressed"])
-  def testWriteNoChunks(self, writer_options: Optional[str]):
+  def testWriteNoChunks(self):
     path = os.path.join(self.create_tempdir(), "split-none")
     proto = test_message_pb2.RepeatedString(strings=["a", "bc", "de"])
-    returned_path = NoOpSplitter(proto).write(path, writer_options)
+    NoOpSplitter(proto).write(path)
 
     expected_file_path = path + ".pb"
     self.assertTrue(os.path.isfile(expected_file_path))
-    self.assertEqual(returned_path, expected_file_path)
 
     parsed_proto = test_message_pb2.RepeatedString()
     with open(expected_file_path, "rb") as f:

@@ -29,11 +29,12 @@ objc_library(
     srcs = ["coreml_executor.mm"],
     hdrs = ["coreml_executor.h"],
     copts = ["-std=c++17"],
+    features = ["-layering_check"],
     sdk_frameworks = [
         "CoreML",
         "Foundation",
     ],
-    deps = ["@coremltools//:mlmodel_cc_proto"],
+    deps = [":mlmodel_proto_cc"],
 )
 
 cc_library(

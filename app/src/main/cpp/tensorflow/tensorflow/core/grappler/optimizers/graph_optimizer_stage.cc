@@ -28,8 +28,8 @@ const NodeScopeAndName ParseNodeScopeAndName(const string& node_name) {
   }
 };
 
-absl::Status GetInputNode(const GraphOptimizerContext& ctx, const string& input,
-                          NodeDef** node) {
+Status GetInputNode(const GraphOptimizerContext& ctx, const string& input,
+                    NodeDef** node) {
   string node_name = NodeName(input);
   NodeDef* node_by_name = ctx.node_map->GetNode(node_name);
   if (node_by_name == nullptr) {
@@ -37,12 +37,12 @@ absl::Status GetInputNode(const GraphOptimizerContext& ctx, const string& input,
                                       " doesn't exists in a node map");
   }
   *node = node_by_name;
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status GetTensorProperties(const GraphOptimizerContext& ctx,
-                                 const string& tensor,
-                                 const OpInfo::TensorProperties** properties) {
+Status GetTensorProperties(const GraphOptimizerContext& ctx,
+                           const string& tensor,
+                           const OpInfo::TensorProperties** properties) {
   if (ctx.graph_properties == nullptr) {
     return errors::InvalidArgument("Graph properties are unknown.");
   }
@@ -68,7 +68,7 @@ absl::Status GetTensorProperties(const GraphOptimizerContext& ctx,
   }
 
   *properties = &output_properties[tensor_id.index()];
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 NodeDef* AddCopyNode(const GraphOptimizerContext& ctx, const string& name,

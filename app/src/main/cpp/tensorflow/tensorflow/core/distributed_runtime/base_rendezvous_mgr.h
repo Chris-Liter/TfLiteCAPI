@@ -40,7 +40,7 @@ limitations under the License.
 #include "tensorflow/core/platform/thread_annotations.h"
 #include "tensorflow/core/platform/types.h"
 #include "tensorflow/core/util/device_name_utils.h"
-#include "tsl/platform/refcount.h"
+#include "tensorflow/tsl/platform/refcount.h"
 
 namespace tensorflow {
 
@@ -89,8 +89,8 @@ class BaseRendezvousMgr : public RendezvousMgrInterface {
                       Rendezvous::DoneCallback done) override;
 
   // Synchronous wrapper for RecvLocalAsync.
-  absl::Status RecvLocal(int64_t step_id, const Rendezvous::ParsedKey& parsed,
-                         Tensor* val, bool* is_dead) override;
+  Status RecvLocal(int64_t step_id, const Rendezvous::ParsedKey& parsed,
+                   Tensor* val, bool* is_dead) override;
 
   // Removes rendezvous for "step_id".
   void Cleanup(int64_t step_id) override { cache_->RemoveAndAbort(step_id); }
@@ -110,8 +110,7 @@ class BaseRendezvousMgr : public RendezvousMgrInterface {
 
   tsl::core::RefCountPtr<BaseRemoteRendezvous> FindOrCreate(int64_t step_id);
 
-  BaseRendezvousMgr(const BaseRendezvousMgr&) = delete;
-  void operator=(const BaseRendezvousMgr&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(BaseRendezvousMgr);
 };
 
 // RemoteRendezvous is a Rendezvous which can handle either
@@ -125,7 +124,7 @@ class BaseRemoteRendezvous : public RemoteRendezvous {
   BaseRemoteRendezvous(const WorkerEnv* env, int64_t step_id);
 
   // Upgrades the BaseRemoteRendezvous to full initialization.
-  absl::Status Initialize(WorkerSession* session) override;
+  Status Initialize(WorkerSession* session) override;
 
   void SetRemoteEagerContextDefault() override {
     remote_eager_context_default_ = true;
@@ -136,8 +135,8 @@ class BaseRemoteRendezvous : public RemoteRendezvous {
 
   // Forwards to local_, where the Tensor "val" will be buffered and
   // any waiting callback stored.
-  absl::Status Send(const ParsedKey& key, const Rendezvous::Args& args,
-                    const Tensor& val, const bool is_dead) override;
+  Status Send(const ParsedKey& key, const Rendezvous::Args& args,
+              const Tensor& val, const bool is_dead) override;
 
   // This method is called only by the RecvOp.  It tests to see
   // whether the value will be produced by a local or remote device
@@ -146,7 +145,7 @@ class BaseRemoteRendezvous : public RemoteRendezvous {
   void RecvAsync(const ParsedKey& key, const Rendezvous::Args& args,
                  DoneCallback done) override;
 
-  void StartAbort(const absl::Status& status) override;
+  void StartAbort(const Status& status) override;
 
   // This method is called only by the local Worker, forwarded through
   // the same method on RendezvousMgr.  This occurs when the Worker
@@ -199,7 +198,7 @@ class BaseRemoteRendezvous : public RemoteRendezvous {
   mutable mutex calls_mu_;
 
   // Status given by StartAbort() if any.
-  absl::Status status_ TF_GUARDED_BY(mu_);
+  Status status_ TF_GUARDED_BY(mu_);
 
   WorkerSession* session_ TF_GUARDED_BY(mu_);  // Not owned.
 
@@ -257,8 +256,7 @@ class BaseRemoteRendezvous : public RemoteRendezvous {
   // If "is_src" is true, checks that the rendezvous key "parsed"'s
   // source is in this process. If "is_src" is false, checks that the
   // rendezvous key "parsed"'s destination is in this process.
-  absl::Status ValidateDevices(const Rendezvous::ParsedKey& parsed,
-                               bool is_src);
+  Status ValidateDevices(const Rendezvous::ParsedKey& parsed, bool is_src);
 
   // Callback handling the case when a rendezvous has been
   // accomplished in local_ and the consumer is local to this process.
@@ -272,8 +270,7 @@ class BaseRemoteRendezvous : public RemoteRendezvous {
   // Must be called only if fully initialized.
   void RecvLocalAsyncInternal(const ParsedKey& parsed, DoneCallback done);
 
-  BaseRemoteRendezvous(const BaseRemoteRendezvous&) = delete;
-  void operator=(const BaseRemoteRendezvous&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(BaseRemoteRendezvous);
 };
 
 class BaseRecvTensorCall {
@@ -283,13 +280,12 @@ class BaseRecvTensorCall {
 
   virtual void Start(std::function<void()> recv_done) = 0;
 
-  virtual void StartAbort(const absl::Status& s) = 0;
+  virtual void StartAbort(const Status& s) = 0;
 
-  virtual absl::Status status() const = 0;
+  virtual Status status() const = 0;
 
  private:
-  BaseRecvTensorCall(const BaseRecvTensorCall&) = delete;
-  void operator=(const BaseRecvTensorCall&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(BaseRecvTensorCall);
 };
 
 }  // end namespace tensorflow

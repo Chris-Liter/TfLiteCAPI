@@ -26,6 +26,7 @@ limitations under the License.
 #include "tensorflow/lite/toco/tensorflow_graph_matching/cluster.h"
 #include "tensorflow/lite/toco/tensorflow_graph_matching/cluster_utils.h"
 #include "tensorflow/lite/toco/tensorflow_graph_matching/resolve_svdf.h"
+#include "tensorflow/lite/toco/tooling_util.h"
 
 namespace toco {
 

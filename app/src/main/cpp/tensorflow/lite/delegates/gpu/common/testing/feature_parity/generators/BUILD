@@ -23,7 +23,6 @@ cc_library(
     deps = [
         "//tensorflow/lite:schema_fbs_version",
         "//tensorflow/lite/delegates/gpu/common/testing/feature_parity:utils",
-        "//tensorflow/lite/schema:schema_fbs",
         "@flatbuffers",
     ],
 )

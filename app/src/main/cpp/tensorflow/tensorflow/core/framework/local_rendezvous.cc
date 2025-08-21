@@ -33,8 +33,8 @@ limitations under the License.
 #include "tensorflow/core/platform/mutex.h"
 #include "tensorflow/core/platform/refcount.h"
 #include "tensorflow/core/platform/types.h"
-#include "tsl/platform/logging.h"
-#include "tsl/platform/refcount.h"
+#include "tensorflow/tsl/platform/logging.h"
+#include "tensorflow/tsl/platform/refcount.h"
 
 namespace tensorflow {
 
@@ -141,14 +141,12 @@ LocalRendezvous::~LocalRendezvous() {
 }
 
 namespace {
-uint64 KeyHash(const absl::string_view& k) {
-  return Hash64(k.data(), k.size());
-}
+uint64 KeyHash(const StringPiece& k) { return Hash64(k.data(), k.size()); }
 }  // namespace
 
-absl::Status LocalRendezvous::Send(const Rendezvous::ParsedKey& key,
-                                   const Rendezvous::Args& send_args,
-                                   const Tensor& val, const bool is_dead) {
+Status LocalRendezvous::Send(const Rendezvous::ParsedKey& key,
+                             const Rendezvous::Args& send_args,
+                             const Tensor& val, const bool is_dead) {
   uint64 key_hash = KeyHash(key.FullKey());
   DVLOG(2) << "Send " << this << " " << key_hash << " " << key.FullKey();
 
@@ -193,7 +191,7 @@ absl::Status LocalRendezvous::Send(const Rendezvous::ParsedKey& key,
     queue->push_back(new Item(std::move(rc_owner), send_args, val, is_dead,
                               std::move(activity_scope)));
     bucket.mu.unlock();
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   DVLOG(2) << "Consume Recv Item (key:" << key.FullKey() << "). ";
@@ -212,8 +210,7 @@ absl::Status LocalRendezvous::Send(const Rendezvous::ParsedKey& key,
   bucket.mu.unlock();
 
   DCHECK_EQ(item->type, Item::kRecv);
-  (*item->recv_state.waiter)(absl::OkStatus(), send_args, item->args, val,
-                             is_dead);
+  (*item->recv_state.waiter)(OkStatus(), send_args, item->args, val, is_dead);
   {
     mutex_lock l(bucket.mu);
     bucket.pending_callback_counter--;
@@ -223,7 +220,7 @@ absl::Status LocalRendezvous::Send(const Rendezvous::ParsedKey& key,
   }
   // Delete the item at last since it may unref and destruct the rendezvous.
   delete item;
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 void LocalRendezvous::RecvAsync(const Rendezvous::ParsedKey& key,
@@ -332,7 +329,7 @@ void LocalRendezvous::RecvAsync(const Rendezvous::ParsedKey& key,
       queue->push_back(new Item(
           std::move(rc_owner), recv_args,
           [this, cm, token, done = std::move(done)](
-              const absl::Status& s, const Rendezvous::Args& send_args,
+              const Status& s, const Rendezvous::Args& send_args,
               const Rendezvous::Args& recv_args, const Tensor& v, bool dead) {
             // TryDeregisterCallback returns true when the cancellation callback
             // is successfully deregistered. If it fails because the CM already
@@ -370,7 +367,7 @@ void LocalRendezvous::RecvAsync(const Rendezvous::ParsedKey& key,
   bucket.mu.unlock();
 
   DCHECK_EQ(item->type, Item::kSend);
-  done(absl::OkStatus(), item->args, recv_args, *item->send_state.value,
+  done(OkStatus(), item->args, recv_args, *item->send_state.value,
        item->send_state.is_dead);
   {
     mutex_lock l(bucket.mu);
@@ -389,7 +386,7 @@ std::vector<tsl::core::RefCountPtr<Rendezvous> >&
     LocalRendezvous::aborted_rendezs_ =
         *new std::vector<tsl::core::RefCountPtr<Rendezvous> >();
 
-void LocalRendezvous::StartAbort(const absl::Status& status) {
+void LocalRendezvous::StartAbort(const Status& status) {
   DoAbort(status);
 
   if (rc_owner_) {
@@ -398,14 +395,12 @@ void LocalRendezvous::StartAbort(const absl::Status& status) {
   }
 }
 
-void LocalRendezvous::DoAbort(const absl::Status& status) {
+void LocalRendezvous::DoAbort(const Status& status) {
   CHECK(!status.ok());
   {
     mutex_lock l(mu_);
     status_.Update(status);
   }
-  LOG_EVERY_POW_2(INFO) << "Local rendezvous is aborting with status: "
-                        << status;
 
   // Keeps one Item to make sure the current rendezvous won't be destructed.
   std::unique_ptr<Item> to_delete;
@@ -438,7 +433,7 @@ void LocalRendezvous::DoAbort(const absl::Status& status) {
   }
 }
 
-absl::Status LocalRendezvous::status() {
+Status LocalRendezvous::status() {
   tf_shared_lock ml(mu_);
   return status_;
 }

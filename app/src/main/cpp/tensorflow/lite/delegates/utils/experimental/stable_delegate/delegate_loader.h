@@ -23,8 +23,8 @@ namespace tflite {
 namespace delegates {
 namespace utils {
 
-constexpr char kTfLiteStableDelegateSymbol[] = "TFL_TheStableDelegate";
-constexpr char kTfLiteLibraryPathEnvironmentVariable[] =
+const char kTfLiteStableDelegateSymbol[] = "TFL_TheStableDelegate";
+const char kTfLiteLibraryPathEnvironmentVariable[] =
     "TFLITE_STABLE_DELEGATE_LIBRARY_PATH";
 
 // Loads the TFLite delegate shared library and returns the pointer to

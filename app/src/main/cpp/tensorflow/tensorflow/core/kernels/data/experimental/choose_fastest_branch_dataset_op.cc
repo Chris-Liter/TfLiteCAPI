@@ -55,17 +55,16 @@ class WrapperDataset : public DatasetBase {
 
   string DebugString() const override { return "WrapperDataset"; }
 
-  absl::Status InputDatasets(
-      std::vector<const DatasetBase*>* inputs) const override {
-    return absl::OkStatus();
+  Status InputDatasets(std::vector<const DatasetBase*>* inputs) const override {
+    return OkStatus();
   }
 
-  absl::Status CheckExternalState() const override { return absl::OkStatus(); }
+  Status CheckExternalState() const override { return OkStatus(); }
 
  protected:
-  absl::Status AsGraphDefInternal(SerializationContext* ctx,
-                                  DatasetGraphDefBuilder* b,
-                                  Node** node) const override {
+  Status AsGraphDefInternal(SerializationContext* ctx,
+                            DatasetGraphDefBuilder* b,
+                            Node** node) const override {
     return errors::Unimplemented(DebugString(), "::AsGraphDefInternal");
   }
 
@@ -87,19 +86,19 @@ class WrapperDataset : public DatasetBase {
     explicit WrapperIterator(const Params& params, bool error)
         : DatasetIterator<WrapperDataset>(params), error_(error) {}
 
-    absl::Status Initialize(IteratorContext* ctx) override {
+    Status Initialize(IteratorContext* ctx) override {
       if (error_) {
         return errors::InvalidArgument(
             "Cannot create more than one WrapperIterator per WrapperDataset. "
             "Make sure the branches to ChooseFastestDataset do not expect the "
             "input to repeat.");
       }
-      return absl::OkStatus();
+      return OkStatus();
     }
 
-    absl::Status GetNextInternal(IteratorContext* ctx,
-                                 std::vector<Tensor>* out_tensors,
-                                 bool* end_of_sequence) override {
+    Status GetNextInternal(IteratorContext* ctx,
+                           std::vector<Tensor>* out_tensors,
+                           bool* end_of_sequence) override {
       return dataset()->real_iterator_->GetNext(ctx, out_tensors,
                                                 end_of_sequence);
     }
@@ -110,14 +109,14 @@ class WrapperDataset : public DatasetBase {
       return model::MakeKnownRatioNode(std::move(args), /*ratio=*/1.0);
     }
 
-    absl::Status SaveInternal(SerializationContext* ctx,
-                              IteratorStateWriter* writer) override {
-      return absl::OkStatus();
+    Status SaveInternal(SerializationContext* ctx,
+                        IteratorStateWriter* writer) override {
+      return OkStatus();
     }
 
-    absl::Status RestoreInternal(IteratorContext* ctx,
-                                 IteratorStateReader* reader) override {
-      return absl::OkStatus();
+    Status RestoreInternal(IteratorContext* ctx,
+                           IteratorStateReader* reader) override {
+      return OkStatus();
     }
 
    private:
@@ -250,13 +249,13 @@ class ChooseFastestBranchDatasetOp : public UnaryDatasetOpKernel {
       return static_cast<double>(n) * ratio_numerator_ / ratio_denominator_;
     }
 
-    absl::Status InputDatasets(
+    Status InputDatasets(
         std::vector<const DatasetBase*>* inputs) const override {
       inputs->push_back(input_);
-      return absl::OkStatus();
+      return OkStatus();
     }
 
-    absl::Status CheckExternalState() const override {
+    Status CheckExternalState() const override {
       for (const auto& captured_func : captured_funcs_) {
         TF_RETURN_IF_ERROR(captured_func->CheckExternalState());
       }
@@ -264,9 +263,9 @@ class ChooseFastestBranchDatasetOp : public UnaryDatasetOpKernel {
     }
 
    protected:
-    absl::Status AsGraphDefInternal(SerializationContext* ctx,
-                                    DatasetGraphDefBuilder* b,
-                                    Node** output) const override {
+    Status AsGraphDefInternal(SerializationContext* ctx,
+                              DatasetGraphDefBuilder* b,
+                              Node** output) const override {
       Node* input_graph_node = nullptr;
       TF_RETURN_IF_ERROR(b->AddInputDataset(ctx, input_, &input_graph_node));
 
@@ -342,7 +341,7 @@ class ChooseFastestBranchDatasetOp : public UnaryDatasetOpKernel {
             instantiated_captured_funcs_(dataset()->captured_funcs_.size()),
             histograms_(dataset()->captured_funcs_.size()) {}
 
-      absl::Status Initialize(IteratorContext* ctx) override {
+      Status Initialize(IteratorContext* ctx) override {
         mutex_lock l(mu_);
         TF_RETURN_IF_ERROR(
             dataset()->input_->MakeIterator(ctx, this, prefix(), &input_impl_));
@@ -352,15 +351,15 @@ class ChooseFastestBranchDatasetOp : public UnaryDatasetOpKernel {
               ctx, &instantiated_captured_funcs_[i]));
         }
 
-        return absl::OkStatus();
+        return OkStatus();
       }
 
       // The first num_elements_per_branch * num_branches iterations, we run
       // experiments on the branches, using (branch_index_, experiment_counter_)
       // to keep track of which experiment we're on.
-      absl::Status GetNextInternal(IteratorContext* ctx,
-                                   std::vector<Tensor>* out_tensors,
-                                   bool* end_of_sequence) override {
+      Status GetNextInternal(IteratorContext* ctx,
+                             std::vector<Tensor>* out_tensors,
+                             bool* end_of_sequence) override {
         {  // Locking scope
           mutex_lock l(mu_);
           if (branch_index_ < dataset()->captured_funcs_.size()) {
@@ -371,8 +370,7 @@ class ChooseFastestBranchDatasetOp : public UnaryDatasetOpKernel {
                                                      /*is_get_next=*/true));
             }
 
-            absl::Status s =
-                GetNextFromExperiment(ctx, out_tensors, end_of_sequence);
+            Status s = GetNextFromExperiment(ctx, out_tensors, end_of_sequence);
             experiment_counter_++;
 
             if (experiment_counter_ >= dataset()->num_elements_per_branch_) {
@@ -408,8 +406,8 @@ class ChooseFastestBranchDatasetOp : public UnaryDatasetOpKernel {
       // TODO(rachelim): Save and restore histogram state as well. Currently,
       // if an iterator is saved and restored, the histograms start recording
       // from scratch.
-      absl::Status SaveInternal(SerializationContext* ctx,
-                                IteratorStateWriter* writer) override {
+      Status SaveInternal(SerializationContext* ctx,
+                          IteratorStateWriter* writer) override {
         mutex_lock l(mu_);
         TF_RETURN_IF_ERROR(SaveInput(ctx, writer, input_impl_));
         TF_RETURN_IF_ERROR(writer->WriteScalar(full_name("experiment_counter"),
@@ -424,11 +422,11 @@ class ChooseFastestBranchDatasetOp : public UnaryDatasetOpKernel {
           TF_RETURN_IF_ERROR(
               writer->WriteScalar(full_name("input_impl_empty"), ""));
         }
-        return absl::OkStatus();
+        return OkStatus();
       }
 
-      absl::Status RestoreInternal(IteratorContext* ctx,
-                                   IteratorStateReader* reader) override {
+      Status RestoreInternal(IteratorContext* ctx,
+                             IteratorStateReader* reader) override {
         mutex_lock l(mu_);
         TF_RETURN_IF_ERROR(RestoreInput(ctx, reader, input_impl_));
         TF_RETURN_IF_ERROR(reader->ReadScalar(full_name("experiment_counter"),
@@ -451,19 +449,19 @@ class ChooseFastestBranchDatasetOp : public UnaryDatasetOpKernel {
           }
           TF_RETURN_IF_ERROR(RestoreInput(ctx, reader, current_iterator_));
         }
-        return absl::OkStatus();
+        return OkStatus();
       }
 
      private:
-      absl::Status GetNextFromExperiment(IteratorContext* ctx,
-                                         std::vector<Tensor>* out_tensors,
-                                         bool* end_of_sequence)
+      Status GetNextFromExperiment(IteratorContext* ctx,
+                                   std::vector<Tensor>* out_tensors,
+                                   bool* end_of_sequence)
           TF_EXCLUSIVE_LOCKS_REQUIRED(mu_) {
         DCHECK_GE(branch_index_, 0);
         DCHECK_LT(branch_index_, histograms_.size());
 
         int64_t start = EnvTime::NowNanos();
-        absl::Status s =
+        Status s =
             current_iterator_->GetNext(ctx, out_tensors, end_of_sequence);
 
         if (experiment_counter_ > 0) {
@@ -497,9 +495,8 @@ class ChooseFastestBranchDatasetOp : public UnaryDatasetOpKernel {
                 << " as the fastest index.";
       }
 
-      absl::Status MakeCurrentIterator(IteratorContext* ctx,
-                                       int64_t branch_index, bool is_experiment,
-                                       bool is_get_next)
+      Status MakeCurrentIterator(IteratorContext* ctx, int64_t branch_index,
+                                 bool is_experiment, bool is_get_next)
           TF_EXCLUSIVE_LOCKS_REQUIRED(mu_) {
         DCHECK_GE(branch_index, 0);
         DCHECK_LT(branch_index, histograms_.size());
@@ -548,7 +545,7 @@ class ChooseFastestBranchDatasetOp : public UnaryDatasetOpKernel {
               &current_iterator_, /*node=*/nullptr));
         }
 
-        return absl::OkStatus();
+        return OkStatus();
       }
 
       mutex mu_;

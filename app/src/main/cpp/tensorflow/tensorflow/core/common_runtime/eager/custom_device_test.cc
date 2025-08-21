@@ -39,34 +39,33 @@ class TestCustomDevice : public CustomDevice {
  public:
   explicit TestCustomDevice(std::string name) : name_(name) {}
   const std::string& name() override { return name_; }
-  absl::Status CopyTensorToDevice(
-      ImmediateExecutionTensorHandle* tensor,
-      ImmediateExecutionTensorHandle** result) override {
+  Status CopyTensorToDevice(ImmediateExecutionTensorHandle* tensor,
+                            ImmediateExecutionTensorHandle** result) override {
     tensor->Ref();
     *result = tensor;
-    return absl::OkStatus();
+    return OkStatus();
   }
-  absl::Status CopyTensorFromDevice(
+  Status CopyTensorFromDevice(
       ImmediateExecutionTensorHandle* tensor,
       const std::string& target_device_name,
       ImmediateExecutionTensorHandle** result) override {
     tensor->Ref();
     *result = tensor;
-    return absl::OkStatus();
+    return OkStatus();
   }
-  absl::Status Execute(const ImmediateExecutionOperation* op,
-                       ImmediateExecutionTensorHandle** retvals,
-                       int* num_retvals) override {
+  Status Execute(const ImmediateExecutionOperation* op,
+                 ImmediateExecutionTensorHandle** retvals,
+                 int* num_retvals) override {
     return errors::Unimplemented("Not implemented");
   }
 
-  absl::Status Pack(absl::Span<ImmediateExecutionTensorHandle*> handles,
-                    ImmediateExecutionTensorHandle** result) override {
+  Status Pack(absl::Span<ImmediateExecutionTensorHandle*> handles,
+              ImmediateExecutionTensorHandle** result) override {
     return errors::Unimplemented("Packing is not implemented");
   }
 
   // Pins `op` to `device`.
-  absl::StatusOr<bool> ShallPinToThisDevice(
+  StatusOr<bool> ShallPinToThisDevice(
       const ImmediateExecutionOperation* op) override {
     return errors::Unimplemented("No preference in custom device pinning.");
   }
@@ -83,22 +82,22 @@ class TestCustomDeviceTensorHandle : public CustomDeviceTensorHandle {
       : CustomDeviceTensorHandle(context, device, dtype), length_(length) {}
 
   void* DevicePointer() const override { return nullptr; }
-  absl::Status NumDims(int* num_dims) const override {
+  Status NumDims(int* num_dims) const override {
     *num_dims = 1;
-    return absl::OkStatus();
+    return OkStatus();
   }
-  absl::Status Dim(int dim_index, int64_t* dim) const override {
+  Status Dim(int dim_index, int64_t* dim) const override {
     if (dim_index == 0) {
       *dim = length_;
-      return absl::OkStatus();
+      return OkStatus();
     } else {
       return errors::Internal("Dim out of bounds");
     }
   }
 
-  absl::Status SummarizeValue(std::string& summary) const override {
+  Status SummarizeValue(std::string& summary) const override {
     summary = std::string("TestValue");
-    return absl::OkStatus();
+    return OkStatus();
   }
 
  private:
@@ -118,7 +117,7 @@ TEST(CustomDevice, TestTensorHandle) {
   core::RefCountPtr<TestCustomDeviceTensorHandle> tensor(
       new TestCustomDeviceTensorHandle(ctx.get(), &device, DT_FLOAT,
                                        /*length=*/3));
-  absl::Status s;
+  Status s;
   std::string device_type = tensor->DeviceType(&s);
   ASSERT_TRUE(s.ok()) << s.message();
   EXPECT_EQ("CUSTOM", device_type);
@@ -151,7 +150,7 @@ TEST(CustomDevice, TestTensorHandleUnknownDimNumElements) {
       new TestCustomDeviceTensorHandle(ctx.get(), &device, DT_FLOAT,
                                        /*length=*/-1));
   int64_t num_elements;
-  absl::Status s = tensor->NumElements(&num_elements);
+  Status s = tensor->NumElements(&num_elements);
   EXPECT_FALSE(s.ok());
   EXPECT_THAT(s.message(), HasSubstr("representing varying shapes"));
 }

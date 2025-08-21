@@ -22,7 +22,7 @@ limitations under the License.
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Support/Casting.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"  // from @llvm-project
-#include "mlir/Dialect/Quant/IR/QuantTypes.h"  // from @llvm-project
+#include "mlir/Dialect/Quant/QuantTypes.h"  // from @llvm-project
 #include "mlir/IR/Attributes.h"  // from @llvm-project
 #include "mlir/IR/Builders.h"  // from @llvm-project
 #include "mlir/IR/BuiltinAttributes.h"  // from @llvm-project
@@ -38,6 +38,7 @@ limitations under the License.
 #include "tensorflow/compiler/mlir/lite/experimental/tac/common/targets.h"
 #include "tensorflow/compiler/mlir/lite/experimental/tac/common/utils.h"
 #include "tensorflow/compiler/mlir/lite/ir/tfl_ops.h"
+#include "tensorflow/compiler/mlir/lite/quantization/quantization_traits.h"
 #include "tensorflow/compiler/mlir/lite/utils/attribute_utils.h"
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_ops.h"
 #include "tensorflow/compiler/mlir/tensorflow/utils/verification_utils.h"
@@ -96,11 +97,11 @@ LogicalResult EnsureBias(Operation* op, int bias_idx,
                          PatternRewriter& rewriter) {
   auto bias = op->getOperand(bias_idx);
 
-  if (!mlir::isa<NoneType>(bias.getType())) return failure();
+  if (!bias.getType().isa<NoneType>()) return failure();
 
   // Proceed to create a zero bias.
   auto output = op->getResult(0);
-  auto output_type = mlir::dyn_cast_or_null<RankedTensorType>(output.getType());
+  auto output_type = output.getType().dyn_cast_or_null<RankedTensorType>();
   if (!output_type) return failure();
 
   // bias should be a vector sized of the last output dim.
@@ -163,7 +164,7 @@ SmallVector<Value, 4> SliceOutputs(Operation* split_op, Value input,
     SmallVector<int32_t, 4> slice_size;
     auto current_output = split_op->getResult(i);
     auto current_output_type =
-        mlir::cast<RankedTensorType>(current_output.getType());
+        current_output.getType().cast<RankedTensorType>();
     for (int d = 0; d < input_type.getRank(); ++d) {
       if (d == split_dim) {
         // Split dimension.
@@ -208,7 +209,7 @@ LogicalResult LowerPackIntoConcatReshape::matchAndRewrite(
     TFL::PackOp pack_op, PatternRewriter& rewriter) const {
   // Pack op should have same shape type.
   SmallVector<Value, 5> pack_inputs(pack_op.getValues());
-  auto input_type = mlir::dyn_cast<RankedTensorType>(pack_inputs[0].getType());
+  auto input_type = pack_inputs[0].getType().dyn_cast<RankedTensorType>();
   if (!input_type) return failure();
 
   // Figure out output shapes.
@@ -266,8 +267,8 @@ LogicalResult SquaredDifference::matchAndRewrite(
     TFL::SquaredDifferenceOp squared_diff_op, PatternRewriter& rewriter) const {
   auto x = squared_diff_op.getLhs();
   auto y = squared_diff_op.getRhs();
-  auto x_type = mlir::dyn_cast<RankedTensorType>(x.getType());
-  auto y_type = mlir::dyn_cast<RankedTensorType>(y.getType());
+  auto x_type = x.getType().dyn_cast<RankedTensorType>();
+  auto y_type = y.getType().dyn_cast<RankedTensorType>();
   if (!x_type || !y_type) return failure();
   if (x_type.getShape() != y_type.getShape()) return failure();
 
@@ -290,16 +291,16 @@ LogicalResult UnrollSplit::matchAndRewrite(TFL::SplitOp split_op,
                                            PatternRewriter& rewriter) const {
   auto num_splits = split_op.getNumSplits();
   auto input = split_op.getValue();
-  auto input_type = mlir::dyn_cast<RankedTensorType>(input.getType());
+  auto input_type = input.getType().dyn_cast<RankedTensorType>();
   if (input_type == nullptr || !input_type.hasStaticShape()) return failure();
 
   for (auto result : split_op.getResults()) {
-    auto result_type = mlir::dyn_cast<RankedTensorType>(result.getType());
+    auto result_type = result.getType().dyn_cast<RankedTensorType>();
     if (result_type == nullptr) return failure();
   }
 
   auto output = split_op.getResult(0);
-  auto output_type = mlir::cast<RankedTensorType>(output.getType());
+  auto output_type = output.getType().cast<RankedTensorType>();
 
   // TODO(renjieliu): change to use split_dim when we raise the constants
   // as well.
@@ -330,11 +331,11 @@ LogicalResult UnrollSplitV::matchAndRewrite(TFL::SplitVOp splitv_op,
     return failure();
 
   auto input = splitv_op.getValue();
-  auto input_type = mlir::dyn_cast_or_null<RankedTensorType>(input.getType());
+  auto input_type = input.getType().dyn_cast_or_null<RankedTensorType>();
   if (!input_type || !input_type.hasRank()) return failure();
 
   for (auto result : splitv_op.getResults()) {
-    auto result_type = mlir::dyn_cast<RankedTensorType>(result.getType());
+    auto result_type = result.getType().dyn_cast<RankedTensorType>();
     if (result_type == nullptr) return failure();
   }
 
@@ -371,21 +372,20 @@ LogicalResult PadSlice::matchAndRewrite(TFL::SliceOp slice_op,
   // We have to know the shape of the input, as well as the begin/size.
   // also, begin and size have to be constants.
   auto input = slice_op.getInput();
-  auto input_type = mlir::dyn_cast_or_null<RankedTensorType>(input.getType());
+  auto input_type = input.getType().dyn_cast_or_null<RankedTensorType>();
   if (!input_type || !input_type.hasStaticShape()) return failure();
 
   if (input_type.getRank() >= 4) return failure();
 
   auto begin = slice_op.getBegin();
-  auto begin_type = mlir::dyn_cast_or_null<RankedTensorType>(begin.getType());
+  auto begin_type = begin.getType().dyn_cast_or_null<RankedTensorType>();
   if (!begin_type || !begin_type.hasStaticShape()) return failure();
 
   auto size = slice_op.getSize();
-  auto size_type = mlir::dyn_cast_or_null<RankedTensorType>(size.getType());
+  auto size_type = size.getType().dyn_cast_or_null<RankedTensorType>();
   if (!size_type || !size_type.hasStaticShape()) return failure();
 
-  auto output_type =
-      mlir::dyn_cast_or_null<RankedTensorType>(slice_op.getType());
+  auto output_type = slice_op.getType().dyn_cast_or_null<RankedTensorType>();
   if (!output_type || !output_type.hasStaticShape()) return failure();
 
   // Pad 0s in front of the begin.
@@ -473,17 +473,17 @@ LogicalResult FullyConnectedToConv::matchAndRewrite(
     TFL::FullyConnectedOp fc_op, PatternRewriter& rewriter) const {
   // We have to know the shape of the input.
   auto input = fc_op.getInput();
-  auto input_type = mlir::dyn_cast_or_null<RankedTensorType>(input.getType());
+  auto input_type = input.getType().dyn_cast_or_null<RankedTensorType>();
   if (!input_type || !input_type.hasStaticShape()) return failure();
 
   // We have to know the shape of the weight.
   auto weight = fc_op.getFilter();
-  auto weight_type = mlir::dyn_cast_or_null<RankedTensorType>(weight.getType());
+  auto weight_type = weight.getType().dyn_cast_or_null<RankedTensorType>();
   if (!weight_type || !weight_type.hasStaticShape()) return failure();
 
   // We have to know the shape of the output as well.
   auto output = fc_op.getResult(0);
-  auto output_type = mlir::dyn_cast_or_null<RankedTensorType>(output.getType());
+  auto output_type = output.getType().dyn_cast_or_null<RankedTensorType>();
   if (!output_type || !output_type.hasStaticShape()) return failure();
 
   // Insert a reshape after the input.
@@ -533,14 +533,13 @@ LogicalResult PadConcat::matchAndRewrite(TFL::ConcatenationOp concat_op,
                                          PatternRewriter& rewriter) const {
   int rank = -1;
   for (auto input : concat_op.getValues()) {
-    auto input_type = mlir::dyn_cast_or_null<RankedTensorType>(input.getType());
+    auto input_type = input.getType().dyn_cast_or_null<RankedTensorType>();
     if (!input_type || !input_type.hasStaticShape()) return failure();
 
     rank = input_type.getRank();
   }
 
-  auto output_type =
-      mlir::dyn_cast_or_null<RankedTensorType>(concat_op.getType());
+  auto output_type = concat_op.getType().dyn_cast_or_null<RankedTensorType>();
   if (!output_type || !output_type.hasStaticShape()) return failure();
 
   if (rank >= 4) return failure();
@@ -549,7 +548,7 @@ LogicalResult PadConcat::matchAndRewrite(TFL::ConcatenationOp concat_op,
   // We will insert a reshape op after every input.
   SmallVector<Value, 4> reshape_ops;
   for (auto input : concat_op.getValues()) {
-    auto input_type = mlir::cast<RankedTensorType>(input.getType());
+    auto input_type = input.getType().cast<RankedTensorType>();
     // Get the new shape.
     SmallVector<int64_t, 4> new_shape;
     for (int i = 0; i < 4 - rank; ++i) {
@@ -605,7 +604,7 @@ LogicalResult PadConcat::matchAndRewrite(TFL::ConcatenationOp concat_op,
 LogicalResult ReduceMeanToAvgPool::matchAndRewrite(
     TFL::MeanOp mean_op, PatternRewriter& rewriter) const {
   auto input = mean_op.getInput();
-  auto input_type = mlir::dyn_cast_or_null<RankedTensorType>(input.getType());
+  auto input_type = input.getType().dyn_cast_or_null<RankedTensorType>();
   // Only 4d is supported here.
   if (!input_type || input_type.getRank() != 4) return failure();
 
@@ -621,7 +620,7 @@ LogicalResult ReduceMeanToAvgPool::matchAndRewrite(
   }
 
   auto output = mean_op.getOutput();
-  auto output_type = mlir::dyn_cast_or_null<RankedTensorType>(output.getType());
+  auto output_type = output.getType().dyn_cast_or_null<RankedTensorType>();
   if (!output_type) return failure();
 
   auto input_quantized_type =
@@ -671,7 +670,7 @@ LogicalResult ReduceMeanToAvgPool::matchAndRewrite(
 LogicalResult InsertRequantForReduceMean::matchAndRewrite(
     TFL::MeanOp mean_op, PatternRewriter& rewriter) const {
   auto input = mean_op.getInput();
-  auto input_type = mlir::dyn_cast_or_null<ShapedType>(input.getType());
+  auto input_type = input.getType().dyn_cast_or_null<ShapedType>();
   if (!input_type) return failure();
 
   // Only need to do this for quantized input.
@@ -680,7 +679,7 @@ LogicalResult InsertRequantForReduceMean::matchAndRewrite(
   if (!input_quantized_type) return failure();
 
   auto output = mean_op.getOutput();
-  auto output_type = mlir::dyn_cast_or_null<ShapedType>(output.getType());
+  auto output_type = output.getType().dyn_cast_or_null<ShapedType>();
   if (!output_type) return failure();
   auto output_quantized_type =
       quant::QuantizedType::getQuantizedElementType(output_type);

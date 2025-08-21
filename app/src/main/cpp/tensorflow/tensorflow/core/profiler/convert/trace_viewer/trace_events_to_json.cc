@@ -14,7 +14,6 @@ limitations under the License.
 ==============================================================================*/
 #include "tensorflow/core/profiler/convert/trace_viewer/trace_events_to_json.h"
 
-#include <cstddef>
 #include <cstdint>
 #include <map>
 #include <string>
@@ -22,7 +21,6 @@ limitations under the License.
 #include <utility>
 
 #include "absl/strings/match.h"
-#include "absl/strings/str_format.h"
 #include "absl/strings/string_view.h"
 #include "tensorflow/core/profiler/protobuf/trace_events.pb.h"
 #include "tensorflow/core/profiler/protobuf/trace_events_raw.pb.h"

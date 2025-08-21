@@ -38,7 +38,6 @@ limitations under the License.
 #include "mlir/IR/BuiltinTypes.h"  // from @llvm-project
 #include "mlir/IR/PatternMatch.h"  // from @llvm-project
 #include "mlir/Pass/PassRegistry.h"  // from @llvm-project
-#include "mlir/Support/LLVM.h"  // from @llvm-project
 #include "mlir/Support/LogicalResult.h"  // from @llvm-project
 #include "mlir/Transforms/DialectConversion.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/lite/quantization/ir/QuantOps.h"
@@ -113,7 +112,7 @@ class GenericTypeConvert : public ConversionPattern {
       TypeConverter::SignatureConversion result(newRegion->getNumArguments());
       (void)getTypeConverter()->convertSignatureArgs(
           newRegion->getArgumentTypes(), result);
-      rewriter.applySignatureConversion(&newRegion->front(), result);
+      rewriter.applySignatureConversion(newRegion, result);
     }
     Operation* newOp = rewriter.create(state);
     rewriter.replaceOp(op, newOp->getResults());
@@ -122,7 +121,7 @@ class GenericTypeConvert : public ConversionPattern {
 };
 
 static bool isIllegalType(Type type) {
-  if (mlir::isa<quant::QuantizedType>(type)) return true;
+  if (type.isa<quant::QuantizedType>()) return true;
   if (auto shapedType = dyn_cast<ShapedType>(type)) {
     return isIllegalType(shapedType.getElementType());
   }

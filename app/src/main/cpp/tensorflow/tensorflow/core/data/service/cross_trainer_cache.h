@@ -24,7 +24,7 @@ limitations under the License.
 #include <utility>
 
 #include "absl/container/flat_hash_map.h"
-#include "tensorflow/core/data/service/byte_size.h"
+#include "tensorflow/core/data/service/logging_utils.h"
 #include "tensorflow/core/framework/metrics.h"
 #include "tensorflow/core/platform/errors.h"
 #include "tensorflow/core/platform/mutex.h"
@@ -115,7 +115,7 @@ class CrossTrainerCache {
   // Cancels the cache with `status` and notifies the readers. After cancelling,
   // all `Get` calls will return `status`.
   // REQUIRES: !status.ok()
-  void Cancel(absl::Status status);
+  void Cancel(Status status);
 
   // Returns true if the cache has been cancelled.
   bool IsCancelled() const;
@@ -143,7 +143,7 @@ class CrossTrainerCache {
       const std::string& trainer_id);
 
   // Reads a new element and writes it into the cache.
-  absl::Status ExtendCache();
+  Status ExtendCache();
 
   // Frees old elements to keep the cache size below `max_cache_size_bytes_`.
   // `new_element_size_bytes` is the size of the new element being inserted.
@@ -163,7 +163,7 @@ class CrossTrainerCache {
 
   // If `status_` is non-OK, the cache is cancelled, and all method calls will
   // return this status.
-  absl::Status status_ TF_GUARDED_BY(mu_) = absl::OkStatus();
+  Status status_ TF_GUARDED_BY(mu_) = OkStatus();
 
   // `cache_` stores the cached elements.
   std::deque<std::shared_ptr<const ElementType>> cache_ TF_GUARDED_BY(mu_);
@@ -189,7 +189,7 @@ CrossTrainerCache<ElementType>::CrossTrainerCache(
   DCHECK_GT(max_cache_size_bytes, 0)
       << "CrossTrainerCache size must be greater than 0.";
   VLOG(2) << "Initialized tf.data service cross-trainer cache with "
-          << ByteSize::Bytes(max_cache_size_bytes) << " of memory.";
+          << FormatBytes(max_cache_size_bytes) << " of memory.";
 }
 
 template <class ElementType>
@@ -235,7 +235,7 @@ CrossTrainerCache<ElementType>::GetCacheQueryResult(
     }
 
     if (should_extend_cache) {
-      absl::Status s = ExtendCache();
+      Status s = ExtendCache();
       mutex_lock l(mu_);
       extending_cache_ = false;
       cv_.notify_all();
@@ -278,8 +278,7 @@ size_t CrossTrainerCache<ElementType>::GetElementIndex(
 }
 
 template <class ElementType>
-absl::Status CrossTrainerCache<ElementType>::ExtendCache()
-    TF_LOCKS_EXCLUDED(mu_) {
+Status CrossTrainerCache<ElementType>::ExtendCache() TF_LOCKS_EXCLUDED(mu_) {
   TF_ASSIGN_OR_RETURN(ElementType element, cachable_sequence_->GetNext());
   size_t new_element_size_bytes =
       cachable_sequence_->GetElementSizeBytes(element);
@@ -295,7 +294,7 @@ absl::Status CrossTrainerCache<ElementType>::ExtendCache()
   FreeSpace(new_element_size_bytes);
   cache_.push_back(std::make_shared<ElementType>(std::move(element)));
   cache_size_bytes_ += new_element_size_bytes;
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 template <class ElementType>
@@ -314,11 +313,11 @@ void CrossTrainerCache<ElementType>::FreeSpace(size_t new_element_size_bytes)
 
   VLOG(3) << "Freed " << num_elements_discarded << " element(s) from "
           << "tf.data service cross-trainer cache. Memory usage: "
-          << ByteSize::Bytes(cache_size_bytes_) << ".";
+          << FormatBytes(cache_size_bytes_) << ".";
 }
 
 template <class ElementType>
-void CrossTrainerCache<ElementType>::Cancel(absl::Status status)
+void CrossTrainerCache<ElementType>::Cancel(Status status)
     TF_LOCKS_EXCLUDED(mu_) {
   DCHECK(!status.ok())
       << "Cancelling CrossTrainerCache requires a non-OK status. Got "

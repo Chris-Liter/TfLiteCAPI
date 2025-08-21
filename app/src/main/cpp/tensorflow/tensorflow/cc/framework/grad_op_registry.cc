@@ -29,7 +29,7 @@ bool GradOpRegistry::Register(const string& op, GradFunc func) {
   return true;
 }
 
-absl::Status GradOpRegistry::Lookup(const string& op, GradFunc* func) const {
+Status GradOpRegistry::Lookup(const string& op, GradFunc* func) const {
   auto iter = registry_.find(op);
   if (iter == registry_.end()) {
     const string error_msg =
@@ -41,7 +41,7 @@ absl::Status GradOpRegistry::Lookup(const string& op, GradFunc* func) const {
     return errors::NotFound(error_msg);
   }
   *func = iter->second;
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // end namespace ops

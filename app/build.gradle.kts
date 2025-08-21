@@ -6,6 +6,7 @@ plugins {
 android {
     namespace = "com.logic.tflitecapi"
     compileSdk = 35
+    //ndkVersion = "21.4.7075529"
 
     defaultConfig {
         applicationId = "com.logic.tflitecapi"
@@ -16,7 +17,7 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk{
-            abiFilters ;"arm64-v8a"; "armeabi-v7a"; "x86"; "x86_64"
+            abiFilters += setOf("armeabi-v7a", "arm64-v8a")
         }
     }
 
@@ -49,7 +50,7 @@ android {
 
 dependencies {
 
-    implementation(libs.androidx.core.ktx)
+    implementation("androidx.core:core-ktx:1.13.1")
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     implementation(libs.androidx.constraintlayout)

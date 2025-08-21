@@ -44,18 +44,18 @@ class OptimizeDatasetParams : public DatasetParams {
     return {CreateTensor<tstring>(TensorShape({1}), {optimizations_})};
   }
 
-  absl::Status GetInputNames(std::vector<string>* input_names) const override {
+  Status GetInputNames(std::vector<string>* input_names) const override {
     *input_names = {OptimizeDatasetOp::kInputDataset,
                     OptimizeDatasetOp::kOptimizations};
-    return absl::OkStatus();
+    return OkStatus();
   }
 
-  absl::Status GetAttributes(AttributeVector* attr_vector) const override {
+  Status GetAttributes(AttributeVector* attr_vector) const override {
     *attr_vector = {
         {OptimizeDatasetOp::kOutputShapes, output_shapes_},
         {OptimizeDatasetOp::kOutputTypes, output_dtypes_},
         {OptimizeDatasetOp::kOptimizationConfigs, optimization_configs_}};
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   string dataset_type() const override {

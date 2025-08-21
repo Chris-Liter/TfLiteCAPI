@@ -31,7 +31,6 @@ limitations under the License.
 #include "tensorflow/core/platform/protobuf.h"
 #include "tensorflow/core/platform/test.h"
 #include "tensorflow/core/platform/test_benchmark.h"
-#include "tsl/platform/protobuf.h"
 
 namespace tensorflow {
 namespace {
@@ -334,7 +333,7 @@ TEST_F(OptimizerCSETest, Constant_Dedup) {
   }
   GraphDef gdef;
   test::graph::ToGraphDef(&g, &gdef);
-  InitGraph(tsl::LegacyUnredactedDebugString(gdef));
+  InitGraph(gdef.DebugString());
 
   EXPECT_EQ(OriginalGraph(),
             "n/_0(Const);n/_1(Const);n/_2(Const);n/_3(Const);"

@@ -35,9 +35,9 @@ OpSegment::~OpSegment() {
   for (const auto& kv : sessions_) delete kv.second;
 }
 
-absl::Status OpSegment::FindOrCreate(const string& session_handle,
-                                     const string& node_name, OpKernel** kernel,
-                                     CreateKernelFn create_fn) {
+Status OpSegment::FindOrCreate(const string& session_handle,
+                               const string& node_name, OpKernel** kernel,
+                               CreateKernelFn create_fn) {
   {
     mutex_lock l(mu_);
     auto item = gtl::FindPtrOrNull(sessions_, session_handle);
@@ -46,10 +46,10 @@ absl::Status OpSegment::FindOrCreate(const string& session_handle,
     }
     *kernel = gtl::FindPtrOrNull(item->name_kernel, node_name);
     if (*kernel != nullptr) {
-      return absl::OkStatus();
+      return OkStatus();
     }
   }
-  absl::Status s = create_fn(kernel);
+  Status s = create_fn(kernel);
   if (!s.ok()) {
     LOG(ERROR) << "Create kernel failed: " << s;
     return s;
@@ -68,7 +68,7 @@ absl::Status OpSegment::FindOrCreate(const string& session_handle,
       *kernel = *p_kernel;
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 void OpSegment::AddHold(const string& session_handle) {

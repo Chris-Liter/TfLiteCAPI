@@ -29,7 +29,3 @@ def delegate_registry_visibility_allowlist():
 def macros_visibility_allowlist():
     """Returns a list of packages that can depend on macros.h."""
     return []
-
-def core_cc_api_stable_visibility_allowlist():
-    """Returns a list of packages that can depend on :cc_api_stable."""
-    return []

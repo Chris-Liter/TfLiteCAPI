@@ -34,6 +34,7 @@ limitations under the License.
 #include "tensorflow/core/framework/variant_encode_decode.h"
 #include "tensorflow/core/kernels/reshape_util.h"
 #include "tensorflow/core/lib/gtl/inlined_vector.h"
+#include "tensorflow/core/lib/gtl/optional.h"
 #include "tensorflow/core/util/sparse/group_iterator.h"
 #include "tensorflow/core/util/sparse/sparse_tensor.h"
 
@@ -51,8 +52,8 @@ class SerializeSparseOp : public OpKernel {
 
   bool IsExpensive() override;
 
-  absl::Status Initialize(Tensor* result);
-  absl::Status Serialize(const Tensor& input, T* result);
+  Status Initialize(Tensor* result);
+  Status Serialize(const Tensor& input, T* result);
 
   void Compute(OpKernelContext* context) override {
     const Tensor* input_indices;
@@ -105,18 +106,18 @@ bool SerializeSparseOp<Variant>::IsExpensive() {
 }
 
 template <>
-absl::Status SerializeSparseOp<tstring>::Initialize(Tensor* result) {
+Status SerializeSparseOp<tstring>::Initialize(Tensor* result) {
   *result = Tensor(DT_STRING, TensorShape({3}));
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 template <>
-absl::Status SerializeSparseOp<tstring>::Serialize(const Tensor& input,
-                                                   tstring* result) {
+Status SerializeSparseOp<tstring>::Serialize(const Tensor& input,
+                                             tstring* result) {
   TensorProto proto;
   input.AsProtoTensorContent(&proto);
   *result = proto.SerializeAsString();
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 REGISTER_KERNEL_BUILDER(Name("SerializeSparse")
@@ -125,16 +126,16 @@ REGISTER_KERNEL_BUILDER(Name("SerializeSparse")
                         SerializeSparseOp<tstring>);
 
 template <>
-absl::Status SerializeSparseOp<Variant>::Initialize(Tensor* result) {
+Status SerializeSparseOp<Variant>::Initialize(Tensor* result) {
   *result = Tensor(DT_VARIANT, TensorShape({3}));
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 template <>
-absl::Status SerializeSparseOp<Variant>::Serialize(const Tensor& input,
-                                                   Variant* result) {
+Status SerializeSparseOp<Variant>::Serialize(const Tensor& input,
+                                             Variant* result) {
   *result = input;
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 REGISTER_KERNEL_BUILDER(Name("SerializeSparse")
@@ -147,9 +148,9 @@ struct SerializeGroups {};
 
 template <typename T>
 struct SerializeGroups<T, tstring> {
-  absl::Status operator()(sparse::GroupIterable* minibatch,
-                          const Tensor& output_shape, int64_t N, int rank,
-                          Tensor* serialized_sparse) {
+  Status operator()(sparse::GroupIterable* minibatch,
+                    const Tensor& output_shape, int64_t N, int rank,
+                    Tensor* serialized_sparse) {
     auto serialized_sparse_t = serialized_sparse->matrix<tstring>();
 
     int64_t last_nonempty_group = -1;
@@ -213,7 +214,7 @@ struct SerializeGroups<T, tstring> {
       serialize_empty_element(empty_b);
     }
 
-    return absl::OkStatus();
+    return OkStatus();
   }
 };
 
@@ -251,9 +252,9 @@ void CopyValues<Eigen::half>(const Eigen::half* src, Eigen::half* dest,
 
 template <typename T>
 struct SerializeGroups<T, Variant> {
-  absl::Status operator()(sparse::GroupIterable* minibatch,
-                          const Tensor& output_shape, int64_t N, int rank,
-                          Tensor* serialized_sparse) {
+  Status operator()(sparse::GroupIterable* minibatch,
+                    const Tensor& output_shape, int64_t N, int rank,
+                    Tensor* serialized_sparse) {
     auto serialized_sparse_t = serialized_sparse->template matrix<Variant>();
 
     int64_t last_nonempty_group = -1;
@@ -328,7 +329,7 @@ struct SerializeGroups<T, Variant> {
       serialize_empty_element(empty_b);
     }
 
-    return absl::OkStatus();
+    return OkStatus();
   }
 };
 
@@ -371,7 +372,7 @@ class SerializeManySparseOp : public OpKernel {
     OP_REQUIRES_OK(context,
                    TensorShape::BuildTensorShape(input_shape->vec<int64_t>(),
                                                  &tensor_input_shape));
-    absl::InlinedVector<int64_t, 8> std_order(rank);
+    gtl::InlinedVector<int64_t, 8> std_order(rank);
     std::iota(std_order.begin(), std_order.end(), 0);
     SparseTensor input_st;
     OP_REQUIRES_OK(context, SparseTensor::Create(*input_indices, *input_values,
@@ -408,6 +409,7 @@ class SerializeManySparseOp : public OpKernel {
 
 TF_CALL_ALL_TYPES(REGISTER_KERNELS);
 #undef REGISTER_KERNELS
+
 
 #define REGISTER_KERNELS(type)                                      \
   REGISTER_KERNEL_BUILDER(Name("SerializeManySparse")               \

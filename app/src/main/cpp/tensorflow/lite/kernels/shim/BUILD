@@ -46,6 +46,7 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
+        "@com_google_absl//absl/types:variant",
     ],
 )
 
@@ -141,6 +142,7 @@ cc_library(
         ":shape",
         ":status_macros",
         ":tensor_view",
+        "//tensorflow/core:protos_all_cc",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
@@ -163,7 +165,6 @@ cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
-        "@local_tsl//tsl/platform:macros",
     ] + if_mobile([
         "//tensorflow/core:portable_tensorflow_lib_lite",
     ]) + if_not_mobile([

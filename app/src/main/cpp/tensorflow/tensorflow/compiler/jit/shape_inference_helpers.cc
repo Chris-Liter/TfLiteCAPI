@@ -23,7 +23,7 @@ limitations under the License.
 
 namespace tensorflow {
 
-absl::Status BackEdgeHelper::Remove(Graph* graph) {
+Status BackEdgeHelper::Remove(Graph* graph) {
   if (graph_ != nullptr) {
     return errors::Internal("BackEdgeHelper duplicate call to Remove.");
   }
@@ -41,7 +41,7 @@ absl::Status BackEdgeHelper::Remove(Graph* graph) {
   for (const BackEdge& be : back_edges_) {
     graph_->RemoveEdge(be.edge);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 const std::vector<BackEdgeHelper::BackEdge>& BackEdgeHelper::RemovedEdges()
@@ -49,7 +49,7 @@ const std::vector<BackEdgeHelper::BackEdge>& BackEdgeHelper::RemovedEdges()
   return back_edges_;
 }
 
-absl::Status BackEdgeHelper::Replace() {
+Status BackEdgeHelper::Replace() {
   if (graph_ == nullptr) {
     return errors::Internal("BackEdgeHelper Replace called before Remove.");
   }
@@ -60,7 +60,7 @@ absl::Status BackEdgeHelper::Replace() {
   for (const BackEdge& be : back_edges_) {
     graph_->AddEdge(be.src, be.src_output, be.dst, be.dst_input);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace tensorflow

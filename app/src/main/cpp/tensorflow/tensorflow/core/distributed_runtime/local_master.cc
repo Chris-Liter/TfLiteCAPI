@@ -23,9 +23,9 @@ limitations under the License.
 namespace tensorflow {
 
 namespace {
-absl::Status WaitForNotification(CallOptions* call_options,
-                                 const int64_t default_timeout_in_ms,
-                                 Notification* n) {
+Status WaitForNotification(CallOptions* call_options,
+                           const int64_t default_timeout_in_ms,
+                           Notification* n) {
   int64_t timeout_in_ms = call_options->GetTimeout();
   if (timeout_in_ms == 0) {
     timeout_in_ms = default_timeout_in_ms;
@@ -43,7 +43,7 @@ absl::Status WaitForNotification(CallOptions* call_options,
   } else {
     n->WaitForNotification();
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 }  // namespace
 
@@ -52,58 +52,55 @@ LocalMaster::LocalMaster(Master* master_impl,
     : master_impl_(master_impl),
       default_timeout_in_ms_(default_timeout_in_ms) {}
 
-absl::Status LocalMaster::CreateSession(CallOptions* call_options,
-                                        const CreateSessionRequest* request,
-                                        CreateSessionResponse* response) {
+Status LocalMaster::CreateSession(CallOptions* call_options,
+                                  const CreateSessionRequest* request,
+                                  CreateSessionResponse* response) {
   Notification n;
-  absl::Status ret;
-  master_impl_->CreateSession(request, response,
-                              [&n, &ret](const absl::Status& s) {
-                                ret.Update(s);
-                                n.Notify();
-                              });
+  Status ret;
+  master_impl_->CreateSession(request, response, [&n, &ret](const Status& s) {
+    ret.Update(s);
+    n.Notify();
+  });
   TF_RETURN_IF_ERROR(
       WaitForNotification(call_options, default_timeout_in_ms_, &n));
   return ret;
 }
 
-absl::Status LocalMaster::ExtendSession(CallOptions* call_options,
-                                        const ExtendSessionRequest* request,
-                                        ExtendSessionResponse* response) {
+Status LocalMaster::ExtendSession(CallOptions* call_options,
+                                  const ExtendSessionRequest* request,
+                                  ExtendSessionResponse* response) {
   Notification n;
-  absl::Status ret;
-  master_impl_->ExtendSession(request, response,
-                              [&n, &ret](const absl::Status& s) {
-                                ret.Update(s);
-                                n.Notify();
-                              });
+  Status ret;
+  master_impl_->ExtendSession(request, response, [&n, &ret](const Status& s) {
+    ret.Update(s);
+    n.Notify();
+  });
   TF_RETURN_IF_ERROR(
       WaitForNotification(call_options, default_timeout_in_ms_, &n));
   return ret;
 }
 
-absl::Status LocalMaster::PartialRunSetup(CallOptions* call_options,
-                                          const PartialRunSetupRequest* request,
-                                          PartialRunSetupResponse* response) {
+Status LocalMaster::PartialRunSetup(CallOptions* call_options,
+                                    const PartialRunSetupRequest* request,
+                                    PartialRunSetupResponse* response) {
   Notification n;
-  absl::Status ret;
-  master_impl_->PartialRunSetup(request, response,
-                                [&n, &ret](const absl::Status& s) {
-                                  ret.Update(s);
-                                  n.Notify();
-                                });
+  Status ret;
+  master_impl_->PartialRunSetup(request, response, [&n, &ret](const Status& s) {
+    ret.Update(s);
+    n.Notify();
+  });
   TF_RETURN_IF_ERROR(
       WaitForNotification(call_options, default_timeout_in_ms_, &n));
   return ret;
 }
 
-absl::Status LocalMaster::RunStep(CallOptions* call_options,
-                                  RunStepRequestWrapper* request,
-                                  MutableRunStepResponseWrapper* response) {
+Status LocalMaster::RunStep(CallOptions* call_options,
+                            RunStepRequestWrapper* request,
+                            MutableRunStepResponseWrapper* response) {
   Notification n;
-  absl::Status ret;
+  Status ret;
   master_impl_->RunStep(call_options, request, response,
-                        [&n, &ret](const absl::Status& s) {
+                        [&n, &ret](const Status& s) {
                           ret.Update(s);
                           n.Notify();
                         });
@@ -120,42 +117,12 @@ MutableRunStepResponseWrapper* LocalMaster::CreateRunStepResponse() {
   return new InMemoryRunStepResponse;
 }
 
-absl::Status LocalMaster::CloseSession(CallOptions* call_options,
-                                       const CloseSessionRequest* request,
-                                       CloseSessionResponse* response) {
+Status LocalMaster::CloseSession(CallOptions* call_options,
+                                 const CloseSessionRequest* request,
+                                 CloseSessionResponse* response) {
   Notification n;
-  absl::Status ret;
-  master_impl_->CloseSession(request, response,
-                             [&n, &ret](const absl::Status& s) {
-                               ret.Update(s);
-                               n.Notify();
-                             });
-  TF_RETURN_IF_ERROR(
-      WaitForNotification(call_options, default_timeout_in_ms_, &n));
-  return ret;
-}
-
-absl::Status LocalMaster::ListDevices(CallOptions* call_options,
-                                      const ListDevicesRequest* request,
-                                      ListDevicesResponse* response) {
-  Notification n;
-  absl::Status ret;
-  master_impl_->ListDevices(request, response,
-                            [&n, &ret](const absl::Status& s) {
-                              ret.Update(s);
-                              n.Notify();
-                            });
-  TF_RETURN_IF_ERROR(
-      WaitForNotification(call_options, default_timeout_in_ms_, &n));
-  return ret;
-}
-
-absl::Status LocalMaster::Reset(CallOptions* call_options,
-                                const ResetRequest* request,
-                                ResetResponse* response) {
-  Notification n;
-  absl::Status ret;
-  master_impl_->Reset(request, response, [&n, &ret](const absl::Status& s) {
+  Status ret;
+  master_impl_->CloseSession(request, response, [&n, &ret](const Status& s) {
     ret.Update(s);
     n.Notify();
   });
@@ -164,27 +131,54 @@ absl::Status LocalMaster::Reset(CallOptions* call_options,
   return ret;
 }
 
-absl::Status LocalMaster::MakeCallable(CallOptions* call_options,
-                                       const MakeCallableRequest* request,
-                                       MakeCallableResponse* response) {
+Status LocalMaster::ListDevices(CallOptions* call_options,
+                                const ListDevicesRequest* request,
+                                ListDevicesResponse* response) {
   Notification n;
-  absl::Status ret;
-  master_impl_->MakeCallable(request, response,
-                             [&n, &ret](const absl::Status& s) {
-                               ret.Update(s);
-                               n.Notify();
-                             });
+  Status ret;
+  master_impl_->ListDevices(request, response, [&n, &ret](const Status& s) {
+    ret.Update(s);
+    n.Notify();
+  });
   TF_RETURN_IF_ERROR(
       WaitForNotification(call_options, default_timeout_in_ms_, &n));
   return ret;
 }
-absl::Status LocalMaster::RunCallable(CallOptions* call_options,
-                                      const RunCallableRequest* request,
-                                      RunCallableResponse* response) {
+
+Status LocalMaster::Reset(CallOptions* call_options,
+                          const ResetRequest* request,
+                          ResetResponse* response) {
   Notification n;
-  absl::Status ret;
+  Status ret;
+  master_impl_->Reset(request, response, [&n, &ret](const Status& s) {
+    ret.Update(s);
+    n.Notify();
+  });
+  TF_RETURN_IF_ERROR(
+      WaitForNotification(call_options, default_timeout_in_ms_, &n));
+  return ret;
+}
+
+Status LocalMaster::MakeCallable(CallOptions* call_options,
+                                 const MakeCallableRequest* request,
+                                 MakeCallableResponse* response) {
+  Notification n;
+  Status ret;
+  master_impl_->MakeCallable(request, response, [&n, &ret](const Status& s) {
+    ret.Update(s);
+    n.Notify();
+  });
+  TF_RETURN_IF_ERROR(
+      WaitForNotification(call_options, default_timeout_in_ms_, &n));
+  return ret;
+}
+Status LocalMaster::RunCallable(CallOptions* call_options,
+                                const RunCallableRequest* request,
+                                RunCallableResponse* response) {
+  Notification n;
+  Status ret;
   master_impl_->RunCallable(call_options, request, response,
-                            [&n, &ret](const absl::Status& s) {
+                            [&n, &ret](const Status& s) {
                               ret.Update(s);
                               n.Notify();
                             });
@@ -192,16 +186,15 @@ absl::Status LocalMaster::RunCallable(CallOptions* call_options,
       WaitForNotification(call_options, default_timeout_in_ms_, &n));
   return ret;
 }
-absl::Status LocalMaster::ReleaseCallable(CallOptions* call_options,
-                                          const ReleaseCallableRequest* request,
-                                          ReleaseCallableResponse* response) {
+Status LocalMaster::ReleaseCallable(CallOptions* call_options,
+                                    const ReleaseCallableRequest* request,
+                                    ReleaseCallableResponse* response) {
   Notification n;
-  absl::Status ret;
-  master_impl_->ReleaseCallable(request, response,
-                                [&n, &ret](const absl::Status& s) {
-                                  ret.Update(s);
-                                  n.Notify();
-                                });
+  Status ret;
+  master_impl_->ReleaseCallable(request, response, [&n, &ret](const Status& s) {
+    ret.Update(s);
+    n.Notify();
+  });
   TF_RETURN_IF_ERROR(
       WaitForNotification(call_options, default_timeout_in_ms_, &n));
   return ret;

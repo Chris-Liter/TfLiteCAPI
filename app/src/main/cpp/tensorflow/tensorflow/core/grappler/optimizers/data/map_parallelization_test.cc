@@ -28,8 +28,8 @@ namespace tensorflow {
 namespace grappler {
 namespace {
 
-absl::Status OptimizeWithMapParallelization(const GrapplerItem& item,
-                                            GraphDef* output, bool autotune) {
+Status OptimizeWithMapParallelization(const GrapplerItem& item,
+                                      GraphDef* output, bool autotune) {
   MapParallelization optimizer;
   RewriterConfig_CustomGraphOptimizer config;
   if (autotune) {

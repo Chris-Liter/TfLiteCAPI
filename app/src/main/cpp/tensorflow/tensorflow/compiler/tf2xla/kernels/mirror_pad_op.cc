@@ -13,21 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include <cstdint>
-
-#include "absl/status/statusor.h"
+#include "tensorflow/compiler/tf2xla/xla_helpers.h"
 #include "tensorflow/compiler/tf2xla/xla_op_kernel.h"
 #include "tensorflow/compiler/tf2xla/xla_op_registry.h"
-#include "xla/hlo/builder/lib/constants.h"
-#include "xla/hlo/builder/xla_builder.h"
-#include "xla/literal.h"
-#include "xla/shape.h"
-#include "xla/status_macros.h"
-#include "xla/util.h"
-#include "tensorflow/core/framework/op_kernel.h"
-#include "tensorflow/core/framework/op_requires.h"
-#include "tensorflow/core/framework/tensor_shape.h"
-#include "tensorflow/core/platform/errors.h"
+#include "tensorflow/compiler/xla/client/lib/constants.h"
+#include "tensorflow/compiler/xla/client/xla_builder.h"
 #include "tensorflow/core/util/mirror_pad_mode.h"
 
 namespace tensorflow {
@@ -37,11 +27,11 @@ class MirrorPadOp : public XlaOpKernel {
  public:
   explicit MirrorPadOp(OpKernelConstruction* context) : XlaOpKernel(context) {}
 
-  absl::StatusOr<xla::XlaOp> DoMirrorPad(const xla::XlaOp t,
-                                         const xla::Shape& original_shape,
-                                         const xla::LiteralSlice& pad_literal,
-                                         const MirrorPadMode mode,
-                                         xla::XlaBuilder* b) {
+  StatusOr<xla::XlaOp> DoMirrorPad(const xla::XlaOp t,
+                                   const xla::Shape& original_shape,
+                                   const xla::LiteralSlice& pad_literal,
+                                   const MirrorPadMode mode,
+                                   xla::XlaBuilder* b) {
     // The difference in the semantics of REFLECT and SYMMETRIC is that REFLECT
     // will not mirror the border values while symmetric does.
     // e.g. input is [1, 2, 3] and paddings is [0, 2], then the output is:
@@ -102,9 +92,9 @@ class MirrorPadOp : public XlaOpKernel {
 
     xla::XlaBuilder* b = ctx->builder();
     auto in0 = ctx->Input("input");
-    absl::StatusOr<xla::Shape> in0_shape = b->GetShape(in0);
+    StatusOr<xla::Shape> in0_shape = b->GetShape(in0);
     OP_REQUIRES(ctx, in0_shape.ok(), in0_shape.status());
-    absl::StatusOr<xla::XlaOp> accum_status =
+    StatusOr<xla::XlaOp> accum_status =
         DoMirrorPad(in0, in0_shape.value(), pad_literal, mode, b);
 
     OP_REQUIRES_OK(ctx, accum_status.status());
@@ -113,8 +103,7 @@ class MirrorPadOp : public XlaOpKernel {
   }
 
  private:
-  MirrorPadOp(const MirrorPadOp&) = delete;
-  void operator=(const MirrorPadOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(MirrorPadOp);
 };
 
 REGISTER_XLA_OP(Name("MirrorPad").CompileTimeConstantInput("paddings"),
@@ -125,10 +114,11 @@ class MirrorPadGradOp : public XlaOpKernel {
   explicit MirrorPadGradOp(OpKernelConstruction* context)
       : XlaOpKernel(context) {}
 
-  absl::StatusOr<xla::XlaOp> DoMirrorPadGrad(
-      const xla::XlaOp t, const xla::Shape& original_shape,
-      const xla::LiteralSlice& pad_literal, const MirrorPadMode mode,
-      xla::XlaBuilder* b) {
+  StatusOr<xla::XlaOp> DoMirrorPadGrad(const xla::XlaOp t,
+                                       const xla::Shape& original_shape,
+                                       const xla::LiteralSlice& pad_literal,
+                                       const MirrorPadMode mode,
+                                       xla::XlaBuilder* b) {
     // The difference in the semantics of REFLECT and SYMMETRIC is that REFLECT
     // will not mirror the border values while symmetric does.
     // e.g. input is [1, 2, 3] and paddings is [0, 2], then the output is:
@@ -202,9 +192,9 @@ class MirrorPadGradOp : public XlaOpKernel {
 
     xla::XlaBuilder* b = ctx->builder();
     auto in0 = ctx->Input("input");
-    absl::StatusOr<xla::Shape> in0_shape = b->GetShape(in0);
+    StatusOr<xla::Shape> in0_shape = b->GetShape(in0);
     OP_REQUIRES(ctx, in0_shape.ok(), in0_shape.status());
-    absl::StatusOr<xla::XlaOp> accum_status =
+    StatusOr<xla::XlaOp> accum_status =
         DoMirrorPadGrad(in0, in0_shape.value(), pad_literal, mode, b);
 
     OP_REQUIRES_OK(ctx, accum_status.status());
@@ -213,8 +203,7 @@ class MirrorPadGradOp : public XlaOpKernel {
   }
 
  private:
-  MirrorPadGradOp(const MirrorPadGradOp&) = delete;
-  void operator=(const MirrorPadGradOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(MirrorPadGradOp);
 };
 
 REGISTER_XLA_OP(Name("MirrorPadGrad").CompileTimeConstantInput("paddings"),

@@ -28,8 +28,7 @@ namespace grappler {
 namespace {}  // namespace
 
 template <typename GraphViewT>
-inline absl::Status FrameView::InferFromGraphViewT(
-    const GraphViewT& graph_view) {
+inline Status FrameView::InferFromGraphViewT(const GraphViewT& graph_view) {
   if (is_inferred_) {
     return errors::Internal("FrameView was already inferred from the graph");
   }
@@ -112,7 +111,7 @@ inline absl::Status FrameView::InferFromGraphViewT(
             " does not match frame ids for it's fanout ", fanout_node->name());
       }
     }
-    return absl::OkStatus();
+    return OkStatus();
   };
 
   while (!ready_node_indices.empty()) {
@@ -139,20 +138,20 @@ inline absl::Status FrameView::InferFromGraphViewT(
   }
 
   num_frames_ = static_cast<int>(frame_name_to_id.size());
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status FrameView::InferFromGraphView(const utils::GraphView& graph_view) {
+Status FrameView::InferFromGraphView(const utils::GraphView& graph_view) {
   return InferFromGraphViewT(graph_view);
 }
 
-absl::Status FrameView::InferFromGraphView(
+Status FrameView::InferFromGraphView(
     const utils::MutableGraphView& graph_view) {
   return InferFromGraphViewT(graph_view);
 }
 
-absl::Status FrameView::InferFromGraph(const GraphDef& graph) {
-  absl::Status status;
+Status FrameView::InferFromGraph(const GraphDef& graph) {
+  Status status;
   utils::GraphView graph_view(&graph, &status);
   TF_RETURN_IF_ERROR(status);
   return InferFromGraphViewT(graph_view);

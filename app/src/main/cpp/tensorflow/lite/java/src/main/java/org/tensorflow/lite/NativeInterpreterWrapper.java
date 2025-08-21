@@ -194,21 +194,12 @@ class NativeInterpreterWrapper implements AutoCloseable {
       run(inputsList, outputsWithOutputIndex);
       return;
     }
+
     for (Map.Entry<String, Object> input : inputs.entrySet()) {
       TensorImpl tensor = getInputTensor(input.getKey(), signatureKey);
       int[] newShape = tensor.getInputShapeIfDifferent(input.getValue());
       if (newShape != null) {
-        try {
-          signatureRunnerWrapper.resizeInput(input.getKey(), newShape);
-        } catch (IllegalArgumentException e) {
-          throw (IllegalArgumentException)
-              new IllegalArgumentException(
-                      String.format(
-                          "Tensor passed for input '%s' of signature '%s' has different "
-                              + "shape than expected",
-                          input.getKey(), signatureKey))
-                  .initCause(e);
-        }
+        signatureRunnerWrapper.resizeInput(input.getKey(), newShape);
       }
     }
 
@@ -410,11 +401,12 @@ class NativeInterpreterWrapper implements AutoCloseable {
     }
     NativeSignatureRunnerWrapper signatureRunnerWrapper = getSignatureRunnerWrapper(signatureKey);
     int subgraphIndex = signatureRunnerWrapper.getSubgraphIndex();
-    if (subgraphIndex == 0) {
-      int inputIndex = signatureRunnerWrapper.getInputIndex(inputName);
-      return getInputTensor(inputIndex);
+    if (subgraphIndex > 0) {
+      return signatureRunnerWrapper.getInputTensor(inputName);
     }
-    return signatureRunnerWrapper.getInputTensor(inputName);
+
+    int inputIndex = signatureRunnerWrapper.getInputIndex(inputName);
+    return getInputTensor(inputIndex);
   }
 
   /** Gets the keys of SignatureDefs available in the model, if any. */
@@ -467,11 +459,12 @@ class NativeInterpreterWrapper implements AutoCloseable {
     }
     NativeSignatureRunnerWrapper signatureRunnerWrapper = getSignatureRunnerWrapper(signatureKey);
     int subgraphIndex = signatureRunnerWrapper.getSubgraphIndex();
-    if (subgraphIndex == 0) {
-      int outputIndex = signatureRunnerWrapper.getOutputIndex(outputName);
-      return getOutputTensor(outputIndex);
+    if (subgraphIndex > 0) {
+      return signatureRunnerWrapper.getOutputTensor(outputName);
     }
-    return signatureRunnerWrapper.getOutputTensor(outputName);
+
+    int outputIndex = signatureRunnerWrapper.getOutputIndex(outputName);
+    return getOutputTensor(outputIndex);
   }
 
   /** Gets the number of ops in the execution plan. */

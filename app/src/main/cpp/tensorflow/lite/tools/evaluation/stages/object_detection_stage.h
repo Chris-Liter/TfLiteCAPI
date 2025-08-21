@@ -20,7 +20,6 @@ limitations under the License.
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
-#include "tensorflow/lite/c/c_api_types.h"
 #include "tensorflow/lite/tools/evaluation/evaluation_delegate_provider.h"
 #include "tensorflow/lite/tools/evaluation/evaluation_stage.h"
 #include "tensorflow/lite/tools/evaluation/proto/evaluation_config.pb.h"

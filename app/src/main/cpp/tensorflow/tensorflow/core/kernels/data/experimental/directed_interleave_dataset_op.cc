@@ -82,10 +82,10 @@ class DirectedInterleaveDatasetOp::Dataset : public DatasetBase {
         this, name_utils::IteratorPrefix(kDatasetType, prefix)});
   }
 
-  absl::Status MakeSplitProviders(std::vector<std::unique_ptr<SplitProvider>>*
-                                      split_providers) const override {
+  Status MakeSplitProviders(std::vector<std::unique_ptr<SplitProvider>>*
+                                split_providers) const override {
     TF_ASSIGN_OR_RETURN(*split_providers, GetSplitProviders(this));
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   const DataTypeVector& output_dtypes() const override {
@@ -112,16 +112,15 @@ class DirectedInterleaveDatasetOp::Dataset : public DatasetBase {
     return kUnknownCardinality;
   }
 
-  absl::Status InputDatasets(
-      std::vector<const DatasetBase*>* inputs) const override {
+  Status InputDatasets(std::vector<const DatasetBase*>* inputs) const override {
     inputs->push_back(selector_input_);
     for (const auto& data_input : data_inputs_) {
       inputs->push_back(data_input);
     }
-    return absl::OkStatus();
+    return OkStatus();
   }
 
-  absl::Status CheckExternalState() const override {
+  Status CheckExternalState() const override {
     for (const auto& input : data_inputs_) {
       TF_RETURN_IF_ERROR(input->CheckExternalState());
     }
@@ -129,9 +128,9 @@ class DirectedInterleaveDatasetOp::Dataset : public DatasetBase {
   }
 
  protected:
-  absl::Status AsGraphDefInternal(SerializationContext* ctx,
-                                  DatasetGraphDefBuilder* b,
-                                  Node** output) const override {
+  Status AsGraphDefInternal(SerializationContext* ctx,
+                            DatasetGraphDefBuilder* b,
+                            Node** output) const override {
     Node* selector_input_node;
     TF_RETURN_IF_ERROR(
         b->AddInputDataset(ctx, selector_input_, &selector_input_node));
@@ -152,7 +151,7 @@ class DirectedInterleaveDatasetOp::Dataset : public DatasetBase {
         /*attrs=*/
         {std::make_pair(kStopOnEmptyDataset, stop_on_empty_dataset_attr)},
         output));
-    return absl::OkStatus();
+    return OkStatus();
   }
 
  private:
@@ -164,7 +163,7 @@ class DirectedInterleaveDatasetOp::Dataset : public DatasetBase {
 
     bool SymbolicCheckpointCompatible() const override { return true; }
 
-    absl::Status Initialize(IteratorContext* ctx) override {
+    Status Initialize(IteratorContext* ctx) override {
       mutex_lock l(mu_);
       TF_ASSIGN_OR_RETURN(input_contexts_,
                           CreateInputIteratorContexts(ctx, dataset()));
@@ -179,16 +178,16 @@ class DirectedInterleaveDatasetOp::Dataset : public DatasetBase {
             strings::StrCat(prefix(), "[", i, "]"), &data_input_impls_[i]));
         ctx->MergeCheckpoint(input_contexts_[i + 1].checkpoint());
       }
-      return absl::OkStatus();
+      return OkStatus();
     }
 
-    absl::Status GetNextInternal(IteratorContext* ctx,
-                                 std::vector<Tensor>* out_tensors,
-                                 bool* end_of_sequence) override {
+    Status GetNextInternal(IteratorContext* ctx,
+                           std::vector<Tensor>* out_tensors,
+                           bool* end_of_sequence) override {
       mutex_lock l(mu_);
       if (!selector_input_impl_) {
         *end_of_sequence = true;
-        return absl::OkStatus();
+        return OkStatus();
       }
 
       while (true) {
@@ -199,7 +198,7 @@ class DirectedInterleaveDatasetOp::Dataset : public DatasetBase {
         ctx->MergeCheckpoint(input_contexts_[0].checkpoint());
         if (*end_of_sequence) {
           ResetInputs();
-          return absl::OkStatus();
+          return OkStatus();
         }
 
         int64_t selected_input = selector_result[0].scalar<int64_t>()();
@@ -217,7 +216,7 @@ class DirectedInterleaveDatasetOp::Dataset : public DatasetBase {
           ctx->MergeCheckpoint(
               input_contexts_[selected_input + 1].checkpoint());
           if (!end_of_selected_input) {
-            return absl::OkStatus();
+            return OkStatus();
           }
 
           // End of selected input here. Do cleanup on checkpoints.
@@ -226,7 +225,7 @@ class DirectedInterleaveDatasetOp::Dataset : public DatasetBase {
           if (dataset()->stop_on_empty_dataset_) {
             *end_of_sequence = true;
             ResetInputs();
-            return absl::OkStatus();
+            return OkStatus();
           }
 
           data_input_impls_[selected_input].reset();
@@ -235,7 +234,7 @@ class DirectedInterleaveDatasetOp::Dataset : public DatasetBase {
           if (num_active_inputs_ == 0) {
             selector_input_impl_.reset();
             *end_of_sequence = true;
-            return absl::OkStatus();
+            return OkStatus();
           }
         }
 
@@ -252,8 +251,8 @@ class DirectedInterleaveDatasetOp::Dataset : public DatasetBase {
           {model::MakeNonTunableParameter(kCycleLength, /*value=*/1)});
     }
 
-    absl::Status SaveInternal(SerializationContext* ctx,
-                              IteratorStateWriter* writer) override {
+    Status SaveInternal(SerializationContext* ctx,
+                        IteratorStateWriter* writer) override {
       mutex_lock l(mu_);
       TF_RETURN_IF_ERROR(
           writer->WriteScalar(full_name(kSelectorInputImplEmpty),
@@ -270,11 +269,11 @@ class DirectedInterleaveDatasetOp::Dataset : public DatasetBase {
           TF_RETURN_IF_ERROR(SaveInput(ctx, writer, data_input_impl));
         }
       }
-      return absl::OkStatus();
+      return OkStatus();
     }
 
-    absl::Status RestoreInternal(IteratorContext* ctx,
-                                 IteratorStateReader* reader) override {
+    Status RestoreInternal(IteratorContext* ctx,
+                           IteratorStateReader* reader) override {
       mutex_lock l(mu_);
       int64_t input_empty;
       TF_RETURN_IF_ERROR(
@@ -294,7 +293,7 @@ class DirectedInterleaveDatasetOp::Dataset : public DatasetBase {
           data_input_impls_[i].reset();
         }
       }
-      return absl::OkStatus();
+      return OkStatus();
     }
 
    private:

@@ -157,7 +157,7 @@ class RingGathererTest : public ::testing::Test {
     Tensor output_tensor_;
     Device* device_;
     core::RefCountPtr<CollectiveParams> col_params_;
-    absl::Status status_;
+    Status status_;
   };
 
   std::unique_ptr<CollectiveTestEnv> test_env_;

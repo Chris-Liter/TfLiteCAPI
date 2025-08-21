@@ -17,12 +17,10 @@ limitations under the License.
 #include <unordered_map>
 #include <vector>
 
-#include "absl/status/status.h"
-#include "tensorflow/core/platform/logging.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/lite/toco/graph_transformations/graph_transformations.h"
 #include "tensorflow/lite/toco/model.h"
 #include "tensorflow/lite/toco/tooling_util.h"
+#include "tensorflow/core/platform/logging.h"
 
 namespace toco {
 
@@ -31,18 +29,19 @@ namespace toco {
                                                   bool* modified) {
   *modified = false;
   auto* gather_op = model->operators[op_index].get();
-  if (gather_op->type != OperatorType::kGather) return absl::OkStatus();
+  if (gather_op->type != OperatorType::kGather) return ::tensorflow::OkStatus();
   auto* op = static_cast<GatherOperator*>(gather_op);
 
   if (op->axis) {
     // Attributes already resolved
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
-  if (op->inputs.size() != 3) return absl::OkStatus();
-  if (!IsConstantParameterArray(*model, op->inputs[2])) return absl::OkStatus();
+  if (op->inputs.size() != 3) return ::tensorflow::OkStatus();
+  if (!IsConstantParameterArray(*model, op->inputs[2]))
+    return ::tensorflow::OkStatus();
 
   const auto& indices_array = model->GetArray(op->inputs[2]);
-  if (!indices_array.has_shape()) return absl::OkStatus();
+  if (!indices_array.has_shape()) return ::tensorflow::OkStatus();
   const auto& axis_data = indices_array.GetBuffer<ArrayDataType::kInt32>().data;
   CHECK_EQ(axis_data.size(), 1)
       << "Multidimensional gather not supported on " << LogName(*op);
@@ -53,7 +52,7 @@ namespace toco {
   op->inputs.resize(2);
 
   *modified = true;
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 }  // namespace toco

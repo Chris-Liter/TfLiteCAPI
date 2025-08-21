@@ -13,29 +13,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include <vector>
-
 #include "absl/strings/string_view.h"
-#include "llvm/ADT/StringRef.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"  // from @llvm-project
 #include "mlir/IR/BuiltinOps.h"  // from @llvm-project
-#include "mlir/Support/LLVM.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_saved_model.h"
+
+inline constexpr absl::string_view kEntryFunctionAttr = "tf.entry_function";
 
 namespace mlir {
 
-std::vector<llvm::StringRef> GetEntryFunctionAttributeNames() {
-  return {"tf.entry_function",
-          tf_saved_model::kTfSavedModelInitializerTypeAttr};
-}
-
 bool IsEntryFunction(func::FuncOp func) {
-  for (const auto &attr : GetEntryFunctionAttributeNames()) {
-    if (func->hasAttr(attr)) {
-      return true;
-    }
-  }
-  return false;
+  return func->hasAttr(kEntryFunctionAttr) ||
+         func->hasAttr(tf_saved_model::kTfSavedModelInitializerTypeAttr);
 }
 
 llvm::SmallVector<func::FuncOp> GetEntryFunctions(ModuleOp module) {
@@ -55,7 +44,7 @@ llvm::SmallVector<func::FuncOp> GetEntryFunctions(ModuleOp module) {
 LogicalResult GetCallees(SymbolUserOpInterface op, SymbolTable &symtab,
                          llvm::SmallVector<func::FuncOp> &callees) {
   for (auto attr : op->getAttrs()) {
-    auto sym = mlir::dyn_cast<SymbolRefAttr>(attr.getValue());
+    auto sym = attr.getValue().dyn_cast<SymbolRefAttr>();
     if (!sym) continue;
     auto callee = symtab.lookup<func::FuncOp>(sym.getRootReference());
     if (!callee) {
@@ -66,10 +55,6 @@ LogicalResult GetCallees(SymbolUserOpInterface op, SymbolTable &symtab,
     callees.push_back(callee);
   }
   return success();
-}
-
-bool HasSingleBlock(func::FuncOp func) {
-  return func->getNumRegions() == 1 && func.getBody().hasOneBlock();
 }
 
 }  // namespace mlir

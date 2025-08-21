@@ -14,12 +14,7 @@ limitations under the License.
 ==============================================================================*/
 #include "tensorflow/lite/kernels/variants/tensor_array.h"
 
-#include <cstdlib>
 #include <cstring>
-
-#include "tensorflow/lite/array.h"
-#include "tensorflow/lite/c/common.h"
-#include "tensorflow/lite/util.h"
 
 namespace tflite {
 namespace variants {

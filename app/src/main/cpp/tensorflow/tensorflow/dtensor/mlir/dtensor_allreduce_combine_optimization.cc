@@ -21,40 +21,28 @@ limitations under the License.
 #include <string>
 #include <vector>
 
-#include "absl/log/check.h"
-#include "absl/log/log.h"
-#include "absl/status/status.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/DenseSet.h"
 #include "llvm/ADT/StringRef.h"
-#include "llvm/Support/Casting.h"
 #include "llvm/Support/FormatVariadic.h"
-#include "mlir/Analysis/TopologicalSortUtils.h"  // from @llvm-project
 #include "mlir/Dialect/Func/IR/FuncOps.h"  // from @llvm-project
 #include "mlir/IR/Block.h"  // from @llvm-project
-#include "mlir/IR/Builders.h"  // from @llvm-project
-#include "mlir/IR/BuiltinAttributes.h"  // from @llvm-project
 #include "mlir/IR/BuiltinOps.h"  // from @llvm-project
-#include "mlir/IR/BuiltinTypes.h"  // from @llvm-project
-#include "mlir/IR/Location.h"  // from @llvm-project
-#include "mlir/IR/Matchers.h"  // from @llvm-project
 #include "mlir/IR/Types.h"  // from @llvm-project
-#include "mlir/IR/Value.h"  // from @llvm-project
 #include "mlir/IR/Visitors.h"  // from @llvm-project
 #include "mlir/Pass/Pass.h"  // from @llvm-project
-#include "mlir/Support/LLVM.h"  // from @llvm-project
 #include "mlir/Support/LogicalResult.h"  // from @llvm-project
+#include "mlir/Transforms/TopologicalSortUtils.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/tensorflow/analysis/side_effect_analysis.h"
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_device.h"
-#include "tensorflow/compiler/mlir/tensorflow/ir/tf_ops.h"
 #include "tensorflow/compiler/mlir/tensorflow/transforms/collection_ops_util.h"
+#include "tensorflow/compiler/mlir/tensorflow/transforms/passes.h"
 #include "tensorflow/compiler/mlir/utils/name_utils.h"
-#include "tensorflow/core/platform/status.h"
-#include "tensorflow/core/platform/strcat.h"
-#include "tensorflow/core/platform/types.h"
+#include "tensorflow/core/platform/str_util.h"
 #include "tensorflow/dtensor/cc/constants.h"
-#include "tensorflow/dtensor/cc/dstatus.h"
+#include "tensorflow/dtensor/cc/dtensor_utils.h"
 #include "tensorflow/dtensor/mlir/dtensor_location.h"
+#include "tensorflow/dtensor/mlir/dtensor_mlir_passes.h"
 #include "tensorflow/dtensor/mlir/ir/tf_dtensor.h"
 #include "tensorflow/dtensor/mlir/layout_parsing.h"
 
@@ -124,7 +112,7 @@ mlir::LogicalResult MergeAllReduceGroup(
   all_reduce_shapes.reserve(num_all_reduces);
   for (mlir::TF::DTensorAllReduceOp& all_reduce : all_reduce_group) {
     auto all_reduce_ranked_type =
-        mlir::dyn_cast<mlir::RankedTensorType>(all_reduce.getType());
+        all_reduce.getType().dyn_cast<mlir::RankedTensorType>();
     if (!all_reduce_ranked_type || !all_reduce_ranked_type.hasStaticShape()) {
       return all_reduce.emitOpError(llvm::formatv(
           "requires static shape for DTensorAllReduceOp, but got : {0}",
@@ -164,7 +152,7 @@ mlir::LogicalResult MergeAllReduceGroup(
     mlir::TF::DTensorAllReduceOp& all_reduce = all_reduce_group[i];
     mlir::Location loc = all_reduce.getLoc();
     auto all_reduce_ranked_type =
-        mlir::dyn_cast<mlir::RankedTensorType>(all_reduce.getType());
+        all_reduce.getType().dyn_cast<mlir::RankedTensorType>();
     if (!all_reduce_ranked_type || !all_reduce_ranked_type.hasStaticShape()) {
       return all_reduce.emitOpError(llvm::formatv(
           "requires static shape for DTensorAllReduceOp, but got : {0}",
@@ -213,7 +201,7 @@ mlir::LogicalResult MergeAllReduceGroup(
     mlir::TF::DTensorAllReduceOp& all_reduce = all_reduce_group[i];
     mlir::Location loc = all_reduce.getLoc();
     auto all_reduce_ranked_type =
-        mlir::dyn_cast<mlir::RankedTensorType>(all_reduce.getType());
+        all_reduce.getType().dyn_cast<mlir::RankedTensorType>();
     if (!all_reduce_ranked_type || !all_reduce_ranked_type.hasStaticShape()) {
       return all_reduce.emitOpError(llvm::formatv(
           "requires static shape for DTensorAllReduceOp, but got : {0}",
@@ -477,8 +465,6 @@ createSubgroupsByElemType(
       all_reduce_new_groups.push_back(elem_type_pair.second);
     }
   }
-  VLOG(4) << "current number of groups: " << all_reduce_new_groups.size()
-          << " after grouping by element type.";
   return all_reduce_new_groups;
 }
 
@@ -486,7 +472,7 @@ std::vector<std::vector<mlir::TF::DTensorAllReduceOp>>
 createSubgroupsByReductionAttr(
     std::vector<std::vector<mlir::TF::DTensorAllReduceOp>> all_reduce_groups) {
   std::vector<std::vector<mlir::TF::DTensorAllReduceOp>> all_reduce_new_groups;
-  // Combine all-reduces of the same reduction attribute.
+  // Combine all-reduces of the same element type.
   for (const auto& all_reduce_group : all_reduce_groups) {
     llvm::DenseMap<llvm::StringRef, std::vector<mlir::TF::DTensorAllReduceOp>>
         all_reduces_by_attr_reduce_op;
@@ -499,8 +485,6 @@ createSubgroupsByReductionAttr(
       all_reduce_new_groups.push_back(all_reduces_for_reduce_op_attr.second);
     }
   }
-  VLOG(4) << "current number of groups: " << all_reduce_new_groups.size()
-          << " after grouping by reduction attribute.";
   return all_reduce_new_groups;
 }
 
@@ -508,8 +492,9 @@ std::vector<std::vector<mlir::TF::DTensorAllReduceOp>>
 createSubgroupsByGroupAssignment(
     std::vector<std::vector<mlir::TF::DTensorAllReduceOp>> all_reduce_groups) {
   std::vector<std::vector<mlir::TF::DTensorAllReduceOp>> all_reduce_new_groups;
-  // Combine all-reduces of the group assignment.
+  // Combine all-reduces of the same element type.
   for (const auto& all_reduce_group : all_reduce_groups) {
+    // Combine all-reduces of the same group assignment.
     std::vector<mlir::Value> group_assignments;
     llvm::DenseMap<mlir::Value, std::vector<mlir::TF::DTensorAllReduceOp>>
         all_reduces_by_group_assignment;
@@ -531,8 +516,6 @@ createSubgroupsByGroupAssignment(
       all_reduce_new_groups.push_back(all_reduce_group_to_merge.second);
     }
   }
-  VLOG(4) << "current number of groups: " << all_reduce_new_groups.size()
-          << " after grouping by group assignment.";
   return all_reduce_new_groups;
 }
 
@@ -547,7 +530,8 @@ std::vector<std::vector<mlir::TF::DTensorAllReduceOp>>
 createSubgroupsByExtendedNumOps(
     std::vector<std::vector<mlir::TF::DTensorAllReduceOp>> all_reduce_groups,
     int group_size) {
-  VLOG(4) << "max number of ops in a all-reduce group: " << group_size;
+  VLOG(4) << "max group size: " << group_size;
+  VLOG(4) << "current number of groups: " << all_reduce_groups.size();
   // Disable extended grouping if group size is set to zero
   if (group_size <= 0) return all_reduce_groups;
   std::vector<std::vector<mlir::TF::DTensorAllReduceOp>> all_reduce_new_groups;
@@ -572,8 +556,7 @@ createSubgroupsByExtendedNumOps(
         all_reduce_group.begin() + (num_groups - 1) * group_size,
         all_reduce_group.end()));
   }
-  VLOG(4) << "current number of groups: " << all_reduce_new_groups.size()
-          << " after grouping by extended num ops size.";
+  VLOG(4) << "new number of groups: " << all_reduce_new_groups.size();
   return all_reduce_new_groups;
 }
 
@@ -592,13 +575,14 @@ createSubgroupsByTopoDist(
     int topo_dist) {
   // Disable extended grouping if topological distance is set to zero or less
   if (topo_dist <= 0) return all_reduce_groups;
+  VLOG(4) << "current number of groups: " << all_reduce_groups.size();
   std::vector<std::vector<mlir::TF::DTensorAllReduceOp>> all_reduce_new_groups;
 
   // Further break down the current all_reduced_groups by topological distance
   // between two ops
   for (auto& all_reduce_group : all_reduce_groups) {
     std::vector<mlir::TF::DTensorAllReduceOp> new_group;
-    absl::Status status = absl::OkStatus();
+    Status status = absl::OkStatus();
 
     // Sort AllReduces by topological level as the input order may not reflect
     // their dependencies on the operands in the compute graph.
@@ -638,8 +622,7 @@ createSubgroupsByTopoDist(
     }
     all_reduce_new_groups.push_back(new_group);
   }
-  VLOG(4) << "current number of groups: " << all_reduce_new_groups.size()
-          << " after grouping by topological distance.";
+  VLOG(4) << "new number of groups: " << all_reduce_new_groups.size();
   return all_reduce_new_groups;
 }
 
@@ -688,7 +671,7 @@ struct DTensorAllReduceCombineOptimization
         if (!all_reduce.getDeviceType().contains("TPU")) {
           // Only combine all reduces for GPU and CPU
           mlir::RankedTensorType all_reduce_ranked_type =
-              mlir::dyn_cast<mlir::RankedTensorType>(all_reduce.getType());
+              all_reduce.getType().dyn_cast<mlir::RankedTensorType>();
 
           if (all_reduce_ranked_type &&
               all_reduce_ranked_type.hasStaticShape()) {
@@ -702,8 +685,6 @@ struct DTensorAllReduceCombineOptimization
       });
 
       if (ordered_all_reduces.size() > 1) {
-        VLOG(2) << ordered_all_reduces.size()
-                << " all-reduce ops eligible for combine optimization.";
         // Build side effect analysis to identify indirect dependencies between
         // all eligible all_reduce operations
         mlir::TF::SideEffectAnalysis side_effect_analysis(module);
@@ -713,6 +694,9 @@ struct DTensorAllReduceCombineOptimization
         // so that independent ops can be merged
         auto all_reduce_groups =
             createIndependentReduceOpsGroups(ordered_all_reduces, info);
+
+        VLOG(2) << ordered_all_reduces.size() << " all-reduce ops in "
+                << all_reduce_groups.size() << " groups";
 
         all_reduce_groups = createSubgroupsByElemType(all_reduce_groups);
         all_reduce_groups = createSubgroupsByReductionAttr(all_reduce_groups);
@@ -768,10 +752,6 @@ struct DTensorAllReduceCombineOptimization
                     // Within the block, use the group's actual sorting.
                     return lhs[0]->isBeforeInBlock(rhs[0]);
                   });
-
-        VLOG(2) << ordered_all_reduces.size() << " all-reduce ops in "
-                << all_reduce_groups.size() << " groups";
-
         for (auto& reduce_group : all_reduce_groups) {
           if (reduce_group.size() > 1) {
             VLOG(4) << "Combining following reduce ops into one: ------------";

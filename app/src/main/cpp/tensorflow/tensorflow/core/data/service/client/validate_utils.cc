@@ -14,7 +14,6 @@ limitations under the License.
 ==============================================================================*/
 #include "tensorflow/core/data/service/client/validate_utils.h"
 
-#include "absl/status/status.h"
 #include "tensorflow/core/data/service/client/common.h"
 #include "tensorflow/core/data/service/common.h"
 #include "tensorflow/core/data/service/common.pb.h"
@@ -29,10 +28,9 @@ namespace data {
 namespace {
 
 // Validates local worker related parameters.
-absl::Status ValidateLocalWorkers(
-    const DataServiceParams& data_service_params) {
+Status ValidateLocalWorkers(const DataServiceParams& data_service_params) {
   if (data_service_params.target_workers != TARGET_WORKERS_LOCAL) {
-    return absl::OkStatus();
+    return OkStatus();
   }
   if (LocalWorkers::Empty()) {
     if (IsStaticShard(data_service_params.processing_mode)) {
@@ -56,14 +54,13 @@ absl::Status ValidateLocalWorkers(
         "Coordinated reads require non-local workers, but `target_workers` "
         "is \"LOCAL\".");
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Validates cross-trainer cache related parameters.
-absl::Status ValidateCrossTrainerCache(
-    const DataServiceParams& data_service_params) {
+Status ValidateCrossTrainerCache(const DataServiceParams& data_service_params) {
   if (!data_service_params.cross_trainer_cache_options.has_value()) {
-    return absl::OkStatus();
+    return OkStatus();
   }
   if (data_service_params.job_name.empty()) {
     return errors::InvalidArgument(
@@ -87,15 +84,14 @@ absl::Status ValidateCrossTrainerCache(
         "Got number of coordinated consumers: ",
         data_service_params.num_consumers.value());
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 }  // namespace
 
-absl::Status ValidateDataServiceParams(
-    const DataServiceParams& data_service_params) {
+Status ValidateDataServiceParams(const DataServiceParams& data_service_params) {
   TF_RETURN_IF_ERROR(ValidateLocalWorkers(data_service_params));
   TF_RETURN_IF_ERROR(ValidateCrossTrainerCache(data_service_params));
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace data

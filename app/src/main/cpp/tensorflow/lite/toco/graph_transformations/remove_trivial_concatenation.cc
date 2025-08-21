@@ -17,27 +17,28 @@ limitations under the License.
 #include <unordered_map>
 #include <vector>
 
-#include "absl/status/status.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/lite/toco/graph_transformations/graph_transformations.h"
 #include "tensorflow/lite/toco/graph_transformations/remove_trivial_passthrough.h"
 #include "tensorflow/lite/toco/model.h"
+#include "tensorflow/lite/toco/tooling_util.h"
+#include "tensorflow/core/platform/logging.h"
 
 namespace toco {
 
-absl::Status RemoveTrivialConcatenation::Run(Model* model, std::size_t op_index,
-                                             bool* modified) {
+::tensorflow::Status RemoveTrivialConcatenation::Run(Model* model,
+                                                     std::size_t op_index,
+                                                     bool* modified) {
   *modified = false;
   const auto concat_it = model->operators.begin() + op_index;
   auto* concat_op = concat_it->get();
   if (concat_op->type != OperatorType::kConcatenation) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   if (concat_op->inputs.size() != 1) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   *modified = RemoveTrivialPassthroughOp(this, model, op_index);
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 }  // namespace toco

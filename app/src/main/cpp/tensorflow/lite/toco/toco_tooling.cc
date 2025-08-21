@@ -242,7 +242,8 @@ std::unique_ptr<Model> Import(const TocoFlags& toco_flags,
   return model;
 }
 
-absl::Status TransformWithStatus(const TocoFlags& toco_flags, Model* model) {
+tensorflow::Status TransformWithStatus(const TocoFlags& toco_flags,
+                                       Model* model) {
   const FileFormat output_format = toco_flags.output_format();
   const IODataType inference_type = toco_flags.inference_type();
 
@@ -468,11 +469,12 @@ absl::Status TransformWithStatus(const TocoFlags& toco_flags, Model* model) {
     params_count += RequiredBufferSizeForShape(array.shape());
   }
   LOG(INFO) << "Number of parameters: " << params_count;
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
-absl::Status Export(const TocoFlags& toco_flags, const Model& model,
-                    bool allow_custom_ops, std::string* output_file_contents) {
+tensorflow::Status Export(const TocoFlags& toco_flags, const Model& model,
+                          bool allow_custom_ops,
+                          std::string* output_file_contents) {
   switch (toco_flags.output_format()) {
     case TENSORFLOW_GRAPHDEF:
       ExportTensorFlowGraphDef(model, output_file_contents);
@@ -506,7 +508,7 @@ absl::Status Export(const TocoFlags& toco_flags, const Model& model,
       LOG(FATAL) << "Unhandled output_format='"
                  << FileFormat_Name(toco_flags.output_format()) << "'";
   }
-  return absl::Status();
+  return tensorflow::Status();
 }
 
 }  // namespace toco

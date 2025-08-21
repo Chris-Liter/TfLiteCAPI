@@ -34,12 +34,12 @@ class TestCredentialsFactory : public CredentialsFactory {
  public:
   std::string Protocol() override { return "test"; }
 
-  absl::Status CreateServerCredentials(
+  Status CreateServerCredentials(
       std::shared_ptr<grpc::ServerCredentials>* out) override {
     return errors::Internal(kFailedToCreateServerCredentials);
   }
 
-  absl::Status CreateClientCredentials(
+  Status CreateClientCredentials(
       std::shared_ptr<grpc::ChannelCredentials>* out) override {
     return errors::Internal(kFailedToCreateClientCredentials);
   }
@@ -70,8 +70,8 @@ TEST(CredentialsFactory, DefaultGrpcProtocol) {
 
 TEST(CredentialsFactory, MissingServerProtocol) {
   std::shared_ptr<grpc::ServerCredentials> server_credentials;
-  absl::Status s = CredentialsFactory::CreateServerCredentials(
-      "unknown_protocol", &server_credentials);
+  Status s = CredentialsFactory::CreateServerCredentials("unknown_protocol",
+                                                         &server_credentials);
   ASSERT_EQ(error::Code::NOT_FOUND, s.code());
   ASSERT_TRUE(
       absl::StrContains(s.ToString(),
@@ -81,8 +81,8 @@ TEST(CredentialsFactory, MissingServerProtocol) {
 
 TEST(CredentialsFactory, MissingClientProtocol) {
   std::shared_ptr<grpc::ChannelCredentials> client_credentials;
-  absl::Status s = CredentialsFactory::CreateClientCredentials(
-      "unknown_protocol", &client_credentials);
+  Status s = CredentialsFactory::CreateClientCredentials("unknown_protocol",
+                                                         &client_credentials);
   ASSERT_EQ(error::Code::NOT_FOUND, s.code());
   ASSERT_TRUE(
       absl::StrContains(s.ToString(),

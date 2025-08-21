@@ -35,13 +35,11 @@ namespace tensorflow {
 
 namespace {
 
-absl::Status ValidateShapes(OpKernelContext* ctx,
-                            const Tensor& hypothesis_indices,
-                            const Tensor& hypothesis_values,
-                            const Tensor& hypothesis_shape,
-                            const Tensor& truth_indices,
-                            const Tensor& truth_values,
-                            const Tensor& truth_shape) {
+Status ValidateShapes(OpKernelContext* ctx, const Tensor& hypothesis_indices,
+                      const Tensor& hypothesis_values,
+                      const Tensor& hypothesis_shape,
+                      const Tensor& truth_indices, const Tensor& truth_values,
+                      const Tensor& truth_shape) {
   if (!TensorShapeUtils::IsMatrix(hypothesis_indices.shape()))
     return errors::InvalidArgument(
         "hypothesis_indices should be a matrix, but got shape: ",
@@ -102,7 +100,7 @@ absl::Status ValidateShapes(OpKernelContext* ctx,
         truth_shape.shape().DebugString(), " and ",
         hypothesis_shape.shape().DebugString());
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace
@@ -282,8 +280,7 @@ class EditDistanceOp : public OpKernel {
  private:
   bool normalize_;
 
-  EditDistanceOp(const EditDistanceOp&) = delete;
-  void operator=(const EditDistanceOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(EditDistanceOp);
 };
 
 #define REGISTER_CPU_KERNEL(T)                                        \

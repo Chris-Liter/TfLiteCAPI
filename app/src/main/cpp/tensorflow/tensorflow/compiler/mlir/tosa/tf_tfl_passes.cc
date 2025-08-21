@@ -17,8 +17,6 @@ limitations under the License.
 
 #include "mlir/Dialect/Affine/Passes.h"  // from @llvm-project
 #include "mlir/Dialect/Tosa/Transforms/Passes.h"  // from @llvm-project
-#include "mlir/Pass/PassManager.h"  // from @llvm-project
-#include "mlir/Pass/PassRegistry.h"  // from @llvm-project
 #include "mlir/Transforms/Passes.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/lite/transforms/lift_tflite_flex_ops.h"
 #include "tensorflow/compiler/mlir/lite/transforms/passes.h"
@@ -32,9 +30,6 @@ void createTFTFLtoTOSALegalizationPipeline(
   //----------------------------------------------------------------------------
   // Prepare TFL module for conversion
   //----------------------------------------------------------------------------
-  // For stateful ops
-  pm.addPass(createRetainCallOnceFuncsPass());
-
   // Inline all functions into main and then delete the functions themselves.
   pm.addPass(mlir::createInlinerPass());
 
@@ -57,7 +52,6 @@ void createTFTFLtoTOSALegalizationPipeline(
   if (opts.dequantize_tfl_softmax) {
     pm.addPass(mlir::tosa::createDequantizeTFLSoftmaxPass());
   }
-  pm.addPass(mlir::tosa::createLegalizeTFLStatefulPass());
   pm.addPass(mlir::tosa::createLegalizeTFTFLPass());
 
   //----------------------------------------------------------------------------

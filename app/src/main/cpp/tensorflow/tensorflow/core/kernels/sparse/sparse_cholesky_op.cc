@@ -14,22 +14,18 @@ limitations under the License.
 ==============================================================================*/
 
 #include <atomic>
-#include <cstdint>
 #include <numeric>
-#include <utility>
 #include <vector>
 
-#include "absl/status/status.h"
 #include "tensorflow/core/framework/op_requires.h"
-#include "tensorflow/core/framework/types.pb.h"
 
 #define EIGEN_USE_THREADS
 
-#include "Eigen/Core"  // from @eigen_archive
-#include "Eigen/SparseCholesky"  // from @eigen_archive
-#include "Eigen/SparseCore"  // from @eigen_archive
-#include "Eigen/OrderingMethods"  // from @eigen_archive
-#include "unsupported/Eigen/CXX11/Tensor"  // from @eigen_archive
+#include "third_party/eigen3/Eigen/Core"
+#include "third_party/eigen3/Eigen/SparseCholesky"
+#include "third_party/eigen3/Eigen/SparseCore"
+#include "third_party/eigen3/Eigen/OrderingMethods"
+#include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 #include "tensorflow/core/framework/op.h"
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/framework/tensor_types.h"
@@ -232,9 +228,9 @@ class CSRSparseCholeskyCPUOp : public OpKernel {
   }
 
  private:
-  absl::Status ValidateInputs(const CSRSparseMatrix& sparse_matrix,
-                              const Tensor& permutation_indices,
-                              int* batch_size, int64_t* num_rows) {
+  Status ValidateInputs(const CSRSparseMatrix& sparse_matrix,
+                        const Tensor& permutation_indices, int* batch_size,
+                        int64_t* num_rows) {
     if (sparse_matrix.dtype() != DataTypeToEnum<T>::value)
       return errors::InvalidArgument(
           "Asked for a CSRSparseMatrix of type ",
@@ -273,7 +269,7 @@ class CSRSparseCholeskyCPUOp : public OpKernel {
             perm_shape.dim_size(0), " != ", *batch_size);
     }
 
-    return absl::OkStatus();
+    return OkStatus();
   }
 };
 

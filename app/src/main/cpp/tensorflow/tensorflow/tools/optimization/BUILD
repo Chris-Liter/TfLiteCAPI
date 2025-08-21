@@ -28,9 +28,6 @@ tf_cuda_library(
         "//tensorflow/core:lib",
         "//tensorflow/core:protos_all_cc",
         "//tensorflow/core:tensorflow",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/strings:string_view",
     ],
 )
 
@@ -42,12 +39,14 @@ tf_cc_binary(
         "//tensorflow/compiler/jit:xla_cpu_jit",
         "//tensorflow/compiler/jit:xla_gpu_jit",
         "//tensorflow/compiler/tf2xla:xla_compiler",
+        "//tensorflow/core:core_cpu",
         "//tensorflow/core:core_cpu_base",
+        "//tensorflow/core:framework",
         "//tensorflow/core:framework_internal",
         "//tensorflow/core:framework_lite",
         "//tensorflow/core:lib",
         "//tensorflow/core:protos_all_cc",
         "//tensorflow/core:tensorflow",
-        "@local_tsl//tsl/platform:status",
+        "@com_google_absl//absl/strings",
     ],
 )

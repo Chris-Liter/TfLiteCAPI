@@ -15,8 +15,6 @@ limitations under the License.
 
 #include "tensorflow/lite/delegates/gpu/gl/workgroups/calculator.h"
 
-#include <cstdint>
-
 #include "tensorflow/lite/delegates/gpu/common/gpu_info.h"
 #include "tensorflow/lite/delegates/gpu/common/types.h"
 #include "tensorflow/lite/delegates/gpu/gl/compiler/shader_code.h"

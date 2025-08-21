@@ -17,10 +17,11 @@ limitations under the License.
 
 #include <algorithm>
 #include <array>
-#include <cctype>
 #include <cstdint>
 #include <cstdlib>
 #include <functional>
+#include <memory>
+#include <queue>
 #include <random>
 #include <string>
 #include <utility>
@@ -28,19 +29,12 @@ limitations under the License.
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
-#include "absl/log/log.h"
 #include "absl/status/status.h"
-#include "absl/strings/match.h"
-#include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "tensorflow/core/common_runtime/function.h"
 #include "tensorflow/core/framework/attr_value.pb.h"
 #include "tensorflow/core/framework/dataset.h"
-#include "tensorflow/core/framework/dataset_options.pb.h"
 #include "tensorflow/core/framework/function.h"
-#include "tensorflow/core/framework/function.pb.h"
-#include "tensorflow/core/framework/metrics.h"
-#include "tensorflow/core/framework/node_def.pb.h"
 #include "tensorflow/core/framework/node_def_util.h"
 #include "tensorflow/core/framework/op_def_builder.h"
 #include "tensorflow/core/framework/op_def_util.h"
@@ -48,7 +42,6 @@ limitations under the License.
 #include "tensorflow/core/framework/tensor.pb.h"
 #include "tensorflow/core/framework/tensor_util.h"
 #include "tensorflow/core/framework/types.h"
-#include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/graph/graph_def_builder.h"
 #include "tensorflow/core/lib/core/errors.h"
 #include "tensorflow/core/lib/hash/hash.h"
@@ -58,7 +51,6 @@ limitations under the License.
 #include "tensorflow/core/platform/host_info.h"
 #include "tensorflow/core/platform/regexp.h"
 #include "tensorflow/core/platform/status.h"
-#include "tensorflow/core/platform/tstring.h"
 #include "tensorflow/core/util/determinism.h"
 #include "tensorflow/core/util/work_sharder.h"
 
@@ -68,8 +60,6 @@ namespace {
 
 constexpr char kOutputSize[] = "output_size";
 constexpr char kCode[] = "code";
-constexpr char kExperimentOptAll[] = "all";
-constexpr char kExperimentOptOutAllExceptOptIn[] = "all_except_opt_in";
 constexpr char kMessage[] = "msg";
 constexpr char kOutput[] = "output";
 
@@ -105,9 +95,6 @@ constexpr char kMakeSloppyOpt[] = "make_sloppy";
 constexpr char kBatchParallelizationOpt[] = "batch_parallelization";
 constexpr char kEnableGradientDescentOpt[] = "enable_gradient_descent";
 constexpr char kInjectPrefetchOpt[] = "inject_prefetch";
-constexpr char kSeqInterleavePrefetchOpt[] = "seq_interleave_prefetch";
-constexpr char kInjectIoPrefetchEligibleOpt[] = "inject_io_prefetch_eligible";
-constexpr char kInjectIoPrefetchOpt[] = "inject_io_prefetch";
 constexpr char kAutotuneOpt[] = "autotune";
 constexpr char kSlackOpt[] = "slack";
 constexpr char kSlackPeriodOpt[] = "slack_period";
@@ -231,12 +218,12 @@ void DefaultOptimizationGraphRewrites(
       optimization_disabled->insert(kInjectPrefetchOpt);
     }
   }
-  if (optimization_options.optional_seq_interleave_prefetch_case() ==
-      OptimizationOptions::kSeqInterleavePrefetch) {
-    if (optimization_options.seq_interleave_prefetch()) {
-      optimization_enabled->insert(kSeqInterleavePrefetchOpt);
+  if (optimization_options.optional_warm_start_case() ==
+      OptimizationOptions::kWarmStart) {
+    if (optimization_options.warm_start()) {
+      optimization_enabled->insert(kWarmStartOpt);
     } else {
-      optimization_disabled->insert(kSeqInterleavePrefetchOpt);
+      optimization_disabled->insert(kWarmStartOpt);
     }
   }
 }
@@ -263,18 +250,18 @@ std::pair<int64_t, int64_t> MaybeOverrideSeeds(
   return seeds;
 }
 
-absl::Status VerifyTypeMatch(const DataType& expected, const DataType& received,
-                             int index) {
+Status VerifyTypeMatch(const DataType& expected, const DataType& received,
+                       int index) {
   if (expected != received) {
     return errors::InvalidArgument("Data type mismatch at component ", index,
                                    ": expected ", DataTypeString(expected),
                                    " but got ", DataTypeString(received), ".");
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status VerifyTypesMatch(const DataTypeVector& expected,
-                              const DataTypeVector& received) {
+Status VerifyTypesMatch(const DataTypeVector& expected,
+                        const DataTypeVector& received) {
   if (expected.size() != received.size()) {
     return errors::InvalidArgument(
         "Number of components does not match: expected ", expected.size(),
@@ -283,11 +270,11 @@ absl::Status VerifyTypesMatch(const DataTypeVector& expected,
   for (size_t i = 0; i < expected.size(); ++i) {
     TF_RETURN_IF_ERROR(VerifyTypeMatch(expected[i], received[i], i));
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status VerifyTypesMatch(const DataTypeVector& expected,
-                              const std::vector<Tensor>& received) {
+Status VerifyTypesMatch(const DataTypeVector& expected,
+                        const std::vector<Tensor>& received) {
   if (expected.size() != received.size()) {
     return errors::InvalidArgument(
         "Number of components does not match: expected ", expected.size(),
@@ -296,23 +283,21 @@ absl::Status VerifyTypesMatch(const DataTypeVector& expected,
   for (size_t i = 0; i < expected.size(); ++i) {
     TF_RETURN_IF_ERROR(VerifyTypeMatch(expected[i], received[i].dtype(), i));
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status VerifyShapeCompatible(const PartialTensorShape& expected,
-                                   const PartialTensorShape& received,
-                                   int index) {
+Status VerifyShapeCompatible(const PartialTensorShape& expected,
+                             const PartialTensorShape& received, int index) {
   if (!expected.IsCompatibleWith(received)) {
     return errors::InvalidArgument("Incompatible shapes at component ", index,
                                    ": expected ", expected.DebugString(),
                                    " but got ", received.DebugString(), ".");
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status VerifyShapesCompatible(
-    const std::vector<PartialTensorShape>& expected,
-    const std::vector<PartialTensorShape>& received) {
+Status VerifyShapesCompatible(const std::vector<PartialTensorShape>& expected,
+                              const std::vector<PartialTensorShape>& received) {
   if (expected.size() != received.size()) {
     return errors::InvalidArgument(
         "Number of components does not match: expected ", expected.size(),
@@ -322,12 +307,11 @@ absl::Status VerifyShapesCompatible(
     TF_RETURN_IF_ERROR(VerifyShapeCompatible(expected[i], received[i], i));
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status VerifyShapesCompatible(
-    const std::vector<PartialTensorShape>& expected,
-    const std::vector<Tensor>& received) {
+Status VerifyShapesCompatible(const std::vector<PartialTensorShape>& expected,
+                              const std::vector<Tensor>& received) {
   if (expected.size() != received.size()) {
     return errors::InvalidArgument(
         "Number of components does not match: expected ", expected.size(),
@@ -338,11 +322,11 @@ absl::Status VerifyShapesCompatible(
         VerifyShapeCompatible(expected[i], received[i].shape(), i));
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status AddToFunctionLibrary(FunctionLibraryDefinition* base,
-                                  const FunctionLibraryDefinition& to_add) {
+Status AddToFunctionLibrary(FunctionLibraryDefinition* base,
+                            const FunctionLibraryDefinition& to_add) {
   for (const auto& fn : to_add.ListFunctionNames()) {
     if (auto found = base->Find(fn)) {
       if (!OpDefEqual(found->signature(), to_add.Find(fn)->signature())) {
@@ -356,8 +340,8 @@ absl::Status AddToFunctionLibrary(FunctionLibraryDefinition* base,
   return base->AddLibrary(to_add);
 }
 
-absl::Status AddToFunctionLibrary(FunctionLibraryDefinition* base,
-                                  const FunctionDefLibrary& to_add) {
+Status AddToFunctionLibrary(FunctionLibraryDefinition* base,
+                            const FunctionDefLibrary& to_add) {
   for (const auto& fd : to_add.function()) {
     if (auto found = base->Find(fd.signature().name())) {
       if (!OpDefEqual(found->signature(), fd.signature())) {
@@ -372,20 +356,20 @@ absl::Status AddToFunctionLibrary(FunctionLibraryDefinition* base,
   return base->AddLibrary(to_add);
 }
 
-absl::Status IsFunctionStateful(const FunctionLibraryDefinition& library,
-                                const FunctionDef& function_def) {
+Status IsFunctionStateful(const FunctionLibraryDefinition& library,
+                          const FunctionDef& function_def) {
   if (!function_def.signature().is_stateful()) {
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   for (const NodeDef& node_def : function_def.node_def()) {
     TF_RETURN_IF_ERROR(IsNodeStateful(library, node_def));
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status IsNodeStateful(const FunctionLibraryDefinition& library,
-                            const NodeDef& node) {
+Status IsNodeStateful(const FunctionLibraryDefinition& library,
+                      const NodeDef& node) {
   const OpDef* op_def;
 
   // TODO(jsimsa): Fix C++ unit tests so that we do not have to ignore
@@ -393,7 +377,7 @@ absl::Status IsNodeStateful(const FunctionLibraryDefinition& library,
   if (!OpRegistry::Global()->LookUpOpDef(node.op(), &op_def).ok() ||
       IsOpAllowlisted(op_def) || !op_def->is_stateful() ||
       op_def->name() == "Assert") {
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   if (op_def->name() == "If") {
@@ -407,7 +391,7 @@ absl::Status IsNodeStateful(const FunctionLibraryDefinition& library,
     if (else_func != nullptr) {
       TF_RETURN_IF_ERROR(IsFunctionStateful(library, *else_func));
     }
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   if (op_def->name() == "While") {
@@ -421,7 +405,7 @@ absl::Status IsNodeStateful(const FunctionLibraryDefinition& library,
     if (body_func != nullptr) {
       TF_RETURN_IF_ERROR(IsFunctionStateful(library, *body_func));
     }
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   return errors::FailedPrecondition(op_def->name(), " is stateful.");
@@ -445,8 +429,8 @@ std::function<void(std::function<void()>)> RunnerWithMaxParallelism(
       std::move(runner), std::placeholders::_1);
 }
 
-absl::Status DeterminismPolicy::FromString(const std::string& s,
-                                           DeterminismPolicy* out) {
+Status DeterminismPolicy::FromString(const std::string& s,
+                                     DeterminismPolicy* out) {
   DeterminismPolicy::Type type;
   if (s == DeterminismPolicy::kDeterministic) {
     type = DeterminismPolicy::Type::kDeterministic;
@@ -458,7 +442,7 @@ absl::Status DeterminismPolicy::FromString(const std::string& s,
     return errors::InvalidArgument("Unrecognized determinism policy: ", s);
   }
   *out = DeterminismPolicy(type);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 DeterminismPolicy::DeterminismPolicy(bool is_deterministic) {
@@ -522,47 +506,38 @@ absl::flat_hash_set<string> GetExperiments(
     opt_outs_raw = string(opt_outs_raw_cs);
   }
 
-  auto live_experiments = DatasetExperimentRegistry::Experiments();
-  for (const auto& [experiment, unused] : live_experiments) {
-    metrics::RecordTFDataExperimentLive(experiment);
-  }
-
   // Identify opted out experiments.
+  auto live_experiments = DatasetExperimentRegistry::Experiments();
   absl::flat_hash_set<string> opt_outs;
-  if (opt_outs_raw == kExperimentOptAll) {
+  if (opt_outs_raw == "all") {
     for (const auto& pair : live_experiments) {
       opt_outs.insert(pair.first);
     }
-    metrics::RecordTFDataExperimentOptOut(kExperimentOptAll);
   } else {
     for (const auto& experiment :
          str_util::Split(opt_outs_raw, ',', str_util::SkipEmpty())) {
       opt_outs.insert(experiment);
-      metrics::RecordTFDataExperimentOptOut(experiment);
     }
   }
 
   // Include opted in experiments unless they are opted out.
-  if (opt_ins_raw == kExperimentOptAll) {
+  if (opt_ins_raw == "all") {
     for (const auto& pair : live_experiments) {
       auto experiment = pair.first;
       if (!opt_outs.contains(experiment)) {
         experiments.insert(experiment);
       }
     }
-    metrics::RecordTFDataExperimentOptIn(kExperimentOptAll);
   } else {
     for (const auto& experiment :
          str_util::Split(opt_ins_raw, ',', str_util::SkipEmpty())) {
       if (!opt_outs.contains(experiment)) {
         experiments.insert(experiment);
       }
-      metrics::RecordTFDataExperimentOptIn(experiment);
     }
   }
 
-  if (opt_outs_raw == kExperimentOptOutAllExceptOptIn) {
-    metrics::RecordTFDataExperimentOptOut(kExperimentOptOutAllExceptOptIn);
+  if (opt_outs_raw == "all_except_opt_in") {
     return experiments;
   }
   // Stochastically include live experiments unless they are opted out.
@@ -613,13 +588,6 @@ void GetOptimizations(const Options& options,
       optimizations_disabled->insert(kSlackOpt);
     }
   }
-  if (options.optional_warm_start_case() == Options::kWarmStart) {
-    if (options.warm_start()) {
-      optimizations_enabled->insert(kWarmStartOpt);
-    } else {
-      optimizations_disabled->insert(kWarmStartOpt);
-    }
-  }
 }
 
 Tensor MaybeCopySubSlice(const Tensor& tensor, int64 index) {
@@ -641,8 +609,8 @@ void StripDevicePlacement(FunctionDefLibrary* library) {
   }
 }
 
-absl::Status CopyPartialBatch(int64_t num_elements, const Tensor& value,
-                              Tensor* output) {
+Status CopyPartialBatch(int64_t num_elements, const Tensor& value,
+                        Tensor* output) {
   switch (value.dtype()) {
 #define HANDLE_TYPE(type)                                         \
   case DataTypeToEnum<type>::value: {                             \
@@ -659,12 +627,12 @@ absl::Status CopyPartialBatch(int64_t num_elements, const Tensor& value,
       return errors::InvalidArgument("Unsupported data type: ",
                                      DataTypeString(value.dtype()));
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status ReadBatch(IteratorContext* ctx, IteratorStateReader* reader,
-                       int64_t batch_size, const string& iterator_prefix,
-                       const string& batch_prefix, std::vector<Tensor>* batch) {
+Status ReadBatch(IteratorContext* ctx, IteratorStateReader* reader,
+                 int64_t batch_size, const string& iterator_prefix,
+                 const string& batch_prefix, std::vector<Tensor>* batch) {
   int64_t output_size;
   TF_RETURN_IF_ERROR(reader->ReadScalar(
       FullName(iterator_prefix,
@@ -692,13 +660,12 @@ absl::Status ReadBatch(IteratorContext* ctx, IteratorStateReader* reader,
       batch->emplace_back(std::move(t));
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status WriteBatch(int64_t batch_size, int64_t num_elements,
-                        const string& iterator_prefix,
-                        const string& batch_prefix, IteratorStateWriter* writer,
-                        std::vector<Tensor>* batch) {
+Status WriteBatch(int64_t batch_size, int64_t num_elements,
+                  const string& iterator_prefix, const string& batch_prefix,
+                  IteratorStateWriter* writer, std::vector<Tensor>* batch) {
   TF_RETURN_IF_ERROR(writer->WriteScalar(
       FullName(iterator_prefix,
                strings::StrCat(batch_prefix, "_", kOutputSize)),
@@ -718,11 +685,11 @@ absl::Status WriteBatch(int64_t batch_size, int64_t num_elements,
                               strings::StrCat(kOutput, "_", i), (*batch)[i]));
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status ReadStatus(const string& iterator_prefix, const string& prefix,
-                        IteratorStateReader* reader, absl::Status* status) {
+Status ReadStatus(const string& iterator_prefix, const string& prefix,
+                  IteratorStateReader* reader, Status* status) {
   int64_t code_int;
   TF_RETURN_IF_ERROR(reader->ReadScalar(
       FullName(iterator_prefix, strings::StrCat(prefix, "_", kCode)),
@@ -734,16 +701,15 @@ absl::Status ReadStatus(const string& iterator_prefix, const string& prefix,
     TF_RETURN_IF_ERROR(reader->ReadScalar(
         FullName(iterator_prefix, strings::StrCat(prefix, "_", kMessage)),
         &error_message));
-    *status = absl::Status(code, error_message);
+    *status = Status(code, error_message);
   } else {
-    *status = absl::OkStatus();
+    *status = OkStatus();
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status WriteStatus(const string& iterator_prefix, const string& prefix,
-                         const absl::Status& status,
-                         IteratorStateWriter* writer) {
+Status WriteStatus(const string& iterator_prefix, const string& prefix,
+                   const Status& status, IteratorStateWriter* writer) {
   TF_RETURN_IF_ERROR(writer->WriteScalar(
       FullName(iterator_prefix, strings::StrCat(prefix, "_", kCode)),
       static_cast<int64_t>(status.code())));
@@ -752,17 +718,17 @@ absl::Status WriteStatus(const string& iterator_prefix, const string& prefix,
         FullName(iterator_prefix, strings::StrCat(prefix, "_", kMessage)),
         std::string(status.message())));
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status ProcessBatch(int64_t batch_size, int64_t num_elements,
-                          bool drop_remainder, const absl::Status& status,
-                          IteratorContext* ctx, std::vector<Tensor>* output,
-                          bool* end_of_sequence, std::vector<Tensor>* batch) {
+Status ProcessBatch(int64_t batch_size, int64_t num_elements,
+                    bool drop_remainder, const Status& status,
+                    IteratorContext* ctx, std::vector<Tensor>* output,
+                    bool* end_of_sequence, std::vector<Tensor>* batch) {
   if (num_elements == 0) {
     if (status.ok() || absl::IsOutOfRange(status)) {
       *end_of_sequence = true;
-      return absl::OkStatus();
+      return OkStatus();
     } else {
       *end_of_sequence = false;
       return status;
@@ -775,7 +741,7 @@ absl::Status ProcessBatch(int64_t batch_size, int64_t num_elements,
   if (num_elements < batch_size) {
     if (drop_remainder) {
       *end_of_sequence = true;
-      return absl::OkStatus();
+      return OkStatus();
     }
     for (size_t i = 0; i < batch->size(); ++i) {
       TensorShape component_shape((*batch)[i].shape());
@@ -795,12 +761,14 @@ absl::Status ProcessBatch(int64_t batch_size, int64_t num_elements,
     *output = std::move(*batch);
   }
   *end_of_sequence = false;
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status CopyBatch(AnyContext ctx,
-                       std::vector<std::vector<Tensor>>&& batch_elements,
-                       bool parallel_copy, std::vector<Tensor>* out_tensors) {
+Status CopyBatch(CopyBatchParams params,
+                 const std::vector<std::vector<Tensor>>& batch_elements,
+                 bool parallel_copy,
+                 std::function<Status()> allocation_callback,
+                 std::vector<Tensor>* out_tensors) {
   const size_t num_tuple_components = batch_elements.at(0).size();
   out_tensors->reserve(num_tuple_components);
   const int64_t num_batch_elements = batch_elements.size();
@@ -810,13 +778,16 @@ absl::Status CopyBatch(AnyContext ctx,
     TensorShape first_element_shape(first_element.shape());
     TensorShape batch_component_shape({num_batch_elements});
     batch_component_shape.AppendShape(first_element_shape);
-    out_tensors->emplace_back(ctx.allocator, first_element.dtype(),
+    out_tensors->emplace_back(params.allocator, first_element.dtype(),
                               batch_component_shape);
     if (!out_tensors->back().IsInitialized()) {
       return errors::ResourceExhausted(
           "Failed to allocate memory for the batch of component ",
           component_index);
     }
+  }
+  if (allocation_callback) {
+    TF_RETURN_IF_ERROR(allocation_callback());
   }
   for (size_t component_index = 0; component_index < num_tuple_components;
        ++component_index) {
@@ -846,9 +817,9 @@ absl::Status CopyBatch(AnyContext ctx,
     // Use parallelism for creating the batch as long as the final batch is at
     // least 1MB.
     if (parallel_copy && total_bytes >= (1 << 20)) {
-      absl::Status status;
+      Status status;
       mutex status_mu;
-      const auto num_threads = ctx.runner_threadpool_size;
+      const auto num_threads = params.runner_threadpool_size;
       const auto slice_size = num_batch_elements / num_threads;
       int64_t offset = 0;
       BlockingCounter counter(num_threads);
@@ -858,9 +829,9 @@ absl::Status CopyBatch(AnyContext ctx,
         // evenly, the size of some slices is incremented to guarantee their
         // sizes add up to the total number of elements.
         if (i < num_batch_elements % num_threads) ++length;
-        (*ctx.runner)([offset, length, &status, &status_mu, &counter,
-                       &copy_element_fn]() {
-          absl::Status s;
+        (*params.runner)([offset, length, &status, &status_mu, &counter,
+                          &copy_element_fn]() {
+          Status s;
           for (size_t j = offset; j < offset + length; ++j) {
             s.Update(copy_element_fn(j));
           }
@@ -880,24 +851,20 @@ absl::Status CopyBatch(AnyContext ctx,
       }
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 absl::flat_hash_set<tstring> CreateGraphRewriteConfigs(const Options& options) {
   absl::flat_hash_set<tstring> configs;
   const auto& autotune_options = options.autotune_options();
-  std::array<tstring, 11> autotune_only_optimizations = {
+  std::array<tstring, 7> autotune_only_optimizations = {
       kAutotuneBufferSizesOpt,
       kBatchParallelizationOpt,
       kDisablePrefetchLegacyAutotuneOpt,
       kEnableGradientDescentOpt,
       kFilterParallelizationOpt,
       kMapParallelizationOpt,
-      kMapFusionOpt,
-      kSeqInterleavePrefetchOpt,
-      kInjectPrefetchOpt,
-      kInjectIoPrefetchEligibleOpt,
-      kInjectIoPrefetchOpt};
+      kInjectPrefetchOpt};
 
   if (autotune_options.optional_enabled_case() == AutotuneOptions::kEnabled &&
       !autotune_options.enabled()) {
@@ -951,17 +918,7 @@ bool ShouldApplyOptimizations(
 }
 
 int64 GetAutotuneDefaultParallelism(IteratorContext* ctx) {
-  int64_t initial_parallelism = 16;
-  if (ctx->options()) {
-    int64_t initial_parallelism_option =
-        ctx->options()->autotune_options().initial_parallelism();
-    if (initial_parallelism_option > 0) {
-      initial_parallelism = initial_parallelism_option;
-    }
-  }
-  int64_t runner_threadpool_size = ctx->runner_threadpool_size();
-  int64_t value = std::min(initial_parallelism, runner_threadpool_size);
-  return value;
+  return std::min(kAutotuneDefaultParallelism, ctx->runner_threadpool_size());
 }
 
 IteratorContext MakeNestedIteratorContext(IteratorContext* ctx) {
@@ -1001,10 +958,6 @@ bool IndependentHostTasks(int64_t task_id, bool evens) {
 
 namespace {
 
-REGISTER_DATASET_EXPERIMENT("noop_task_level", RandomJobSamplePercentage<50>,
-                            IndependentHostTasks);
-REGISTER_DATASET_EXPERIMENT("noop_job_level", RandomJobSamplePercentage<50>,
-                            AllTasks);
 REGISTER_DATASET_EXPERIMENT("allow_small_function_optimizations",
                             RandomJobSamplePercentage<0>, AllTasks);
 REGISTER_DATASET_EXPERIMENT("autotune_buffer_optimization",
@@ -1024,17 +977,9 @@ REGISTER_DATASET_EXPERIMENT("stage_based_autotune_v2",
 REGISTER_DATASET_EXPERIMENT("data_transfer", RandomJobSamplePercentage<0>,
                             AllTasks);
 REGISTER_DATASET_EXPERIMENT("file_locality", RandomJobSamplePercentage<0>,
-                            AllTasks);
-REGISTER_DATASET_EXPERIMENT("file_locality_v2", RandomJobSamplePercentage<0>,
-                            AllTasks);
-REGISTER_DATASET_EXPERIMENT("no_compression", RandomJobSamplePercentage<0>,
-                            AllTasks);
-REGISTER_DATASET_EXPERIMENT("no_compression_v2", RandomJobSamplePercentage<0>,
-                            AllTasks);
-REGISTER_DATASET_EXPERIMENT("inject_io_prefetch", RandomJobSamplePercentage<0>,
-                            AllTasks);
-REGISTER_DATASET_EXPERIMENT("map_fusion", RandomJobSamplePercentage<0>,
                             IndependentHostTasks);
+REGISTER_DATASET_EXPERIMENT("file_locality_v2", RandomJobSamplePercentage<50>,
+                            AllTasks);
 }  // namespace
 }  // namespace data
 }  // namespace tensorflow

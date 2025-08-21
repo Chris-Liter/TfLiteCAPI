@@ -24,7 +24,7 @@ limitations under the License.
 #include "tensorflow/core/kernels/diag_op.h"
 
 #include <algorithm>
-#include "unsupported/Eigen/CXX11/Tensor"  // from @eigen_archive
+#include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/framework/register_types.h"
 #include "tensorflow/core/framework/tensor.h"
@@ -61,7 +61,7 @@ class DiagOp : public OpKernel {
     OP_REQUIRES_OK(context,
                    context->allocate_output(0, out_shape, &output_tensor));
     functor::DiagFunctor<Device, T> diagFunc;
-    absl::Status s =
+    Status s =
         diagFunc(context, diagonal.NumElements(), diagonal.flat<T>().data(),
                  output_tensor->flat<T>().data());
     OP_REQUIRES_OK(context, s);
@@ -98,9 +98,8 @@ class DiagPartOp : public OpKernel {
     Tensor* output = nullptr;
     OP_REQUIRES_OK(context, context->allocate_output(0, out_shape, &output));
     functor::DiagPartFunctor<Device, T> diagPartFunc;
-    absl::Status s =
-        diagPartFunc(context, out_shape.num_elements(), tensor.flat<T>().data(),
-                     output->flat<T>().data());
+    Status s = diagPartFunc(context, out_shape.num_elements(),
+                            tensor.flat<T>().data(), output->flat<T>().data());
     OP_REQUIRES_OK(context, s);
   }
 };
@@ -127,9 +126,9 @@ class DiagPartOp : public OpKernel {
 namespace functor {
 template <typename T>
 struct DiagFunctor<CPUDevice, T> {
-  EIGEN_ALWAYS_INLINE absl::Status operator()(OpKernelContext* context,
-                                              const int64_t size, const T* in,
-                                              T* out) {
+  EIGEN_ALWAYS_INLINE Status operator()(OpKernelContext* context,
+                                        const int64_t size, const T* in,
+                                        T* out) {
     // This subprocess is responsible for writing values in index range
     // [start*size, limit*size)
     auto subDiag = [in, out, size](int64_t start, int64_t limit) {
@@ -143,15 +142,15 @@ struct DiagFunctor<CPUDevice, T> {
     auto worker_threads = *(context->device()->tensorflow_cpu_worker_threads());
     Shard(worker_threads.num_threads, worker_threads.workers, size, 5 * size,
           subDiag);
-    return absl::OkStatus();
+    return OkStatus();
   }
 };
 
 template <typename T>
 struct DiagPartFunctor<CPUDevice, T> {
-  EIGEN_ALWAYS_INLINE absl::Status operator()(OpKernelContext* context,
-                                              const int64_t size, const T* in,
-                                              T* out) {
+  EIGEN_ALWAYS_INLINE Status operator()(OpKernelContext* context,
+                                        const int64_t size, const T* in,
+                                        T* out) {
     // This subprocess is responsible for extracting values in index range
     // [start, limit)
     auto subDiagPart = [in, out, size](int64_t start, int64_t limit) {
@@ -164,7 +163,7 @@ struct DiagPartFunctor<CPUDevice, T> {
     auto worker_threads = *(context->device()->tensorflow_cpu_worker_threads());
     Shard(worker_threads.num_threads, worker_threads.workers, size, 5,
           subDiagPart);
-    return absl::OkStatus();
+    return OkStatus();
   }
 };
 }  // namespace functor

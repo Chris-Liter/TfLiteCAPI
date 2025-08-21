@@ -66,9 +66,8 @@ constexpr char kOpTranspose[] = "Transpose";
 class TransposerImpl : public Transposer {
  public:
   explicit TransposerImpl() : Transposer() {}
-  absl::Status TransposeNode(TransposeContext*,
-                             utils::MutableNodeView*) override {
-    return absl::OkStatus();
+  Status TransposeNode(TransposeContext*, utils::MutableNodeView*) override {
+    return OkStatus();
   }
 };
 
@@ -116,8 +115,8 @@ Output SimpleConv2D(const Scope* scope, const DataType& data_type = DT_FLOAT) {
   return conv2d;
 }
 
-absl::Status CreateSimpleConv2DGraph(GraphDef* graph,
-                                     const DataType& data_type = DT_FLOAT) {
+Status CreateSimpleConv2DGraph(GraphDef* graph,
+                               const DataType& data_type = DT_FLOAT) {
   Scope scope = Scope::NewRootScope();
   auto conv2d = SimpleConv2D(&scope, data_type);
   auto output = ops::Identity(scope.WithOpName("output"), conv2d);
@@ -125,8 +124,8 @@ absl::Status CreateSimpleConv2DGraph(GraphDef* graph,
   return scope.ToGraphDef(graph);
 }
 
-absl::Status CreateSimpleFusedBatchNorm(GraphDef* graph,
-                                        const DataType& data_type = DT_FLOAT) {
+Status CreateSimpleFusedBatchNorm(GraphDef* graph,
+                                  const DataType& data_type = DT_FLOAT) {
   Scope scope = Scope::NewRootScope();
   auto x =
       ops::RandomUniform(scope.WithOpName("x"),
@@ -151,7 +150,7 @@ absl::Status CreateSimpleFusedBatchNorm(GraphDef* graph,
   return scope.ToGraphDef(graph);
 }
 
-absl::Status CreateSimpleMaxPoolGrad(GraphDef* graph, bool use_grad_grad) {
+Status CreateSimpleMaxPoolGrad(GraphDef* graph, bool use_grad_grad) {
   Scope scope = Scope::NewRootScope();
   auto input =
       ops::RandomUniform(scope.WithOpName("orig_input"),
@@ -182,7 +181,7 @@ absl::Status CreateSimpleMaxPoolGrad(GraphDef* graph, bool use_grad_grad) {
   return scope.ToGraphDef(graph);
 }
 
-absl::Status CreateSimpleBiasAddGrad(GraphDef* graph, const Input& shape) {
+Status CreateSimpleBiasAddGrad(GraphDef* graph, const Input& shape) {
   Scope scope = Scope::NewRootScope();
   auto input = ops::RandomUniform(scope.WithOpName("input"), shape, DT_FLOAT);
   auto bag =
@@ -193,9 +192,9 @@ absl::Status CreateSimpleBiasAddGrad(GraphDef* graph, const Input& shape) {
   return scope.ToGraphDef(graph);
 }
 
-absl::Status CreateSimpleConv2DBackpropFilter(
-    GraphDef* graph, const DataType& data_type = DT_FLOAT,
-    absl::string_view padding = "SAME") {
+Status CreateSimpleConv2DBackpropFilter(GraphDef* graph,
+                                        const DataType& data_type = DT_FLOAT,
+                                        absl::string_view padding = "SAME") {
   Scope scope = Scope::NewRootScope();
   auto input =
       ops::RandomUniform(scope.WithOpName("input"),
@@ -228,8 +227,8 @@ absl::Status CreateSimpleConv2DBackpropFilter(
   return scope.ToGraphDef(graph);
 }
 
-absl::Status CreateSimpleConv2DBackpropInput(
-    GraphDef* graph, const DataType& data_type = DT_FLOAT) {
+Status CreateSimpleConv2DBackpropInput(GraphDef* graph,
+                                       const DataType& data_type = DT_FLOAT) {
   Scope scope = Scope::NewRootScope();
   auto input_sizes = ops::Const(scope.WithOpName("input_sizes"),
                                 {kBatchSize, kHeight, kWidth, kDepthIn});
@@ -251,8 +250,8 @@ absl::Status CreateSimpleConv2DBackpropInput(
   return scope.ToGraphDef(graph);
 }
 
-absl::Status CreateSimpleFusedBatchNormGrad(
-    GraphDef* graph, bool is_training, const DataType& data_type = DT_FLOAT) {
+Status CreateSimpleFusedBatchNormGrad(GraphDef* graph, bool is_training,
+                                      const DataType& data_type = DT_FLOAT) {
   Scope scope = Scope::NewRootScope();
   auto y_backprop =
       ops::RandomUniform(scope.WithOpName("y_backprop"),
@@ -286,7 +285,7 @@ absl::Status CreateSimpleFusedBatchNormGrad(
   return scope.ToGraphDef(graph);
 }
 
-absl::Status CreateSimpleAddN(GraphDef* graph) {
+Status CreateSimpleAddN(GraphDef* graph) {
   Scope scope = Scope::NewRootScope();
   auto input =
       ops::RandomUniform(scope.WithOpName("input"),
@@ -310,7 +309,7 @@ absl::Status CreateSimpleAddN(GraphDef* graph) {
   return scope.ToGraphDef(graph);
 }
 
-absl::Status CreateSimpleIdentityN(GraphDef* graph) {
+Status CreateSimpleIdentityN(GraphDef* graph) {
   Scope scope = Scope::NewRootScope();
   auto conv2d_1_input =
       ops::RandomUniform(scope.WithOpName("conv2d_1_input"),
@@ -574,7 +573,7 @@ TEST_F(TransposerTest, CreateTransposeNode) {
   EXPECT_EQ(transpose_node_name,
             "transpose_node-0-Transpose-NWCHToNCWH-LayoutOptimizer");
   utils::Mutation* mutation = context.graph_view->GetMutationBuilder();
-  absl::Status status;
+  Status status;
   // Placeholder node with empty name as transpose node is created with it's
   // first input not set.
   mutation->AddNode({}, &status);

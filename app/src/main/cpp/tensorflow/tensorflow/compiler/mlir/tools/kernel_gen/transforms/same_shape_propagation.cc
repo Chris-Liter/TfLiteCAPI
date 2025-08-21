@@ -30,13 +30,14 @@ limitations under the License.
 #include "mlir/Dialect/Func/IR/FuncOps.h"  // from @llvm-project
 #include "mlir/Dialect/GPU/IR/GPUDialect.h"  // from @llvm-project
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"  // from @llvm-project
-#include "mlir/Dialect/MemRef/IR/MemRef.h"  // from @llvm-project
 #include "mlir/IR/AsmState.h"  // from @llvm-project
 #include "mlir/IR/BuiltinTypes.h"  // from @llvm-project
+#include "mlir/IR/MLIRContext.h"  // from @llvm-project
 #include "mlir/IR/Value.h"  // from @llvm-project
 #include "mlir/Support/LLVM.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/tools/kernel_gen/ir/tf_framework_ops.h"
 #include "tensorflow/compiler/mlir/tools/kernel_gen/transforms/passes.h"
+#include "tensorflow/compiler/xla/mlir_hlo/lhlo/IR/lhlo_ops.h"
 
 #define DEBUG_TYPE "kernel-gen-shapes"
 
@@ -217,7 +218,7 @@ class ShapeEqualityKnowledge {
       }
       if (auto alloc = dyn_cast<memref::AllocOp>(op)) {
         SmallVector<ValueOrConst, 4> shape;
-        ShapedType type = mlir::cast<ShapedType>(alloc.getResult().getType());
+        ShapedType type = alloc.getResult().getType().cast<ShapedType>();
         fillShapeFromAllocLike(alloc.getDynamicSizes(), type, shape);
         registerAssociation(ShapeValue{shape}, alloc.getResult());
         return;
@@ -225,7 +226,7 @@ class ShapeEqualityKnowledge {
       if (auto alloc = dyn_cast<tf_framework::TFAllocOp>(op)) {
         // Construct a symbol representing the allocated shape.
         SmallVector<ValueOrConst, 4> shape;
-        ShapedType type = mlir::cast<ShapedType>(alloc.getResult().getType());
+        ShapedType type = alloc.getResult().getType().cast<ShapedType>();
         fillShapeFromAllocLike(alloc.getDynSizes(), type, shape);
         registerAssociation(ShapeValue{shape}, alloc.getResult());
         return;
@@ -331,7 +332,7 @@ struct PropagateShapeKnowledgeToKernels
       // Position of the kernel argument we are currently at.
       int kernel_p = 0;
       for (auto operand : launch.getKernelOperands()) {
-        auto memref = mlir::dyn_cast<MemRefType>(operand.getType());
+        auto memref = operand.getType().dyn_cast<MemRefType>();
         if (!memref) {
           // Scalar argument, advance kernel position by one.
           kernel_p++;
@@ -341,7 +342,7 @@ struct PropagateShapeKnowledgeToKernels
           if (!knowledge.haveSameShape(operand, previous.first)) {
             continue;
           }
-          auto previous_type = mlir::cast<MemRefType>(previous.first.getType());
+          auto previous_type = previous.first.getType().cast<MemRefType>();
           // We use the first equality found and replace uses of corresponding
           // size and (potentially) stride information here.
           auto args_to_replace = memref.getRank();

@@ -1,8 +1,6 @@
 # Description:
 #   Contains the Keras API (internal TensorFlow version).
 
-load("//tensorflow:py.default.bzl", "py_library")
-
 package(
     # copybara:uncomment default_applicable_licenses = ["//tensorflow:license"],
     default_visibility = ["//visibility:public"],
@@ -100,7 +98,6 @@ py_library(
         "//tensorflow/python/training:training_lib",
         "//tensorflow/python/util:dispatch",
         "//tensorflow/python/util:nest",
-        "//tensorflow/python/util:numpy_compat",
         "//tensorflow/python/util:tf_export",
     ],
 )
@@ -355,7 +352,7 @@ py_library(
         "//tensorflow/python/keras/engine:base_layer_utils",
         "//tensorflow/python/keras/layers",
         "//tensorflow/python/keras/optimizer_v2",
-        "//tensorflow/python/util:tf_decorator_py",
+        "//tensorflow/python/util:tf_decorator",
         "//third_party/py/numpy",
     ],
 )

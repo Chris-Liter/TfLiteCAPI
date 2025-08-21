@@ -43,9 +43,7 @@ class SummaryV2Test(test.TestCase):
     # Returns empty string.
     self.assertEqual(tensor.numpy(), b'')
     self.assertEqual(tensor.dtype, dtypes.string)
-    mock_scalar_v2.assert_called_once_with(
-        name='float', data=i, step=1, description=test.mock.ANY
-    )
+    mock_scalar_v2.assert_called_once_with('float', data=i, step=1)
 
   @test_util.run_v2_only
   def test_scalar_summary_v2__wo_writer(self):
@@ -81,11 +79,7 @@ class SummaryV2Test(test.TestCase):
     self.assertEqual(tensor.numpy(), b'')
     self.assertEqual(tensor.dtype, dtypes.string)
     mock_scalar_v2.assert_called_once_with(
-        name='otter/otter/float',
-        data=constant_op.constant(2.5),
-        step=1,
-        description=test.mock.ANY,
-    )
+        'otter/otter/float', data=constant_op.constant(2.5), step=1)
 
   @test_util.run_v2_only
   def test_scalar_summary_v2__family_w_outer_scope(self):
@@ -101,11 +95,7 @@ class SummaryV2Test(test.TestCase):
     self.assertEqual(tensor.numpy(), b'')
     self.assertEqual(tensor.dtype, dtypes.string)
     mock_scalar_v2.assert_called_once_with(
-        name='crabnet/sea/crabnet/float',
-        data=constant_op.constant(3.5),
-        step=1,
-        description=test.mock.ANY,
-    )
+        'crabnet/sea/crabnet/float', data=constant_op.constant(3.5), step=1)
 
   @test_util.run_v2_only
   def test_scalar_summary_v2__v1_set_step(self):
@@ -121,9 +111,7 @@ class SummaryV2Test(test.TestCase):
     # Returns empty string.
     self.assertEqual(tensor.numpy(), b'')
     self.assertEqual(tensor.dtype, dtypes.string)
-    mock_scalar_v2.assert_called_once_with(
-        name='float', data=i, step=1024, description=test.mock.ANY
-    )
+    mock_scalar_v2.assert_called_once_with('float', data=i, step=1024)
 
   @test_util.run_v2_only
   def test_image_summary_v2(self):
@@ -139,12 +127,7 @@ class SummaryV2Test(test.TestCase):
     self.assertEqual(tensor.numpy(), b'')
     self.assertEqual(tensor.dtype, dtypes.string)
     mock_image_v2.assert_called_once_with(
-        name='family/outer/family/image',
-        data=i,
-        step=2,
-        max_outputs=3,
-        description=test.mock.ANY,
-    )
+        'family/outer/family/image', data=i, step=2, max_outputs=3)
 
   @test_util.run_v2_only
   def test_histogram_summary_v2(self):
@@ -159,12 +142,7 @@ class SummaryV2Test(test.TestCase):
     self.assertEqual(tensor.numpy(), b'')
     self.assertEqual(tensor.dtype, dtypes.string)
     mock_histogram_v2.assert_called_once_with(
-        name='family/family/histogram',
-        data=i,
-        step=3,
-        buckets=test.mock.ANY,
-        description=test.mock.ANY,
-    )
+        'family/family/histogram', data=i, step=3)
 
   @test_util.run_v2_only
   def test_audio_summary_v2(self):
@@ -180,14 +158,7 @@ class SummaryV2Test(test.TestCase):
     self.assertEqual(tensor.numpy(), b'')
     self.assertEqual(tensor.dtype, dtypes.string)
     mock_audio_v2.assert_called_once_with(
-        name='dolphin/wave',
-        data=i,
-        sample_rate=0.2,
-        step=10,
-        max_outputs=3,
-        encoding=test.mock.ANY,
-        description=test.mock.ANY,
-    )
+        'dolphin/wave', data=i, sample_rate=0.2, step=10, max_outputs=3)
 
   @test_util.run_v2_only
   def test_audio_summary_v2__2d_tensor(self):
@@ -204,14 +175,7 @@ class SummaryV2Test(test.TestCase):
     self.assertEqual(tensor.dtype, dtypes.string)
 
     mock_audio_v2.assert_called_once_with(
-        name='wave',
-        data=test.mock.ANY,
-        sample_rate=0.2,
-        step=11,
-        max_outputs=3,
-        encoding=test.mock.ANY,
-        description=test.mock.ANY,
-    )
+        'wave', data=test.mock.ANY, sample_rate=0.2, step=11, max_outputs=3)
     input_3d = array_ops.ones((5, 3, 1))  # 3-D input tensor
     self.assertAllEqual(mock_audio_v2.call_args[1]['data'], input_3d)
 
@@ -227,9 +191,7 @@ class SummaryV2Test(test.TestCase):
     # Returns empty string.
     self.assertEqual(tensor.numpy(), b'')
     self.assertEqual(tensor.dtype, dtypes.string)
-    mock_text_v2.assert_called_once_with(
-        name='text', data=i, step=22, description=test.mock.ANY
-    )
+    mock_text_v2.assert_called_once_with('text', data=i, step=22)
 
 
 if __name__ == '__main__':

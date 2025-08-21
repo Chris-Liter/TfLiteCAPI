@@ -32,6 +32,7 @@ limitations under the License.
 #include "mlir/IR/BuiltinAttributes.h"  // from @llvm-project
 #include "mlir/IR/BuiltinOps.h"  // from @llvm-project
 #include "mlir/IR/BuiltinTypes.h"  // from @llvm-project
+#include "mlir/IR/FunctionInterfaces.h"  // from @llvm-project
 #include "mlir/IR/IRMapping.h"  // from @llvm-project
 #include "mlir/IR/MLIRContext.h"  // from @llvm-project
 #include "mlir/IR/OpDefinition.h"  // from @llvm-project
@@ -518,7 +519,7 @@ NamedAttrList BasePattern::BuildAttributes(RegionAttr preserved,
   // For each argument and result, lookup a name and regenerate output shapes.
   const auto build_attrs = [&](ArrayAttr attr, auto &it,
                                std::optional<ValueRange> args) {
-    NamedAttrList attrs(attr ? mlir::cast<DictionaryAttr>(attr[it.index()])
+    NamedAttrList attrs(attr ? attr[it.index()].template cast<DictionaryAttr>()
                              : DictionaryAttr());
     // If no name was preserved, try to find one.
     if (!attrs.get(ids_.tfg_name)) {
@@ -548,7 +549,7 @@ NamedAttrList BasePattern::BuildAttributes(RegionAttr preserved,
 StringAttr BasePattern::TryFindName(Value value,
                                     std::optional<ValueRange> args) const {
   // If this is an op result, return the op's name.
-  if (auto result = mlir::dyn_cast<OpResult>(value)) {
+  if (auto result = value.dyn_cast<OpResult>()) {
     Operation *op = result.getOwner();
     if (auto name =
             op->getAttrOfType<StringAttr>(dialect_.getNameAttrIdentifier())) {
@@ -558,7 +559,7 @@ StringAttr BasePattern::TryFindName(Value value,
     return {};
   }
 
-  auto arg = mlir::cast<BlockArgument>(value);
+  auto arg = value.cast<BlockArgument>();
   Operation *parent = arg.getOwner()->getParentOp();
   auto iface = dyn_cast<ControlArgumentInterface>(parent);
   if (!iface) return {};
@@ -579,7 +580,8 @@ StringAttr BasePattern::TryFindName(Value value,
     return TryFindName(for_op.getInit()[arg_idx - 1], {});
   }
   auto branch = cast<RegionBranchOpInterface>(parent);
-  ValueRange inputs = branch.getEntrySuccessorOperands(arg.getParentRegion());
+  ValueRange inputs = branch.getSuccessorEntryOperands(
+      arg.getParentRegion()->getRegionNumber());
   return TryFindName(inputs[arg.getArgNumber()], {});
 }
 
@@ -904,11 +906,12 @@ LogicalResult ConvertCaseLikeOp<CaseLikeRegionOp, CaseLikeOp>::matchAndRewrite(
     // Get the preserved attributes, if there are any.
     RegionAttr preserved =
         op.getRegionAttrs()
-            ? mlir::cast<RegionAttr>(op.getRegionAttrsAttr()[idx])
+            ? op.getRegionAttrsAttr()[idx].template cast<RegionAttr>()
             : nullptr;
     DictionaryAttr attrs =
-        branch_func_attrs ? mlir::cast<DictionaryAttr>(branch_func_attrs[idx])
-                          : nullptr;
+        branch_func_attrs
+            ? branch_func_attrs[idx].template cast<DictionaryAttr>()
+            : nullptr;
     branch_regions.push_back(BasePattern::RegionFunction{
         it.value(), preserved, attrs, ("case_function_" + Twine(idx)).str()});
   }

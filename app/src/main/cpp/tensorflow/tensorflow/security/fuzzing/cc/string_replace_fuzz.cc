@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
+#include <cstdint>
+#include <cstdlib>
 #include <string>
 
 #include "fuzztest/fuzztest.h"
@@ -24,9 +26,9 @@ namespace {
 
 void FuzzTest(bool all_flag, std::string s, std::string oldsub,
               std::string newsub) {
-  absl::string_view sp(s);
-  absl::string_view oldsubp(oldsub);
-  absl::string_view newsubp(newsub);
+  tensorflow::StringPiece sp(s);
+  tensorflow::StringPiece oldsubp(oldsub);
+  tensorflow::StringPiece newsubp(newsub);
 
   std::string subbed =
       tensorflow::str_util::StringReplace(sp, oldsubp, newsubp, all_flag);

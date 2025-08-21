@@ -15,29 +15,19 @@ limitations under the License.
 #include "tensorflow/compiler/mlir/lite/quantization/lite/quantize_weights.h"
 
 #include <algorithm>
-#include <cstddef>
-#include <cstdint>
-#include <cstdlib>
 #include <iostream>
 #include <memory>
 #include <string>
 #include <vector>
 
-#include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include "absl/status/status.h"
-#include "flatbuffers/buffer.h"  // from @flatbuffers
-#include "flatbuffers/flatbuffer_builder.h"  // from @flatbuffers
-#include "flatbuffers/vector.h"  // from @flatbuffers
-#include "tensorflow/compiler/mlir/lite/core/absl_error_model_builder.h"
-#include "tensorflow/compiler/mlir/lite/quantization/lite/test_util.h"
-#include "tensorflow/compiler/mlir/lite/schema/schema_generated.h"
-#include "tensorflow/compiler/mlir/lite/schema/schema_utils.h"
+#include "llvm/ADT/Twine.h"
+#include "tensorflow/core/lib/io/path.h"
 #include "tensorflow/core/platform/init_main.h"
-#include "tensorflow/core/platform/path.h"
-#include "tensorflow/core/platform/types.h"
 #include "tensorflow/core/util/command_line_flags.h"
-#include "tsl/platform/logging.h"
+#include "tensorflow/lite/schema/schema_generated.h"
+#include "tensorflow/lite/schema/schema_utils.h"
+#include "tensorflow/lite/tools/optimize/test_util.h"
 
 // Note: branched from tensorflow/lite/tools/optimize/quantize_weights_test.cc
 
@@ -52,7 +42,6 @@ namespace {
 using mlir::lite::BufferType;
 using mlir::lite::CustomOpMap;
 using mlir::lite::QuantizeWeights;
-using mlir::TFL::FlatBufferModelAbslError;
 constexpr bool kUseUpdatedHybridSchemeDefault = true;
 
 std::unique_ptr<ModelT> CreateMutableModelFromFile(const Model* input_model) {
@@ -61,28 +50,28 @@ std::unique_ptr<ModelT> CreateMutableModelFromFile(const Model* input_model) {
   return copied_model;
 }
 
-std::unique_ptr<FlatBufferModelAbslError> ReadTestModel() {
+std::unique_ptr<FlatBufferModel> ReadTestModel() {
   auto model_path = tensorflow::io::JoinPath(
-      *g_test_model_dir, ::mlir::lite::internal::kConvModelWith0Plus10Weights);
-  return FlatBufferModelAbslError::BuildFromFile(model_path.c_str());
+      *g_test_model_dir, internal::kConvModelWith0Plus10Weights);
+  return FlatBufferModel::BuildFromFile(model_path.c_str());
 }
 
-std::unique_ptr<FlatBufferModelAbslError> ReadSharedWeightsTestModel() {
-  auto model_path = tensorflow::io::JoinPath(
-      *g_test_model_dir, ::mlir::lite::internal::kModelWithSharedWeights);
-  return FlatBufferModelAbslError::BuildFromFile(model_path.c_str());
+std::unique_ptr<FlatBufferModel> ReadSharedWeightsTestModel() {
+  auto model_path = tensorflow::io::JoinPath(*g_test_model_dir,
+                                             internal::kModelWithSharedWeights);
+  return FlatBufferModel::BuildFromFile(model_path.c_str());
 }
 
-std::unique_ptr<FlatBufferModelAbslError> ReadGatherTestModel() {
-  auto model_path = tensorflow::io::JoinPath(
-      *g_test_model_dir, ::mlir::lite::internal::kQuantizedWithGather);
-  return FlatBufferModelAbslError::BuildFromFile(model_path.c_str());
+std::unique_ptr<FlatBufferModel> ReadGatherTestModel() {
+  auto model_path = tensorflow::io::JoinPath(*g_test_model_dir,
+                                             internal::kQuantizedWithGather);
+  return FlatBufferModel::BuildFromFile(model_path.c_str());
 }
 
-std::unique_ptr<FlatBufferModelAbslError> ReadCustomOpTestModel() {
-  auto model_path = tensorflow::io::JoinPath(
-      *g_test_model_dir, ::mlir::lite::internal::kModelWithCustomOp);
-  return FlatBufferModelAbslError::BuildFromFile(model_path.c_str());
+std::unique_ptr<FlatBufferModel> ReadCustomOpTestModel() {
+  auto model_path =
+      tensorflow::io::JoinPath(*g_test_model_dir, internal::kModelWithCustomOp);
+  return FlatBufferModel::BuildFromFile(model_path.c_str());
 }
 
 template <typename T>
@@ -114,7 +103,7 @@ class QuantizeWeightsTest : public testing::Test {
     model_ = input_model_->GetModel();
   }
 
-  std::unique_ptr<FlatBufferModelAbslError> input_model_;
+  std::unique_ptr<FlatBufferModel> input_model_;
   const Model* model_;
 
   bool IsModelInputOrOutput(const Model* model, uint32_t tensor_idx) {
@@ -153,19 +142,17 @@ class QuantizeWeightsTest : public testing::Test {
   }
 };
 
-// Returns true if everything between the two graphs
-// are identical except for name field.
-// Used when comparing graphs after optimization passes,
-// as tensor names may have changed via MLIR constant folding process.
 bool ExpectEqualTensor(const Tensor* tensor, const Tensor* expected_tensor) {
+  // Everything should remain equal between the two graphs.
   return (tensor->is_variable() == expected_tensor->is_variable()) &&
          (GetAsVector(tensor->shape()) ==
-          GetAsVector(expected_tensor->shape()));
+          GetAsVector(expected_tensor->shape())) &&
+         (tensor->name()->str() == expected_tensor->name()->str());
 }
 
 // Finds the match of the quantized tensor from the possible tensors. Each
 // possible tensors can be used only once. It checks shape and name if the
-// tensor is quantized and also checks buffer contents and tensor type if not
+// tensor is quantized and also checks buffer conetens and tensor type if not
 // quantized. For the quantized case, tensor type and quantizaction params are
 // expected to be checked in the test body with the match.
 const Tensor* FindMatchingExpectedTensor(
@@ -185,8 +172,6 @@ const Tensor* FindMatchingExpectedTensor(
 
     const Tensor* float_tensor = possible_tensors->Get(i);
 
-    LOG(INFO) << quantized_tensor->name()->str() << " "
-              << float_tensor->name()->str();
     if (ExpectEqualTensor(quantized_tensor, float_tensor)) {
       if (quantized && quantized_tensor->name()->str().find("weights")) {
         // If tensor is quantized, data type and buffer contents can be
@@ -214,7 +199,8 @@ const Tensor* FindMatchingExpectedTensor(
 TEST_F(QuantizeWeightsTest, QuantizationSucceeds) {
   LoadBasicModel();
   flatbuffers::FlatBufferBuilder builder;
-  EXPECT_OK(QuantizeWeights(&builder, model_, 0));
+  auto status = QuantizeWeights(&builder, model_, 0);
+  EXPECT_EQ(status, kTfLiteOk);
 
   const uint8_t* buffer = builder.GetBufferPointer();
   const Model* output_model = GetModel(buffer);
@@ -224,8 +210,10 @@ TEST_F(QuantizeWeightsTest, QuantizationSucceeds) {
 TEST_F(QuantizeWeightsTest, QuantizationFails) {
   LoadBasicModel();
   flatbuffers::FlatBufferBuilder builder;
-  EXPECT_EQ(QuantizeWeights(&builder, model_, TensorType_UINT8, {}, {}, 1024),
-            absl::InternalError("Quantize weights transformation failed."));
+  tflite::StderrReporter error_reporter;
+  auto status = QuantizeWeights(&builder, model_, &error_reporter,
+                                TensorType_UINT8, {}, {});
+  EXPECT_EQ(status, kTfLiteError);
 }
 
 TEST_F(QuantizeWeightsTest, WeightsMinNumElements) {
@@ -235,7 +223,7 @@ TEST_F(QuantizeWeightsTest, WeightsMinNumElements) {
   flatbuffers::FlatBufferBuilder builder;
   const uint64_t kWeightsMinNumElements = 1000000;
   EXPECT_EQ(QuantizeWeights(&builder, model_, kWeightsMinNumElements),
-            absl::InternalError("Quantize weights transformation failed."));
+            kTfLiteOk);
 
   const uint8_t* buffer = builder.GetBufferPointer();
   const Model* output_model = GetModel(buffer);
@@ -264,7 +252,8 @@ TEST_F(QuantizeWeightsTest, WeightsMinNumElements) {
 TEST_F(QuantizeWeightsTest, HybridConv) {
   LoadBasicModel();
   flatbuffers::FlatBufferBuilder builder;
-  EXPECT_OK(QuantizeWeights(&builder, model_, 0));
+  auto status = QuantizeWeights(&builder, model_, 0);
+  EXPECT_EQ(status, kTfLiteOk);
 
   const uint8_t* buffer = builder.GetBufferPointer();
   const Model* output_model = GetModel(buffer);
@@ -296,10 +285,7 @@ TEST_F(QuantizeWeightsTest, HybridConv) {
       // If the tensor is a weight, it should have type INT8, otherwise it
       // should stay with type FLOAT32.
       // If the tensor is a bias, it should have type FLOAT32.
-      //
-      // Check with float_tensor name since quantized tensor
-      // may be renamed.
-      if (float_tensor->name()->str() == "conv_bias") {
+      if (quant_tensor->name()->str() == "conv_bias") {
         EXPECT_EQ(quant_tensor->type(), TensorType_FLOAT32);
       } else if (IsModelInputOrOutput(output_model, i)) {
         EXPECT_EQ(quant_tensor->type(), TensorType_FLOAT32);
@@ -323,8 +309,9 @@ TEST_F(QuantizeWeightsTest, HybridConv) {
 TEST_F(QuantizeWeightsTest, DequantizeConv) {
   LoadBasicModel();
   flatbuffers::FlatBufferBuilder builder;
-  EXPECT_OK(QuantizeWeights(&builder, model_, 0,
-                            /*use_hybrid_evaluation=*/false));
+  auto status = QuantizeWeights(&builder, model_, 0,
+                                /*use_hybrid_evaluation=*/false);
+  EXPECT_EQ(status, kTfLiteOk);
 
   const uint8_t* buffer = builder.GetBufferPointer();
   const Model* output_model = GetModel(buffer);
@@ -353,14 +340,8 @@ TEST_F(QuantizeWeightsTest, DequantizeConv) {
     }
     ASSERT_GT(dequant_input_idx, -1);
     ASSERT_GT(dequant_output_idx, -1);
-    std::vector<int> used_tensors;
     for (size_t i = 0; i < quantized_graph->tensors()->size(); ++i) {
       const auto quant_tensor = quantized_graph->tensors()->Get(i);
-      const auto float_tensor = FindMatchingExpectedTensor(
-          /*quantized_model=*/output_model, /*expected_model=*/model_,
-          /*quantized_tensor=*/quant_tensor,
-          /*possible_tensors=*/float_graph->tensors(),
-          /*used_tensors=*/used_tensors, /*quantized=*/true);
       // If the tensor is a weight, it should have type INT8.
       // If the tensor is a bias, it should have type FLOAT32.
       // If the tensor is an input or output it should have type FLOAT32.
@@ -372,8 +353,7 @@ TEST_F(QuantizeWeightsTest, DequantizeConv) {
         EXPECT_EQ(quant_tensor->type(), TensorType_FLOAT32);
       } else if (IsModelInputOrOutput(output_model, i)) {
         EXPECT_EQ(quant_tensor->type(), TensorType_FLOAT32);
-      } else if (float_tensor != nullptr &&
-                 float_tensor->name()->str() == "conv_bias") {
+      } else if (quant_tensor->name()->str() == "conv_bias") {
         EXPECT_EQ(quant_tensor->type(), TensorType_FLOAT32);
       } else if (quant_tensor->buffer() != 0) {
         // If it's a non-bias constant tensor, it must be the weight.
@@ -388,7 +368,9 @@ TEST_F(QuantizeWeightsTest, DequantizeConv) {
 TEST_F(QuantizeWeightsTest, DequantizeConvFloat16) {
   LoadBasicModel();
   flatbuffers::FlatBufferBuilder builder;
-  EXPECT_OK(QuantizeWeights(&builder, model_, BufferType::QUANTIZED_FLOAT16));
+  auto status =
+      QuantizeWeights(&builder, model_, BufferType::QUANTIZED_FLOAT16);
+  EXPECT_EQ(status, kTfLiteOk);
 
   const uint8_t* buffer = builder.GetBufferPointer();
   const Model* output_model = GetModel(buffer);
@@ -448,7 +430,8 @@ TEST_F(QuantizeWeightsTest, DequantizeConvFloat16) {
 TEST_F(QuantizeWeightsTest, SharedWeights_Hybrid) {
   LoadSharedWeightsModel();
   flatbuffers::FlatBufferBuilder builder;
-  EXPECT_OK(QuantizeWeights(&builder, model_, 0));
+  auto status = QuantizeWeights(&builder, model_, 0);
+  EXPECT_EQ(status, kTfLiteOk);
 
   const uint8_t* buffer = builder.GetBufferPointer();
   const Model* output_model = GetModel(buffer);
@@ -480,8 +463,9 @@ TEST_F(QuantizeWeightsTest, SharedWeights_Hybrid) {
 TEST_F(QuantizeWeightsTest, SharedWeights_Dequantize) {
   LoadSharedWeightsModel();
   flatbuffers::FlatBufferBuilder builder;
-  EXPECT_OK(
-      QuantizeWeights(&builder, model_, 0, /*use_hybrid_evaluation=*/false));
+  auto status = QuantizeWeights(&builder, model_, 0,
+                                /*use_hybrid_evaluation=*/false);
+  EXPECT_EQ(status, kTfLiteOk);
 
   const uint8_t* buffer = builder.GetBufferPointer();
   const Model* output_model = GetModel(buffer);
@@ -521,7 +505,8 @@ TEST_F(QuantizeWeightsTest, SharedWeights_Dequantize) {
 TEST_F(QuantizeWeightsTest, VerifyGatherQuantization) {
   LoadGatherTestModel();
   flatbuffers::FlatBufferBuilder builder;
-  EXPECT_OK(QuantizeWeights(&builder, model_, 0));
+  auto status = QuantizeWeights(&builder, model_, 0);
+  EXPECT_EQ(status, kTfLiteOk);
 
   const uint8_t* buffer = builder.GetBufferPointer();
   const Model* output_model = GetModel(buffer);
@@ -558,7 +543,8 @@ TEST_F(QuantizeWeightsTest, VerifyCustomOpQuantizationDequantize) {
   };
 
   flatbuffers::FlatBufferBuilder builder;
-  EXPECT_OK(QuantizeWeights(&builder, model_, 0, custom_op_map));
+  auto status = QuantizeWeights(&builder, model_, 0, custom_op_map);
+  ASSERT_EQ(status, kTfLiteOk);
 
   const uint8_t* buffer = builder.GetBufferPointer();
   const Model* output_model = GetModel(buffer);
@@ -604,7 +590,8 @@ TEST_F(QuantizeWeightsTest, VerifyCustomOpQuantizationHybrid) {
   };
 
   flatbuffers::FlatBufferBuilder builder;
-  ASSERT_OK(QuantizeWeights(&builder, model_, 0, custom_op_map));
+  auto status = QuantizeWeights(&builder, model_, 0, custom_op_map);
+  ASSERT_EQ(status, kTfLiteOk);
 
   const uint8_t* buffer = builder.GetBufferPointer();
   const Model* output_model = GetModel(buffer);
@@ -635,7 +622,8 @@ TEST_F(QuantizeWeightsTest, VerifyUpdatedHybridSchemeFalseQuantizationHybrid) {
   LoadBasicModel();
   flatbuffers::FlatBufferBuilder builder;
   const CustomOpMap custom_op_map;
-  EXPECT_OK(QuantizeWeights(&builder, model_, 0, custom_op_map, false));
+  auto status = QuantizeWeights(&builder, model_, 0, custom_op_map, false);
+  EXPECT_EQ(status, kTfLiteOk);
 
   const uint8_t* buffer = builder.GetBufferPointer();
   const Model* output_model = GetModel(buffer);
@@ -667,7 +655,7 @@ TEST_F(QuantizeWeightsTest, VerifyUpdatedHybridSchemeFalseQuantizationHybrid) {
       // If the tensor is a weight, it should have type INT8, otherwise it
       // should stay with type FLOAT32.
       // If the tensor is a bias, it should have type FLOAT32.
-      if (float_tensor->name()->str() == "conv_bias") {
+      if (quant_tensor->name()->str() == "conv_bias") {
         EXPECT_EQ(quant_tensor->type(), TensorType_FLOAT32);
       } else if (IsModelInputOrOutput(output_model, i)) {
         EXPECT_EQ(quant_tensor->type(), TensorType_FLOAT32);
@@ -691,9 +679,10 @@ TEST_F(QuantizeWeightsTest, DequantizeConvBlocklisted) {
   LoadBasicModel();
   flatbuffers::FlatBufferBuilder builder;
   const CustomOpMap custom_op_map;
-  EXPECT_OK(QuantizeWeights(&builder, model_, 0, custom_op_map,
-                            /*use_updated_hybrid_scheme=*/true,
-                            {BuiltinOperator_CONV_2D}));
+  auto status = QuantizeWeights(&builder, model_, 0, custom_op_map,
+                                /*use_updated_hybrid_scheme=*/true,
+                                {BuiltinOperator_CONV_2D});
+  EXPECT_EQ(status, kTfLiteOk);
 
   const uint8_t* buffer = builder.GetBufferPointer();
   const Model* output_model = GetModel(buffer);
@@ -722,14 +711,8 @@ TEST_F(QuantizeWeightsTest, DequantizeConvBlocklisted) {
     }
     ASSERT_GT(dequant_input_idx, -1);
     ASSERT_GT(dequant_output_idx, -1);
-    std::vector<int> used_tensors;
     for (size_t i = 0; i < quantized_graph->tensors()->size(); ++i) {
       const auto quant_tensor = quantized_graph->tensors()->Get(i);
-      const auto float_tensor = FindMatchingExpectedTensor(
-          /*quantized_model=*/output_model, /*expected_model=*/model_,
-          /*quantized_tensor=*/quant_tensor,
-          /*possible_tensors=*/float_graph->tensors(),
-          /*used_tensors=*/used_tensors);
       // If the tensor is a weight, it should have type INT8.
       // If the tensor is a bias, it should have type FLOAT32.
       // If the tensor is an input or output it should have type FLOAT32.
@@ -744,8 +727,7 @@ TEST_F(QuantizeWeightsTest, DequantizeConvBlocklisted) {
         EXPECT_EQ(quant_tensor->type(), TensorType_FLOAT32);
       } else if (IsModelInputOrOutput(output_model, i)) {
         EXPECT_EQ(quant_tensor->type(), TensorType_FLOAT32);
-      } else if (float_tensor != nullptr &&
-                 float_tensor->name()->str() == "conv_bias") {
+      } else if (quant_tensor->name()->str() == "conv_bias") {
         EXPECT_EQ(quant_tensor->type(), TensorType_FLOAT32);
       } else if ((!CreateMutableModelFromFile(output_model)
                        ->buffers[quant_tensor->buffer()]

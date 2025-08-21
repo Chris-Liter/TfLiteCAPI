@@ -192,8 +192,7 @@ class GradientCheckerTest(test.TestCase):
           error = gradient_checker.compute_gradient_error(x, (), y, ())
           # Typical test would assert error < max_err, so assert this test would
           # raise AssertionError, since NaN is not < 1.0.
-          error_msg = "(False|np.False_) is not true"
-          with self.assertRaisesRegex(AssertionError, error_msg):
+          with self.assertRaisesRegex(AssertionError, "False is not true"):
             self.assertTrue(error < 1.0)
 
 

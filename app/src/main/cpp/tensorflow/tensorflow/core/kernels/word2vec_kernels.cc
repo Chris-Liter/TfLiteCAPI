@@ -177,7 +177,7 @@ class SkipgramOp : public OpKernel {
     *label = sentence_[label_pos_++];
   }
 
-  absl::Status Init(Env* env, const string& filename) {
+  Status Init(Env* env, const string& filename) {
     string data;
     TF_RETURN_IF_ERROR(ReadFileToString(env, filename, &data));
     StringPiece input = data;
@@ -233,7 +233,7 @@ class SkipgramOp : public OpKernel {
     }
     precalc_examples_.resize(kPrecalc);
     sentence_.resize(kSentenceSize);
-    return absl::OkStatus();
+    return OkStatus();
   }
 };
 

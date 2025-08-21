@@ -18,8 +18,6 @@ cc_library(
         "//tensorflow/compiler/mlir/lite:tensorflow_lite",
         "//tensorflow/compiler/mlir/lite/experimental/tac:common",
         "//tensorflow/compiler/mlir/lite/experimental/tac:device_transform_patterns",
-        "@llvm-project//mlir:IR",
-        "@llvm-project//mlir:Support",
     ],
     alwayslink = 1,
 )
@@ -32,8 +30,6 @@ cc_library(
         "//tensorflow/compiler/mlir/lite:cost_estimators",
         "//tensorflow/compiler/mlir/lite:tensorflow_lite",
         "//tensorflow/compiler/mlir/lite/experimental/tac:common",
-        "@llvm-project//mlir:IR",
-        "@llvm-project//mlir:Support",
     ],
     alwayslink = 1,
 )
@@ -43,13 +39,11 @@ cc_library(
     srcs = ["nnapi_hardware.cc"],
     hdrs = ["nnapi_hardware.h"],
     deps = [
-        ":target_hardware",
         "//tensorflow/compiler/mlir/lite:cost_estimators",
         "//tensorflow/compiler/mlir/lite:tensorflow_lite",
+        "//tensorflow/compiler/mlir/lite/experimental/tac:common",
         "//tensorflow/compiler/mlir/lite/experimental/tac:device_transform_patterns",
         "//tensorflow/compiler/mlir/lite/experimental/tac/hardwares:simple_hardware",
-        "@llvm-project//mlir:IR",
-        "@llvm-project//mlir:Support",
     ],
     alwayslink = 1,
 )
@@ -74,7 +68,10 @@ cc_library(
     hdrs = ["simple_hardware.h"],
     deps = [
         ":target_hardware",
-        "@llvm-project//mlir:IR",
+        "//tensorflow/compiler/mlir/lite:cost_estimators",
+        "//tensorflow/compiler/mlir/lite:tensorflow_lite",
+        "//tensorflow/compiler/mlir/lite/experimental/tac:common",
+        "@llvm-project//llvm:Support",
     ],
 )
 

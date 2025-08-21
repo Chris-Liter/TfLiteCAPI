@@ -1,5 +1,5 @@
-load("//tensorflow:tensorflow.bzl", "tf_cc_test")
 load("//tensorflow:tensorflow.default.bzl", "filegroup", "tf_gen_op_libs", "tf_kernel_library")
+load("//tensorflow:tensorflow.bzl", "tf_cc_test")
 load("//tensorflow/core/platform:rules_cc.bzl", "cc_library")
 
 package(
@@ -33,7 +33,7 @@ tf_kernel_library(
         "//tensorflow/core:framework",
         "//tensorflow/core:lib",
         "//tensorflow/core:protos_all_cc",
-        "@eigen_archive//:eigen3",
+        "//third_party/eigen3",
     ],
 )
 
@@ -47,7 +47,7 @@ tf_kernel_library(
         "//tensorflow/core:framework",
         "//tensorflow/core:lib",
         "//tensorflow/core:protos_all_cc",
-        "@eigen_archive//:eigen3",
+        "//third_party/eigen3",
     ],
 )
 
@@ -112,8 +112,6 @@ tf_cc_test(
         "//tensorflow/core:test",
         "//tensorflow/core:test_main",
         "//tensorflow/core:testlib",
-        "@com_google_absl//absl/container:inlined_vector",
-        "@local_xla//xla/tsl/protobuf:error_codes_proto_impl_cc",
     ],
 )
 

@@ -1,4 +1,4 @@
-/* Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+/* Copyright 2023 The StableHLO Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,46 +17,32 @@ limitations under the License.
 #define TENSORFLOW_COMPILER_MLIR_QUANTIZATION_STABLEHLO_PASSES_PASSES_H_
 
 #include <memory>
-#include <string>
-#include <vector>
 
-#include "absl/status/statusor.h"
-#include "mlir/Dialect/Func/IR/FuncOps.h"  // from @llvm-project
-#include "mlir/IR/BuiltinOps.h"  // from @llvm-project
-#include "mlir/Pass/Pass.h"  // from @llvm-project
-#include "mlir/Support/LLVM.h"  // from @llvm-project
-#include "tensorflow/compiler/mlir/quantization/common/quantization_lib/quantization_config.h"
-#include "tensorflow/compiler/mlir/quantization/stablehlo/quantization_config.pb.h"
 #include "tensorflow/compiler/mlir/quantization/stablehlo/quantization_options.pb.h"
 
-namespace mlir::quant::stablehlo {
+#define GEN_PASS_DECL
+#include "mlir/Dialect/Func/IR/FuncOps.h"  // from @llvm-project
+#include "mlir/Pass/Pass.h"  // from @llvm-project
+#include "tensorflow/compiler/mlir/quantization/stablehlo/passes/passes.h.inc"
+
+namespace mlir {
+namespace stablehlo {
 
 // Creates a pass that quantizes weight component of StableHLO graph.
 std::unique_ptr<OperationPass<func::FuncOp>> CreateQuantizeWeightPass(
-    const ::stablehlo::quantization::QuantizationComponentSpec&
-        quantization_component_spec = {});
+    ::stablehlo::quantization::QuantizationComponentSpec
+        quantization_component_spec);
 
-// Converts a serialized StableHLO module to bfloat16 and output serialized
-// module.
-absl::StatusOr<std::string> ConvertSerializedStableHloModuleToBfloat16(
-    StringRef serialized_stablehlo_module);
+// Creates a pass that prepares static range quantization of StableHLO graph.
+std::unique_ptr<OperationPass<func::FuncOp>> CreatePrepareSrqQuantizePass(
+    ::stablehlo::quantization::QuantizationOptions quantization_options);
 
-std::unique_ptr<OperationPass<ModuleOp>>
-CreateLiftQuantizableSpotsAsFunctionsPass(
-    const ::stablehlo::quantization::QuantizationSpecs& quantization_specs);
+// Creates an instance of the StableHLO dialect PrepareSrqQuantize pass without
+// any arguments. Preset method of SRQ is set to the quantization option by
+// default.
+std::unique_ptr<OperationPass<func::FuncOp>> CreatePrepareSrqQuantizePass();
 
-// Creates a pass that inserts CalibrationStatisticsSaverOp.
-std::unique_ptr<OperationPass<ModuleOp>>
-CreateInsertCalibrationStatisticsSaverPass(
-    StringRef calibration_data_dir,
-    const std::vector<std::string>& aggregator_ops_to_ignore);
-
-// Adds generated pass default constructors or options definitions.
-#define GEN_PASS_DECL
-// Adds generated pass registration functions.
-#define GEN_PASS_REGISTRATION
-#include "tensorflow/compiler/mlir/quantization/stablehlo/passes/passes.h.inc"
-
-}  // namespace mlir::quant::stablehlo
+}  // namespace stablehlo
+}  // namespace mlir
 
 #endif  // TENSORFLOW_COMPILER_MLIR_QUANTIZATION_STABLEHLO_PASSES_PASSES_H_

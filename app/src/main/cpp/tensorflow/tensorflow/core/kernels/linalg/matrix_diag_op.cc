@@ -26,7 +26,7 @@ limitations under the License.
 #include <memory>
 #include <vector>
 
-#include "unsupported/Eigen/CXX11/Tensor"  // from @eigen_archive
+#include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/framework/register_types.h"
 #include "tensorflow/core/framework/tensor.h"
@@ -153,8 +153,7 @@ class MatrixDiagPartOp : public OpKernel {
   bool left_align_superdiagonal_ = true;
   bool left_align_subdiagonal_ = true;
   static constexpr int kNumV1Inputs = 1;
-  MatrixDiagPartOp(const MatrixDiagPartOp&) = delete;
-  void operator=(const MatrixDiagPartOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(MatrixDiagPartOp);
 };
 
 template <typename Device, typename T>
@@ -236,13 +235,12 @@ class MatrixDiagOp : public OpKernel {
         errors::InvalidArgument(
             "lower_diag_index must not be larger than upper_diag_index: ",
             lower_diag_index, " > ", upper_diag_index));
-    OP_REQUIRES(
-        context,
-        lower_diag_index == upper_diag_index ||
-            diagonal_shape.dim_size(std::max(diag_rank - 2, 0)) == num_diags,
-        errors::InvalidArgument(
-            "The number of diagonals provided in the input does not "
-            "match the lower_diag_index and upper_diag_index range."));
+    OP_REQUIRES(context,
+                lower_diag_index == upper_diag_index ||
+                    diagonal_shape.dim_size(diag_rank - 2) == num_diags,
+                errors::InvalidArgument(
+                    "The number of diagonals provided in the input does not "
+                    "match the lower_diag_index and upper_diag_index range."));
 
     const Eigen::Index max_diag_len = diagonal_shape.dim_size(diag_rank - 1);
     const Eigen::Index min_num_rows =
@@ -292,8 +290,7 @@ class MatrixDiagOp : public OpKernel {
   bool left_align_superdiagonal_ = true;
   bool left_align_subdiagonal_ = true;
   static constexpr int kNumV1Inputs = 1;
-  MatrixDiagOp(const MatrixDiagOp&) = delete;
-  void operator=(const MatrixDiagOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(MatrixDiagOp);
 };
 
 #define REGISTER_MATRIX_DIAG(type)                                           \

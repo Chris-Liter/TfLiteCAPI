@@ -15,8 +15,6 @@ limitations under the License.
 
 #include "tensorflow/lite/tools/benchmark/benchmark_model.h"
 
-#include <cstdint>
-
 #ifdef __linux__
 #include <unistd.h>
 #endif  // __linux__
@@ -33,7 +31,7 @@ limitations under the License.
 
 namespace tflite {
 namespace benchmark {
-using tensorflow::StatWithPercentiles;
+using tensorflow::Stat;
 
 constexpr int kMemoryCheckIntervalMs = 50;
 
@@ -73,7 +71,6 @@ BenchmarkParams BenchmarkModel::DefaultParams() {
                   BenchmarkParam::Create<bool>(false));
   params.AddParam("memory_footprint_check_interval_ms",
                   BenchmarkParam::Create<int32_t>(kMemoryCheckIntervalMs));
-  params.AddParam("gpu_invoke_loop_times", BenchmarkParam::Create<int32_t>(1));
   return params;
 }
 
@@ -174,12 +171,7 @@ std::vector<Flag> BenchmarkModel::GetFlags() {
       CreateFlag<int32_t>("memory_footprint_check_interval_ms", &params_,
                           "The interval in millisecond between two consecutive "
                           "memory footprint checks. This is only used when "
-                          "--report_peak_memory_footprint is set to true."),
-      CreateFlag<int32_t>(
-          "gpu_invoke_loop_times", &params_,
-          "Number of GPU delegate invoke loop iterations. If > 0 then reported "
-          "latency is divided by this number. Used only when "
-          "TFLITE_GPU_ENABLE_INVOKE_LOOP is defined.")};
+                          "--report_peak_memory_footprint is set to true.")};
 }
 
 void BenchmarkModel::LogParams() {
@@ -206,23 +198,16 @@ void BenchmarkModel::LogParams() {
                       "Report the peak memory footprint", verbose);
   LOG_BENCHMARK_PARAM(int32_t, "memory_footprint_check_interval_ms",
                       "Memory footprint check interval (ms)", verbose);
-#ifdef TFLITE_GPU_ENABLE_INVOKE_LOOP
-  LOG_BENCHMARK_PARAM(int32_t, "gpu_invoke_loop_times",
-                      "Number of GPU delegate invoke loop iterations. Latency "
-                      "will be divided by it.",
-                      verbose);
-#endif
 }
 
 TfLiteStatus BenchmarkModel::PrepareInputData() { return kTfLiteOk; }
 
 TfLiteStatus BenchmarkModel::ResetInputsAndOutputs() { return kTfLiteOk; }
 
-StatWithPercentiles<int64_t> BenchmarkModel::Run(int min_num_times,
-                                                 float min_secs, float max_secs,
-                                                 RunType run_type,
-                                                 TfLiteStatus* invoke_status) {
-  StatWithPercentiles<int64_t> run_stats;
+Stat<int64_t> BenchmarkModel::Run(int min_num_times, float min_secs,
+                                  float max_secs, RunType run_type,
+                                  TfLiteStatus* invoke_status) {
+  Stat<int64_t> run_stats;
   TFLITE_LOG(INFO) << "Running benchmark for at least " << min_num_times
                    << " iterations and at least " << min_secs << " seconds but"
                    << " terminate if exceeding " << max_secs << " seconds.";
@@ -245,15 +230,8 @@ StatWithPercentiles<int64_t> BenchmarkModel::Run(int min_num_times,
     TfLiteStatus status = RunImpl();
     int64_t end_us = profiling::time::NowMicros();
     listeners_.OnSingleRunEnd();
-    int64_t run_duration_us = end_us - start_us;
-#ifdef TFLITE_GPU_ENABLE_INVOKE_LOOP
-    int32_t gpu_invoke_loop_times = params_.Get<int>("gpu_invoke_loop_times");
-    if (gpu_invoke_loop_times > 0) {
-      run_duration_us = static_cast<int64_t>(
-          static_cast<double>(run_duration_us) / gpu_invoke_loop_times);
-    }
-#endif
-    run_stats.UpdateStat(run_duration_us);
+
+    run_stats.UpdateStat(end_us - start_us);
     if (run_frequency > 0) {
       inter_run_sleep_time =
           next_run_finish_time - profiling::time::NowMicros() * 1e-6;
@@ -336,7 +314,7 @@ TfLiteStatus BenchmarkModel::Run() {
   }
 
   listeners_.OnBenchmarkStart(params_);
-  StatWithPercentiles<int64_t> warmup_time_us =
+  Stat<int64_t> warmup_time_us =
       Run(params_.Get<int32_t>("warmup_runs"),
           params_.Get<float>("warmup_min_secs"), params_.Get<float>("max_secs"),
           WARMUP, &status);
@@ -344,7 +322,7 @@ TfLiteStatus BenchmarkModel::Run() {
     return status;
   }
 
-  StatWithPercentiles<int64_t> inference_time_us =
+  Stat<int64_t> inference_time_us =
       Run(params_.Get<int32_t>("num_runs"), params_.Get<float>("min_secs"),
           params_.Get<float>("max_secs"), REGULAR, &status);
   const auto overall_mem_usage =

@@ -30,9 +30,8 @@ limitations under the License.
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/TargetParser/Triple.h"
-#include "xla/service/llvm_ir/llvm_type_conversion_util.h"
-#include "xla/util.h"
-#include "tsl/platform/statusor.h"
+#include "tensorflow/compiler/xla/service/llvm_ir/llvm_type_conversion_util.h"
+#include "tensorflow/compiler/xla/util.h"
 
 namespace tensorflow {
 namespace tfcompile {
@@ -77,15 +76,15 @@ static string CreateCPPShimExpression(
       });
 }
 
-static absl::StatusOr<string> CodegenModule(
-    llvm::TargetMachine* target_machine, std::unique_ptr<llvm::Module> module) {
+static StatusOr<string> CodegenModule(llvm::TargetMachine* target_machine,
+                                      std::unique_ptr<llvm::Module> module) {
   llvm::SmallVector<char, 0> stream_buffer;
   llvm::raw_svector_ostream ostream(stream_buffer);
   llvm::legacy::PassManager codegen_passes;
 
   if (target_machine->addPassesToEmitFile(codegen_passes, ostream, nullptr,
-                                          llvm::CodeGenFileType::ObjectFile)) {
-    return xla::Internal(
+                                          llvm::CGFT_ObjectFile)) {
+    return xla::InternalError(
         "Could not create pass pipeline to generate object file");
   }
 
@@ -94,7 +93,7 @@ static absl::StatusOr<string> CodegenModule(
   return string(stream_buffer.begin(), stream_buffer.end());
 }
 
-static absl::StatusOr<std::unique_ptr<llvm::TargetMachine>>
+static StatusOr<std::unique_ptr<llvm::TargetMachine>>
 GetTargetMachineFromTriple(absl::string_view target_triple) {
   std::string error;
   std::string normalized_triple =
@@ -102,8 +101,8 @@ GetTargetMachineFromTriple(absl::string_view target_triple) {
   const llvm::Target* target =
       llvm::TargetRegistry::lookupTarget(normalized_triple, error);
   if (target == nullptr) {
-    return xla::Internal("TargetRegistry::lookupTarget failed: %s",
-                         error.c_str());
+    return xla::InternalError("TargetRegistry::lookupTarget failed: %s",
+                              error.c_str());
   }
 
   return absl::WrapUnique(target->createTargetMachine(
@@ -111,7 +110,7 @@ GetTargetMachineFromTriple(absl::string_view target_triple) {
       /*Features=*/"", llvm::TargetOptions(), std::nullopt));
 }
 
-absl::StatusOr<EmbeddedProtocolBuffers> CreateEmbeddedProtocolBuffers(
+StatusOr<EmbeddedProtocolBuffers> CreateEmbeddedProtocolBuffers(
     absl::string_view target_triple,
     absl::Span<const ProtobufToEmbed> protobufs_to_embed) {
   TF_ASSIGN_OR_RETURN(std::unique_ptr<llvm::TargetMachine> target_machine,

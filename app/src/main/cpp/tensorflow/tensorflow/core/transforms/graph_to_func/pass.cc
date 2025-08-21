@@ -15,8 +15,6 @@ limitations under the License.
 
 #include "tensorflow/core/transforms/graph_to_func/pass.h"
 
-#include <iterator>
-#include <memory>
 #include <string>
 
 #include "mlir/IR/Diagnostics.h"  // from @llvm-project

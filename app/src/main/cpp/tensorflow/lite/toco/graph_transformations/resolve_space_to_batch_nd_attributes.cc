@@ -17,12 +17,10 @@ limitations under the License.
 #include <unordered_map>
 #include <vector>
 
-#include "absl/status/status.h"
-#include "tensorflow/core/platform/logging.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/lite/toco/graph_transformations/graph_transformations.h"
 #include "tensorflow/lite/toco/model.h"
 #include "tensorflow/lite/toco/tooling_util.h"
+#include "tensorflow/core/platform/logging.h"
 
 namespace toco {
 
@@ -32,14 +30,14 @@ namespace toco {
   *modified = false;
   const auto op_it = model->operators.begin() + op_index;
   if (op_it->get()->type != OperatorType::kSpaceToBatchND)
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
 
   auto* op = static_cast<SpaceToBatchNDOperator*>(op_it->get());
 
   // The attributes are resolved only when the 3 attributes (block_shape,
   // before_paddings, after_paddings) are all constant.
   if (!op->block_shape.empty()) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   const int block_shape_index = 1;
@@ -48,16 +46,16 @@ namespace toco {
   CHECK_EQ(op->inputs.size(), 3);
   if (!IsConstantParameterArray(*model, op->inputs[block_shape_index]) ||
       !IsConstantParameterArray(*model, op->inputs[paddings_index]))
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
 
   // Handle paddings.
   const auto& paddings_array = model->GetArray(op->inputs[paddings_index]);
-  if (!paddings_array.has_shape()) return absl::OkStatus();
+  if (!paddings_array.has_shape()) return ::tensorflow::OkStatus();
   const std::vector<int>& paddings_dims = paddings_array.shape().dims();
   if (paddings_dims.size() != 2) {
     // Code only handles padding of 2 dimensions. Perhaps another transformation
     // will delete this op.
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   const std::vector<int>& paddings_buffer =
       paddings_array.GetBuffer<ArrayDataType::kInt32>().data;
@@ -69,7 +67,7 @@ namespace toco {
   // Handle block_shape.
   const auto& block_shape_array =
       model->GetArray(op->inputs[block_shape_index]);
-  if (!block_shape_array.has_shape()) return absl::OkStatus();
+  if (!block_shape_array.has_shape()) return ::tensorflow::OkStatus();
   const std::vector<int>& block_shape_dims = block_shape_array.shape().dims();
   CHECK_EQ(block_shape_dims.size(), 1);
   const std::vector<int>& block_shape_buffer =
@@ -79,7 +77,7 @@ namespace toco {
   }
 
   *modified = true;
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 }  // namespace toco

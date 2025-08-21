@@ -24,7 +24,6 @@ limitations under the License.
 #include <utility>
 #include <vector>
 
-#include "absl/strings/str_cat.h"
 #include "absl/strings/str_replace.h"
 #include "tensorflow/lite/delegates/gpu/common/flops_util.h"
 #include "tensorflow/lite/delegates/gpu/common/model.h"
@@ -930,8 +929,7 @@ absl::Status TryThinPointwiseFuser(
         gpu_info.IsApple() || gpu_info.IsAMD())) {
     return absl::NotFoundError("ThinPointwiseFuser not suitable.");
   }
-  // TODO(b/322801363): Add more precise checks for Mali
-  if (gpu_info.IsMali()) {
+  if (gpu_info.IsMali() && gpu_info.mali_info.IsMidgard()) {
     return absl::NotFoundError("ThinPointwiseFuser not suitable.");
   }
   auto* node = graph.GetNode(first_node_id);

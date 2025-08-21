@@ -31,14 +31,14 @@ AbstractContext* BuildFunction(const char* fn_name);
 
 // Creates parameters (placeholders) in the tracing `ctx` using the shape and
 // dtype of `inputs`.
-absl::Status CreateParamsForInputs(
-    AbstractContext* ctx, absl::Span<AbstractTensorHandle* const> inputs,
-    std::vector<AbstractTensorHandle*>* params);
+Status CreateParamsForInputs(AbstractContext* ctx,
+                             absl::Span<AbstractTensorHandle* const> inputs,
+                             std::vector<AbstractTensorHandle*>* params);
 
 // A callable that takes tensor inputs and returns zero or more tensor outputs.
-using Model = std::function<absl::Status(
-    AbstractContext*, absl::Span<AbstractTensorHandle* const>,
-    absl::Span<AbstractTensorHandle*>)>;
+using Model = std::function<Status(AbstractContext*,
+                                   absl::Span<AbstractTensorHandle* const>,
+                                   absl::Span<AbstractTensorHandle*>)>;
 
 // Runs `model` maybe wrapped in a function call op. This can be thought as
 // being equivalent to the following python code.
@@ -47,19 +47,17 @@ using Model = std::function<absl::Status(
 //   outputs = tf.function(model)(inputs)
 // else:
 //   outputs = model(inputs)
-absl::Status RunModel(Model model, AbstractContext* ctx,
-                      absl::Span<AbstractTensorHandle* const> inputs,
-                      absl::Span<AbstractTensorHandle*> outputs,
-                      bool use_function);
+Status RunModel(Model model, AbstractContext* ctx,
+                absl::Span<AbstractTensorHandle* const> inputs,
+                absl::Span<AbstractTensorHandle*> outputs, bool use_function);
 
-absl::Status BuildImmediateExecutionContext(bool use_tfrt,
-                                            AbstractContext** ctx);
+Status BuildImmediateExecutionContext(bool use_tfrt, AbstractContext** ctx);
 
 // Return a tensor handle with given type, values and dimensions.
 template <class T, TF_DataType datatype>
-absl::Status TestTensorHandleWithDims(AbstractContext* ctx, const T* data,
-                                      const int64_t* dims, int num_dims,
-                                      AbstractTensorHandle** tensor) {
+Status TestTensorHandleWithDims(AbstractContext* ctx, const T* data,
+                                const int64_t* dims, int num_dims,
+                                AbstractTensorHandle** tensor) {
   std::unique_ptr<TF_Status, decltype(&TF_DeleteStatus)> status(
       TF_NewStatus(), TF_DeleteStatus);
   TFE_Context* eager_ctx =
@@ -69,13 +67,13 @@ absl::Status TestTensorHandleWithDims(AbstractContext* ctx, const T* data,
       TestTensorHandleWithDims<T, datatype>(eager_ctx, data, dims, num_dims);
   *tensor =
       unwrap(TF_CreateAbstractTensorFromEagerTensor(input_eager, status.get()));
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Return a scalar tensor handle with given value.
 template <class T, TF_DataType datatype>
-absl::Status TestScalarTensorHandle(AbstractContext* ctx, const T value,
-                                    AbstractTensorHandle** tensor) {
+Status TestScalarTensorHandle(AbstractContext* ctx, const T value,
+                              AbstractTensorHandle** tensor) {
   std::unique_ptr<TF_Status, decltype(&TF_DeleteStatus)> status(
       TF_NewStatus(), TF_DeleteStatus);
   TFE_Context* eager_ctx =
@@ -85,11 +83,11 @@ absl::Status TestScalarTensorHandle(AbstractContext* ctx, const T value,
       TestScalarTensorHandle<T, datatype>(eager_ctx, value);
   *tensor =
       unwrap(TF_CreateAbstractTensorFromEagerTensor(input_eager, status.get()));
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Places data from `t` into *result_tensor.
-absl::Status GetValue(AbstractTensorHandle* t, TF_Tensor** result_tensor);
+Status GetValue(AbstractTensorHandle* t, TF_Tensor** result_tensor);
 }  // namespace tensorflow
 
 #endif  // TENSORFLOW_C_EAGER_UNIFIED_API_TESTUTIL_H_

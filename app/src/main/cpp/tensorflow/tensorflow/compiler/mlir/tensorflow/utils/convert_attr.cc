@@ -28,8 +28,8 @@ namespace tensorflow {
 // Converts non func AttrValue proto into an MLIR attribute. Func attribute is
 // exclused in this function because the function might be renamed when the
 // function definition is imported.
-absl::StatusOr<mlir::Attribute> ConvertNonFuncAttributeValue(
-    const AttrValue& value, mlir::Builder* builder) {
+StatusOr<mlir::Attribute> ConvertNonFuncAttributeValue(const AttrValue& value,
+                                                       mlir::Builder* builder) {
   switch (value.value_case()) {
     case AttrValue::kI:
       return builder->getI64IntegerAttr(value.i());
@@ -90,8 +90,8 @@ absl::StatusOr<mlir::Attribute> ConvertNonFuncAttributeValue(
   }
 }
 
-absl::StatusOr<mlir::Attribute> ConvertAttributeValue(const AttrValue& value,
-                                                      mlir::Builder* builder) {
+StatusOr<mlir::Attribute> ConvertAttributeValue(const AttrValue& value,
+                                                mlir::Builder* builder) {
   switch (value.value_case()) {
     case AttrValue::kFunc: {
       // TODO(b/156546237): Unify kFunc/NameAttrList attribute representation.

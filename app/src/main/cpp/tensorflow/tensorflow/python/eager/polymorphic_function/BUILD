@@ -1,5 +1,5 @@
-load("//tensorflow:pytype.default.bzl", "pytype_strict_library")
 load("//tensorflow:strict.default.bzl", "py_strict_library")
+load("//tensorflow:pytype.default.bzl", "pytype_strict_library")
 load("//tensorflow:tensorflow.default.bzl", "cuda_py_strict_test", "tf_py_strict_test")
 load("//tensorflow/compiler/tests:build_defs.bzl", "tf_xla_py_strict_test")
 
@@ -26,7 +26,7 @@ py_strict_library(
     deps = [
         "//tensorflow/python/autograph/core:converter",
         "//tensorflow/python/autograph/impl:api",
-        "//tensorflow/python/util:tf_decorator_py",
+        "//tensorflow/python/util:tf_decorator",
     ],
 )
 
@@ -118,6 +118,7 @@ py_strict_library(
         "//tensorflow/python/profiler:trace",
         "//tensorflow/python/trackable:base",
         "//tensorflow/python/types:core",
+        "//tensorflow/python/util:_pywrap_utils",
         "//tensorflow/python/util:compat",
         "//tensorflow/python/util:nest",
         "//tensorflow/python/util:object_identity",
@@ -168,6 +169,7 @@ py_strict_library(
         "//tensorflow/python/platform:tf_logging",
         "//tensorflow/python/profiler:trace",
         "//tensorflow/python/util:compat",
+        "//tensorflow/python/util:tf_decorator",
     ],
 )
 
@@ -223,7 +225,7 @@ py_strict_library(
         "//tensorflow/python/util:deprecation",
         "//tensorflow/python/util:nest",
         "//tensorflow/python/util:object_identity",
-        "//tensorflow/python/util:tf_decorator_py",
+        "//tensorflow/python/util:tf_decorator",
         "//tensorflow/python/util:tf_export",
         "//tensorflow/python/util:traceback_utils",
     ],
@@ -288,7 +290,6 @@ cuda_py_strict_test(
         "//tensorflow/python/ops:script_ops",
         "//tensorflow/python/ops:sendrecv_ops_gen",
         "//tensorflow/python/ops:string_ops",
-        "//tensorflow/python/ops:training_ops_gen",
         "//tensorflow/python/ops:variable_scope",
         "//tensorflow/python/ops:variables",
         "//tensorflow/python/ops/ragged:ragged_factory_ops",
@@ -299,9 +300,11 @@ cuda_py_strict_test(
         "//tensorflow/python/saved_model:save",
         "//tensorflow/python/saved_model:save_context",
         "//tensorflow/python/saved_model:save_options",
+        "//tensorflow/python/training:training_ops",
+        "//tensorflow/python/types:trace",
         "//tensorflow/python/util:compat",
         "//tensorflow/python/util:nest",
-        "//tensorflow/python/util:tf_decorator_py",
+        "//tensorflow/python/util:tf_decorator",
         "@absl_py//absl/testing:parameterized",
     ],
 )
@@ -341,7 +344,6 @@ tf_xla_py_strict_test(
     python_version = "PY3",
     tags = [
         "no_mac",
-        "no_oss",  # TODO(b/295654746)
         "no_pip",
         "no_tfrt",  # TODO(b/185944215)
         "no_windows",
@@ -465,6 +467,7 @@ tf_py_strict_test(
         "//tensorflow/python/framework:tensor",
         "//tensorflow/python/framework:test_lib",
         "//tensorflow/python/framework:test_ops",
+        "//tensorflow/python/layers",
         "//tensorflow/python/module",
         "//tensorflow/python/ops:array_ops",
         "//tensorflow/python/ops:functional_ops_gen",
@@ -540,7 +543,9 @@ py_strict_library(
     name = "function_context",
     srcs = ["function_context.py"],
     srcs_version = "PY3",
-    visibility = ["//visibility:private"],
+    visibility = [
+        "//visibility:private",  # Only private by automation, not intent. Owner may accept CLs adding visibility. See go/scheuklappen#explicit-private.
+    ],
     deps = [
         "//tensorflow/core/function/polymorphism:function_cache",
         "//tensorflow/python/eager:context",
@@ -609,7 +614,7 @@ tf_py_strict_test(
         "//tensorflow/core/function/trace_type",
         "//tensorflow/python/framework:tensor_spec",
         "//tensorflow/python/platform:client_testlib",
-        "//tensorflow/python/util:tf_decorator_py",
+        "//tensorflow/python/util:tf_decorator",
         "@absl_py//absl/testing:parameterized",
     ],
 )
@@ -618,7 +623,7 @@ py_strict_library(
     name = "compiler_ir",
     srcs = ["compiler_ir.py"],
     srcs_version = "PY3",
-    visibility = ["//visibility:private"],
+    visibility = ["//tensorflow:internal"],
     deps = [
         "//tensorflow/core/function/trace_type",
         "//tensorflow/python/eager:context",
@@ -635,7 +640,6 @@ tf_xla_py_strict_test(
     disabled_backends = [
         "cpu_ondemand",
         "gpu_a100",
-        "gpu_h100",
     ],
     enable_mlir_bridge = True,
     python_version = "PY3",

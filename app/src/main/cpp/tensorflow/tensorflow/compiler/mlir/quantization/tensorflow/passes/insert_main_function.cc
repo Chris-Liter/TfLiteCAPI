@@ -32,7 +32,6 @@ limitations under the License.
 #include "mlir/IR/OperationSupport.h"  // from @llvm-project
 #include "mlir/Pass/Pass.h"  // from @llvm-project
 #include "mlir/Support/LLVM.h"  // from @llvm-project
-#include "tensorflow/compiler/mlir/quantization/common/attrs_and_constraints.h"
 #include "tensorflow/compiler/mlir/quantization/tensorflow/passes/passes.h"
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_ops.h"
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_saved_model.h"
@@ -100,7 +99,7 @@ void SetFunctionPrivate(func::FuncOp func) {
   // The `tf_saved_model` attributes can only be applied to public functions.
   for (auto& attr : func->getAttrs()) {
     StringRef attr_name = attr.getName().getValue();
-    if (attr_name.starts_with("tf_saved_model.")) {
+    if (attr_name.startswith("tf_saved_model.")) {
       func->removeAttr(attr_name);
     }
   }
@@ -109,7 +108,7 @@ void SetFunctionPrivate(func::FuncOp func) {
   for (int i = 0; i < func.getNumArguments(); ++i) {
     for (auto& attr : iface.getArgAttrs(i)) {
       const StringAttr& attr_name = attr.getName();
-      if (attr_name.getValue().starts_with("tf_saved_model.")) {
+      if (attr_name.getValue().startswith("tf_saved_model.")) {
         func.removeArgAttr(i, attr_name);
       }
     }
@@ -117,7 +116,7 @@ void SetFunctionPrivate(func::FuncOp func) {
   for (int i = 0; i < func.getNumResults(); ++i) {
     for (auto& attr : iface.getResultAttrs(i)) {
       const StringAttr& attr_name = attr.getName();
-      if (attr_name.getValue().starts_with("tf_saved_model.")) {
+      if (attr_name.getValue().startswith("tf_saved_model.")) {
         func.removeResultAttr(i, attr_name);
       }
     }
@@ -154,7 +153,7 @@ void GetUniqueInputOutputNodeNames(ModuleOp module_op,
 
       if (auto inputs_attr = tf_attrs.get("inputs")) {
         const std::string inputs_attr_str =
-            mlir::cast<StringAttr>(inputs_attr).getValue().str();
+            inputs_attr.cast<StringAttr>().getValue().str();
         std::vector<std::string> fn_input_names =
             absl::StrSplit(inputs_attr_str, ',', absl::SkipEmpty());
 
@@ -174,7 +173,7 @@ void GetUniqueInputOutputNodeNames(ModuleOp module_op,
 
       if (auto outputs_attr = tf_attrs.get("outputs")) {
         const std::string outputs_attr_str =
-            mlir::cast<StringAttr>(outputs_attr).getValue().str();
+            outputs_attr.cast<StringAttr>().getValue().str();
         std::vector<std::string> fn_output_names =
             absl::StrSplit(outputs_attr_str, ',', absl::SkipEmpty());
 

@@ -19,10 +19,10 @@ limitations under the License.
 #define EIGEN_USE_GPU
 #endif  // GOOGLE_CUDA || TENSORFLOW_USE_ROCM
 
-#include "absl/base/prefetch.h"
 #include "tensorflow/core/framework/bounds_check.h"
 #include "tensorflow/core/framework/register_types.h"
 #include "tensorflow/core/kernels/cwise_ops_common.h"
+#include "tensorflow/core/platform/prefetch.h"
 
 namespace tensorflow {
 
@@ -135,8 +135,7 @@ class SelectOp : public OpKernel {
   }
 
  private:
-  SelectOp(const SelectOp&) = delete;
-  void operator=(const SelectOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(SelectOp);
 };
 template <typename Device, typename T>
 class SelectV2Op : public OpKernel {
@@ -240,8 +239,7 @@ class SelectV2Op : public OpKernel {
   }
 
  private:
-  SelectV2Op(const SelectV2Op&) = delete;
-  void operator=(const SelectV2Op&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(SelectV2Op);
 };
 
 #define REGISTER_SELECT(type)                                        \
@@ -397,11 +395,12 @@ struct BatchSelectFunctor<CPUDevice, T> {
     auto work = [batch_size, output, c, t, e](int64_t start, int64_t end) {
       for (size_t i = start; i < end; ++i) {
         size_t offset = i * batch_size;
-        absl::PrefetchToLocalCacheNta(
+        port::prefetch<port::PREFETCH_HINT_NTA>(
             reinterpret_cast<const void*>(&t[offset + batch_size]));
-        absl::PrefetchToLocalCacheNta(
+        port::prefetch<port::PREFETCH_HINT_NTA>(
             reinterpret_cast<const void*>(&e[offset + batch_size]));
-        absl::PrefetchToLocalCacheNta(reinterpret_cast<const void*>(&c[i + 1]));
+        port::prefetch<port::PREFETCH_HINT_NTA>(
+            reinterpret_cast<const void*>(&c[i + 1]));
         if (c[i]) {
           for (size_t j = 0; j < batch_size; ++j) {
             output[offset + j] = t[offset + j];

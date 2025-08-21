@@ -1,4 +1,4 @@
-load("@local_xla//xla/tsl/platform:rules_cc.bzl", "cc_library")
+load("//tensorflow/tsl/platform:rules_cc.bzl", "cc_library")
 load("//tensorflow:tensorflow.default.bzl", "tf_grpc_cc_dependencies")
 
 package(

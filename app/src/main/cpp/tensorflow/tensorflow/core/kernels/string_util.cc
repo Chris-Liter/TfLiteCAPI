@@ -19,8 +19,7 @@ limitations under the License.
 namespace tensorflow {
 
 // Sets unit value based on str.
-absl::Status ParseUnicodeEncoding(const string& str,
-                                  UnicodeEncoding* encoding) {
+Status ParseUnicodeEncoding(const string& str, UnicodeEncoding* encoding) {
   if (str == "UTF-8") {
     *encoding = UnicodeEncoding::UTF8;
   } else if (str == "UTF-16-BE") {
@@ -32,11 +31,11 @@ absl::Status ParseUnicodeEncoding(const string& str,
         strings::StrCat("Invalid encoding \"", str,
                         "\": Should be one of: UTF-8, UTF-16-BE, UTF-32-BE"));
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Sets unit value based on str.
-absl::Status ParseCharUnit(const string& str, CharUnit* unit) {
+Status ParseCharUnit(const string& str, CharUnit* unit) {
   if (str == "BYTE") {
     *unit = CharUnit::BYTE;
   } else if (str == "UTF8_CHAR") {
@@ -45,7 +44,7 @@ absl::Status ParseCharUnit(const string& str, CharUnit* unit) {
     return errors::InvalidArgument(strings::StrCat(
         "Invalid unit \"", str, "\": Should be one of: BYTE, UTF8_CHAR"));
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Return the number of Unicode characters in a UTF-8 string.

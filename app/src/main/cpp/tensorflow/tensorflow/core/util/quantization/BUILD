@@ -1,11 +1,6 @@
 # Description: Utils for Tensorflow quantization.
 
 load(
-    "//tensorflow:tensorflow.bzl",
-    "tf_cc_test",
-)
-load("//tensorflow:tensorflow.default.bzl", "filegroup")
-load(
     "//tensorflow/core/platform:build_config.bzl",
     "tf_proto_library",
 )
@@ -13,10 +8,17 @@ load(
     "//tensorflow/core/platform:rules_cc.bzl",
     "cc_library",
 )
+load(
+    "//tensorflow:tensorflow.bzl",
+    "tf_cc_test",
+)
+load("//tensorflow:tensorflow.default.bzl", "filegroup")
 
+# buildifier: disable=no-layering-check
 package(
     # copybara:uncomment default_applicable_licenses = ["//tensorflow:license"],
     default_visibility = ["//visibility:public"],
+    features = ["-layering_check"],
     licenses = ["notice"],
 )
 
@@ -50,10 +52,10 @@ tf_cc_test(
         "uniform_quant_ops_params_test.cc",
     ],
     deps = [
-        ":uniform_quant_ops_attr_proto_cc",
         ":uniform_quant_ops_params",
         "//tensorflow/core:framework",
         "//tensorflow/core:test",
+        "//tensorflow/core:testlib",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -61,5 +63,6 @@ tf_cc_test(
 tf_proto_library(
     name = "uniform_quant_ops_attr_proto",
     srcs = ["uniform_quant_ops_attr.proto"],
+    cc_api_version = 2,
     make_default_target_header_only = True,
 )

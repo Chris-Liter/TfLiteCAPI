@@ -12,18 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
-#include <cstddef>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
-#include "absl/status/status.h"
-#include "tensorflow/core/platform/logging.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/lite/toco/graph_transformations/graph_transformations.h"
 #include "tensorflow/lite/toco/model.h"
 #include "tensorflow/lite/toco/runtime/types.h"
 #include "tensorflow/lite/toco/tooling_util.h"
+#include "tensorflow/core/platform/logging.h"
 
 namespace toco {
 
@@ -36,7 +34,7 @@ namespace toco {
 
   // If a conv operation has an im2col array, yield: it should be dropped first.
   if ((op->type == OperatorType::kConv) && (op->outputs.size() == 2)) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   Operator* ac_op = nullptr;
@@ -51,7 +49,7 @@ namespace toco {
       ac_op = new Relu1Operator;
       break;
     default:
-      return absl::OkStatus();
+      return ::tensorflow::OkStatus();
   }
 
   // At this point we know that the op has a fused activation function. At the
@@ -80,7 +78,7 @@ namespace toco {
   ac_op->inputs = {tmp_array_name};
   op->outputs = {tmp_array_name};
   *modified = true;
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 }  // namespace toco

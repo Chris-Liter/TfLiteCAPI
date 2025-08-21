@@ -49,8 +49,8 @@ limitations under the License.
 #include "tensorflow/dtensor/cc/small_constant_optimization.h"
 #include "tensorflow/dtensor/cc/tensor_layout.h"
 #include "tensorflow/dtensor/cc/tensor_with_layout.h"
-#include "tsl/platform/fingerprint.h"
-#include "tsl/platform/refcount.h"
+#include "tensorflow/tsl/platform/fingerprint.h"
+#include "tensorflow/tsl/platform/refcount.h"
 
 namespace tensorflow {
 namespace dtensor {
@@ -294,20 +294,20 @@ class ResourceHandleWithLayout
   tensorflow::Fprint128 CacheKey() const override;
 
   // Updates the layout for the tensors.
-  absl::Status UpdateLayout(const Layout& new_layout);
+  tsl::Status UpdateLayout(const Layout& new_layout);
 
   // Updates the element layouts for the tensors.
-  absl::Status UpdateElementLayouts(const std::vector<Layout>& layouts) {
+  tsl::Status UpdateElementLayouts(const std::vector<Layout>& layouts) {
     dereferenced_element_layouts_.emplace(layouts);
-    return absl::OkStatus();
+    return tsl::OkStatus();
   }
 
   // Updates the local shape and dtype of the tensors.
-  absl::Status UpdateShapeAndDType(const TensorShapeProto& shape,
-                                   const DataType& dtype) {
+  tsl::Status UpdateShapeAndDType(const TensorShapeProto& shape,
+                                  const DataType& dtype) {
     set_dereferenced_shape(shape);
     set_dereferenced_dtype(dtype);
-    return absl::OkStatus();
+    return tsl::OkStatus();
   }
 
   ConstValueNode* const_value_node() const override { return nullptr; }
@@ -580,14 +580,14 @@ StatusOr<std::vector<int64_t>> GetTensorShapeAsVector(
 // Returns the shape of a given tensor.
 StatusOr<std::vector<int64_t>> GetTensorShapeAsVector(TFE_TensorHandle* tensor);
 
-absl::Status InferOutputLayouts(const DTensorOperation& doperation,
-                                const NameAttrList& attributes,
-                                const std::optional<Layout>& default_layout,
-                                tensorflow::Graph* graph,
-                                std::vector<const Layout*>* output_layouts);
+Status InferOutputLayouts(const DTensorOperation& doperation,
+                          const NameAttrList& attributes,
+                          const std::optional<Layout>& default_layout,
+                          tensorflow::Graph* graph,
+                          std::vector<const Layout*>* output_layouts);
 // Creates a Graph with _Arg and _Retval nodes surrounding an
 // `operation_name`-type node.
-absl::Status PrepareGraphForMlir(
+Status PrepareGraphForMlir(
     const ExecutableManager<mlir::OwningOpRef<mlir::ModuleOp>>& module_manager,
     const std::vector<TensorWithLayout*>& inputs,
     const DTensorOperation& doperation,
@@ -608,8 +608,7 @@ StatusOr<ExecutionFunctions> IdentifyAllFunctionsToExecute(
 // be dropped during MLIR lowering.
 // TODO(b/171265131): fix the underlying issue to avoid inserting identity
 // nodes.
-absl::Status MaybeInsertIdentityNodes(const FunctionDef* function_def,
-                                      Graph* graph);
+Status MaybeInsertIdentityNodes(const FunctionDef* function_def, Graph* graph);
 
 // Add DTensor specific function attributes to be compatible with eager runtime.
 void AddDTensorFunctionAttr(FunctionDef& function_def);

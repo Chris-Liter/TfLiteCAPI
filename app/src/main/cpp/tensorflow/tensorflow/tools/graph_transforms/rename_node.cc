@@ -22,9 +22,9 @@ limitations under the License.
 namespace tensorflow {
 namespace graph_transforms {
 
-absl::Status RenameNode(const GraphDef& input_graph_def,
-                        const TransformFuncContext& context,
-                        GraphDef* output_graph_def) {
+Status RenameNode(const GraphDef& input_graph_def,
+                  const TransformFuncContext& context,
+                  GraphDef* output_graph_def) {
   if (!context.params.count("old_node_name") ||
       (context.params.at("old_node_name").size() != 1) ||
       !context.params.count("new_node_name") ||
@@ -44,9 +44,8 @@ absl::Status RenameNode(const GraphDef& input_graph_def,
     NodeDef* node = output_graph_def->mutable_node()->Add();
     *node = input_node;
     if (node->name() == new_node_name) {
-      return absl::Status(
-          absl::StatusCode::kInvalidArgument,
-          "A node is alreading using " + new_node_name + "as name.");
+      return Status(absl::StatusCode::kInvalidArgument,
+                    "A node is alreading using " + new_node_name + "as name.");
     }
     if (node->name() == old_node_name) {
       node->set_name(new_node_name);
@@ -63,7 +62,7 @@ absl::Status RenameNode(const GraphDef& input_graph_def,
     }
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 REGISTER_GRAPH_TRANSFORM("rename_node", RenameNode);

@@ -17,18 +17,17 @@ limitations under the License.
 #include <unordered_map>
 #include <vector>
 
-#include "absl/status/status.h"
-#include "tensorflow/core/platform/logging.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/lite/toco/graph_transformations/graph_transformations.h"
 #include "tensorflow/lite/toco/model.h"
 #include "tensorflow/lite/toco/runtime/types.h"
 #include "tensorflow/lite/toco/tooling_util.h"
+#include "tensorflow/core/platform/logging.h"
 
 namespace toco {
 
-absl::Status FuseActivationFunctions::Run(Model* model, std::size_t op_index,
-                                          bool* modified) {
+::tensorflow::Status FuseActivationFunctions::Run(Model* model,
+                                                  std::size_t op_index,
+                                                  bool* modified) {
   *modified = false;
   const auto ac_it = model->operators.begin() + op_index;
   const auto* ac_op = ac_it->get();
@@ -36,20 +35,20 @@ absl::Status FuseActivationFunctions::Run(Model* model, std::size_t op_index,
   if (ac_op->type != OperatorType::kRelu6 &&
       ac_op->type != OperatorType::kRelu1 &&
       ac_op->type != OperatorType::kRelu) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   // Find the op producing the array passed to this activation function
   Operator* op = GetOpWithOutput(*model, ac_op->inputs[0]);
 
-  if (!op) return absl::OkStatus();
+  if (!op) return ::tensorflow::OkStatus();
 
   if (CountTrueOutputs(*model, *op) > 1) {
     AddMessageF(
         "Not fusing activation function %s into %s because it has more than "
         "one  consumed output",
         LogName(*ac_op), LogName(*op));
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   CHECK_EQ(op->outputs[0], ac_op->inputs[0]);
@@ -61,7 +60,7 @@ absl::Status FuseActivationFunctions::Run(Model* model, std::size_t op_index,
         "Not fusing activation function into %s because it is consumed by more "
         "than 1 other operator",
         LogName(*ac_op), LogName(*op));
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   if (!IsDiscardableArray(*model, op->outputs[0])) {
@@ -69,7 +68,7 @@ absl::Status FuseActivationFunctions::Run(Model* model, std::size_t op_index,
         "Not fusing activation function %s into %s because output %s it is not "
         "discardable",
         LogName(*ac_op), LogName(*op), op->outputs[0]);
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   if (op->fused_activation_function != FusedActivationFunctionType::kNone) {
@@ -77,7 +76,7 @@ absl::Status FuseActivationFunctions::Run(Model* model, std::size_t op_index,
         "Not fusing activation function %s into %s because it already has a "
         "fused activation function",
         LogName(*ac_op), LogName(*op));
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   if (!OperatorSupportsFusedActivation(op->type)) {
@@ -85,7 +84,7 @@ absl::Status FuseActivationFunctions::Run(Model* model, std::size_t op_index,
         "Not fusing activation function %s because the %s op doesn't support "
         "it",
         LogName(*ac_op), LogName(*op));
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   AddMessageF("Fusing activation function %s into the preceding %s",
@@ -102,7 +101,7 @@ absl::Status FuseActivationFunctions::Run(Model* model, std::size_t op_index,
   op->outputs[0] = ac_op->outputs[0];
   DeleteOpAndArrays(model, ac_op);
   *modified = true;
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 }  // namespace toco

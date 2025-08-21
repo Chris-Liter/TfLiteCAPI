@@ -29,7 +29,6 @@ cc_library(
         "//tensorflow/lite/core:framework",
         "//tensorflow/lite/core/c:common",
         "//tensorflow/lite/core/kernels:builtin_ops",
-        "//tensorflow/lite/schema:schema_fbs",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
@@ -55,7 +54,6 @@ cc_test(
         ":utils",
         "//tensorflow/lite:framework_lib",
         "//tensorflow/lite/delegates/gpu:gl_delegate",
-        "//tensorflow/lite/schema:schema_fbs",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -74,8 +72,6 @@ cc_test(
         ":utils",
         "//tensorflow/lite:framework_lib",
         "//tensorflow/lite/delegates/gpu:delegate",
-        "//tensorflow/lite/delegates/gpu:delegate_options",
-        "//tensorflow/lite/schema:schema_fbs",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -94,7 +90,6 @@ cc_test(
         ":utils",
         "//tensorflow/lite:framework_lib",
         "//tensorflow/lite/delegates/xnnpack:xnnpack_delegate",
-        "//tensorflow/lite/schema:schema_fbs",
         "@com_google_googletest//:gtest_main",
     ],
 )

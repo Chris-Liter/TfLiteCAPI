@@ -23,7 +23,6 @@ cc_library(
         ":calculator",
         "//tensorflow/lite/delegates/gpu/common:gpu_info",
         "//tensorflow/lite/delegates/gpu/common:types",
-        "//tensorflow/lite/delegates/gpu/gl/compiler:shader_code",
     ],
 )
 
@@ -45,10 +44,7 @@ cc_library(
             "@com_google_absl//absl/memory",
             "@flatbuffers",
         ],
-    }) + [
-        "//tensorflow/lite/delegates/gpu/common:model",
-        "//tensorflow/lite/delegates/gpu/gl/compiler:shader_code",
-    ],
+    }),
 )
 
 cc_library(

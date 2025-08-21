@@ -18,8 +18,6 @@ limitations under the License.
 #include <functional>
 #include <utility>
 
-#include "absl/status/status.h"
-#include "absl/strings/string_view.h"
 #include "tensorflow/c/tf_status.h"
 #include "tensorflow/c/tf_status_helper.h"
 #include "tensorflow/c/tf_tensor.h"
@@ -54,7 +52,7 @@ struct StatusCallbackInvocationParams {
 void InvokeStatusCallbackFn(void* arg) {
   StatusCallbackInvocationParams* params =
       reinterpret_cast<StatusCallbackInvocationParams*>(arg);
-  absl::Status cc_status = StatusFromTF_Status(params->status);
+  tensorflow::Status cc_status = StatusFromTF_Status(params->status);
   // Invokes the "done" callback here.
   params->callback(cc_status);
   // Explicitly delete the params after callback is done.
@@ -75,10 +73,10 @@ NextPluggableDeviceContext::~NextPluggableDeviceContext() {
 void NextPluggableDeviceContext::CopyDeviceTensorToCPU(
     const Tensor* device_tensor, absl::string_view tensor_name, Device* device,
     Tensor* cpu_tensor, StatusCallback done) {
-  tsl::profiler::TraceMeProducer traceme(
+  profiler::TraceMeProducer traceme(
       [] { return "NextPluggableDeviceContext::CopyDeviceTensorToCPU"; },
-      tsl::profiler::ContextType::kGeneric);
-  absl::Status s;
+      profiler::ContextType::kGeneric);
+  tensorflow::Status s;
   TF_Tensor* c_cpu_tensor = TF_TensorFromTensor(*cpu_tensor, &s);
   if (!s.ok()) {
     done(s);
@@ -104,10 +102,10 @@ void NextPluggableDeviceContext::CopyDeviceTensorToCPU(
 void NextPluggableDeviceContext::CopyCPUTensorToDevice(
     const Tensor* cpu_tensor, Device* device, Tensor* device_tensor,
     StatusCallback done, bool sync_dst_compute) const {
-  tsl::profiler::TraceMeProducer traceme(
+  profiler::TraceMeProducer traceme(
       [] { return "NextPluggableDeviceContext::CopyCPUTensorToDevice"; },
-      tsl::profiler::ContextType::kGeneric);
-  absl::Status s;
+      profiler::ContextType::kGeneric);
+  tensorflow::Status s;
   TF_Tensor* c_cpu_tensor = TF_TensorFromTensor(*cpu_tensor, &s);
   if (!s.ok()) {
     done(s);

@@ -15,6 +15,7 @@ limitations under the License.
 
 #include "tensorflow/compiler/mlir/tensorflow/utils/attribute_utils.h"
 
+#include <algorithm>
 #include <iterator>
 #include <string>
 #include <utility>
@@ -33,15 +34,16 @@ using ::tensorflow::kValidDeviceTypes;
 LogicalResult HasValidCompilationAndReplicationAttributes(Operation& op) {
   auto replicate_attr = op.getAttrOfType<StringAttr>(kReplicationInfoAttr);
   auto compile_attr = op.getAttrOfType<StringAttr>(kCompileDeviceTypeAttr);
-  if (!replicate_attr && !compile_attr) return success();
-  if (!replicate_attr || !compile_attr)
-    return op.emitOpError() << "is expected to have either both or none of '"
-                            << kReplicationInfoAttr << "' and '"
-                            << kCompileDeviceTypeAttr << "' attributes.";
-  if (replicate_attr.getValue().empty())
+  if (replicate_attr && !compile_attr) {
     return op.emitOpError()
-           << "has an empty '" << kReplicationInfoAttr << "' attribute.";
-  if (failed(IsValidDeviceTypeOrEmpty(compile_attr))) {
+           << "has '" << kReplicationInfoAttr << "' attribute but not '"
+           << kCompileDeviceTypeAttr << "' attribute which is unsupported";
+  }
+  if (replicate_attr && replicate_attr.getValue().empty()) {
+    return op.emitOpError()
+           << "has an empty '" << kReplicationInfoAttr << "' attribute";
+  }
+  if (compile_attr && failed(IsValidDeviceTypeOrEmpty(compile_attr))) {
     return op.emitOpError() << "has invalid '" << kCompileDeviceTypeAttr
                             << "' value '" << compile_attr.getValue() << "'";
   }

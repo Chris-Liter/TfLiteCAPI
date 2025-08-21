@@ -33,30 +33,30 @@ string FormatMemory(int64_t bytes);
 
 string FormatShapes(const std::vector<int64_t>& shapes);
 
-absl::Status ParseCmdLine(const string& line, string* cmd,
-                          tensorflow::tfprof::Options* opts);
+tensorflow::Status ParseCmdLine(const string& line, string* cmd,
+                                tensorflow::tfprof::Options* opts);
 
 string StringReplace(const string& str, const string& oldsub,
                      const string& newsub);
 
 template <typename T>
-absl::Status ReadProtoFile(Env* env, const string& fname, T* proto,
-                           bool binary_first) {
+Status ReadProtoFile(Env* env, const string& fname, T* proto,
+                     bool binary_first) {
   string out;
-  absl::Status s = ReadFileToString(env, fname, &out);
+  Status s = ReadFileToString(env, fname, &out);
   if (!s.ok()) return s;
 
   if (binary_first) {
     if (ReadBinaryProto(tensorflow::Env::Default(), fname, proto).ok()) {
-      return absl::Status();
+      return Status();
     } else if (protobuf::TextFormat::ParseFromString(out, proto)) {
-      return absl::Status();
+      return Status();
     }
   } else {
     if (protobuf::TextFormat::ParseFromString(out, proto)) {
-      return absl::Status();
+      return Status();
     } else if (ReadBinaryProto(tensorflow::Env::Default(), fname, proto).ok()) {
-      return absl::Status();
+      return Status();
     }
   }
   return errors::InvalidArgument("Cannot parse proto file.");

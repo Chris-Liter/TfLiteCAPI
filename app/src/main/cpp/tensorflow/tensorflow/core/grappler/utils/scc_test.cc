@@ -42,7 +42,7 @@ class SCCTest : public ::testing::Test {
 
  protected:
   static NodeDef CreateNode(const string& name,
-                            absl::Span<const string> inputs) {
+                            gtl::ArraySlice<string> inputs) {
     NodeDef node;
     node.set_name(name);
     for (const string& input : inputs) {

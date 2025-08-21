@@ -36,7 +36,7 @@ limitations under the License.
 namespace tensorflow {
 namespace {
 
-absl::StatusOr<bool> HasInputsWithMismatchingDeadness(
+tsl::StatusOr<bool> HasInputsWithMismatchingDeadness(
     const DeadnessAnalysis& deadness_analysis, const Node& n) {
   std::optional<DeadnessAnalysis::DeadnessPredicate> pred;
   for (const Edge* edge : n.in_edges()) {
@@ -55,8 +55,8 @@ absl::StatusOr<bool> HasInputsWithMismatchingDeadness(
 using deadness_analysis_internal::ComputePredicates;
 using deadness_analysis_internal::PredicateMapTy;
 
-absl::Status AnalyzeDeadness(Graph* graph,
-                             std::unique_ptr<DeadnessAnalysis>* result) {
+Status AnalyzeDeadness(Graph* graph,
+                       std::unique_ptr<DeadnessAnalysis>* result) {
   FixupSourceAndSinkEdges(graph);
   return DeadnessAnalysis::Run(*graph, result);
 }

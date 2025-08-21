@@ -16,16 +16,16 @@ limitations under the License.
 #include "tensorflow/compiler/tf2xla/type_util.h"
 #include "tensorflow/compiler/tf2xla/xla_op_kernel.h"
 #include "tensorflow/compiler/tf2xla/xla_op_registry.h"
-#include "xla/hlo/builder/lib/arithmetic.h"
-#include "xla/hlo/builder/lib/constants.h"
-#include "xla/hlo/builder/xla_builder.h"
-#include "xla/xla_data.pb.h"
+#include "tensorflow/compiler/xla/client/lib/arithmetic.h"
+#include "tensorflow/compiler/xla/client/lib/constants.h"
+#include "tensorflow/compiler/xla/client/lib/sorting.h"
+#include "tensorflow/compiler/xla/client/xla_builder.h"
+#include "tensorflow/compiler/xla/literal.h"
+#include "tensorflow/compiler/xla/xla_data.pb.h"
+#include "tensorflow/core/framework/kernel_def_builder.h"
 #include "tensorflow/core/framework/op_kernel.h"
-#include "tensorflow/core/framework/op_requires.h"
-#include "tensorflow/core/framework/tensor_shape.h"
-#include "tensorflow/core/framework/types.pb.h"
-#include "tensorflow/core/platform/errors.h"
-#include "tensorflow/core/platform/types.h"
+#include "tensorflow/core/framework/types.h"
+#include "tensorflow/core/platform/macros.h"
 
 namespace tensorflow {
 namespace {
@@ -104,8 +104,7 @@ class InTopKOp : public XlaOpKernel {
   DataType targets_dtype_;
   xla::PrimitiveType targets_type_;
 
-  InTopKOp(const InTopKOp&) = delete;
-  void operator=(const InTopKOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(InTopKOp);
 };
 
 REGISTER_XLA_OP(Name("InTopKV2")

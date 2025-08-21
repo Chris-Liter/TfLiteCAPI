@@ -51,7 +51,7 @@ using ::testing::UnorderedElementsAreArray;
 
 class InfiniteRange : public CachableSequence<int64_t> {
  public:
-  absl::StatusOr<int64_t> GetNext() override { return next_++; }
+  StatusOr<int64_t> GetNext() override { return next_++; }
   size_t GetElementSizeBytes(const int64_t& element) const override {
     return sizeof(element);
   }
@@ -63,7 +63,7 @@ class InfiniteRange : public CachableSequence<int64_t> {
 
 class TensorDataset : public CachableSequence<Tensor> {
  public:
-  absl::StatusOr<Tensor> GetNext() override { return Tensor("Test Tensor"); }
+  StatusOr<Tensor> GetNext() override { return Tensor("Test Tensor"); }
   size_t GetElementSizeBytes(const Tensor& element) const override {
     return element.TotalBytes();
   }
@@ -73,7 +73,7 @@ class SlowDataset : public CachableSequence<Tensor> {
  public:
   explicit SlowDataset(absl::Duration delay) : delay_(delay) {}
 
-  absl::StatusOr<Tensor> GetNext() override {
+  StatusOr<Tensor> GetNext() override {
     Env::Default()->SleepForMicroseconds(absl::ToInt64Microseconds(delay_));
     return Tensor("Test Tensor");
   }
@@ -362,14 +362,14 @@ TEST(CrossTrainerCacheTest, Cancel) {
   EXPECT_FALSE(cache.IsCancelled());
 
   mutex mu;
-  absl::Status status;  // Guarded by `mu`.
+  Status status;  // Guarded by `mu`.
   std::vector<std::unique_ptr<Thread>> reader_threads;
   for (size_t i = 0; i < num_trainers; ++i) {
     reader_threads.push_back(absl::WrapUnique(Env::Default()->StartThread(
         /*thread_options=*/{}, /*name=*/absl::StrCat("Trainer_", i),
         [&cache, &status, &mu]() {
           for (int j = 0; true; ++j) {
-            absl::StatusOr<std::shared_ptr<const Tensor>> tensor =
+            StatusOr<std::shared_ptr<const Tensor>> tensor =
                 cache.Get(absl::StrCat("Trainer_", j % 1000));
             {
               mutex_lock l(mu);
@@ -395,7 +395,7 @@ TEST(CrossTrainerCacheTest, Cancel) {
 
 TEST(CrossTrainerCacheTest, Errors) {
   auto elements = std::make_unique<ElementOrErrorDataset<std::string>>(
-      std::vector<absl::StatusOr<std::string>>{
+      std::vector<StatusOr<std::string>>{
           std::string("First element"),
           errors::Cancelled("Cancelled"),
           std::string("Second element"),

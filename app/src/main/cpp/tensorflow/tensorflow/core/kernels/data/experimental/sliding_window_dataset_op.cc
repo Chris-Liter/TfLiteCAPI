@@ -118,20 +118,20 @@ class SlidingWindowDatasetOp : public UnaryDatasetOpKernel {
       return (drop_remainder_ ? n : n + window_shift_ - 1) / window_shift_;
     }
 
-    absl::Status InputDatasets(
+    Status InputDatasets(
         std::vector<const DatasetBase*>* inputs) const override {
       inputs->push_back(input_);
-      return absl::OkStatus();
+      return OkStatus();
     }
 
-    absl::Status CheckExternalState() const override {
+    Status CheckExternalState() const override {
       return input_->CheckExternalState();
     }
 
    protected:
-    absl::Status AsGraphDefInternal(SerializationContext* ctx,
-                                    DatasetGraphDefBuilder* b,
-                                    Node** output) const override {
+    Status AsGraphDefInternal(SerializationContext* ctx,
+                              DatasetGraphDefBuilder* b,
+                              Node** output) const override {
       Node* input_graph_node = nullptr;
       TF_RETURN_IF_ERROR(b->AddInputDataset(ctx, input_, &input_graph_node));
       Node* window_size = nullptr;
@@ -148,7 +148,7 @@ class SlidingWindowDatasetOp : public UnaryDatasetOpKernel {
       TF_RETURN_IF_ERROR(b->AddDataset(
           this, {input_graph_node, window_size, window_shift, window_stride},
           {std::make_pair(kDropRemainder, drop_remainder_attr)}, output));
-      return absl::OkStatus();
+      return OkStatus();
     }
 
    private:
@@ -157,14 +157,14 @@ class SlidingWindowDatasetOp : public UnaryDatasetOpKernel {
       explicit Iterator(const Params& params)
           : DatasetIterator<Dataset>(params) {}
 
-      absl::Status Initialize(IteratorContext* ctx) override {
+      Status Initialize(IteratorContext* ctx) override {
         return dataset()->input_->MakeIterator(ctx, this, prefix(),
                                                &input_impl_);
       }
 
-      absl::Status GetNextInternal(IteratorContext* ctx,
-                                   std::vector<Tensor>* out_tensors,
-                                   bool* end_of_sequence) override {
+      Status GetNextInternal(IteratorContext* ctx,
+                             std::vector<Tensor>* out_tensors,
+                             bool* end_of_sequence) override {
         const int64_t window_size = dataset()->window_size_;
         const int64_t window_shift = dataset()->window_shift_;
         const int64_t window_stride = dataset()->window_stride_;
@@ -193,7 +193,7 @@ class SlidingWindowDatasetOp : public UnaryDatasetOpKernel {
               (buffer_.size() < target_size && drop_remainder)) {
             DCHECK(input_impl_ == nullptr);
             *end_of_sequence = true;
-            return absl::OkStatus();
+            return OkStatus();
           }
 
           for (size_t i = 0; i < buffer_.size(); i += window_stride) {
@@ -248,7 +248,7 @@ class SlidingWindowDatasetOp : public UnaryDatasetOpKernel {
           }
         }
         *end_of_sequence = false;
-        return absl::OkStatus();
+        return OkStatus();
       }
 
      protected:
@@ -258,8 +258,8 @@ class SlidingWindowDatasetOp : public UnaryDatasetOpKernel {
                                          dataset()->window_shift_);
       }
 
-      absl::Status SaveInternal(SerializationContext* ctx,
-                                IteratorStateWriter* writer) override {
+      Status SaveInternal(SerializationContext* ctx,
+                          IteratorStateWriter* writer) override {
         mutex_lock l(mu_);
         if (!input_impl_) {
           TF_RETURN_IF_ERROR(
@@ -278,11 +278,11 @@ class SlidingWindowDatasetOp : public UnaryDatasetOpKernel {
                 strings::StrCat("buffer[", i, "][", j, "]"), buffer_[i][j]));
           }
         }
-        return absl::OkStatus();
+        return OkStatus();
       }
 
-      absl::Status RestoreInternal(IteratorContext* ctx,
-                                   IteratorStateReader* reader) override {
+      Status RestoreInternal(IteratorContext* ctx,
+                             IteratorStateReader* reader) override {
         mutex_lock l(mu_);
         if (!reader->Contains(full_name("input_impl_empty"))) {
           TF_RETURN_IF_ERROR(RestoreInput(ctx, reader, input_impl_));
@@ -305,7 +305,7 @@ class SlidingWindowDatasetOp : public UnaryDatasetOpKernel {
                 &buffer_[i][j]));
           }
         }
-        return absl::OkStatus();
+        return OkStatus();
       }
 
      private:

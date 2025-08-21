@@ -50,7 +50,7 @@ class PriorityQueueOp : public TypedQueueOp {
   }
 
  private:
-  absl::Status CreateResource(QueueInterface** ret) override
+  Status CreateResource(QueueInterface** ret) override
       TF_EXCLUSIVE_LOCKS_REQUIRED(mu_) {
     PriorityQueue* queue = new PriorityQueue(capacity_, component_types_,
                                              component_shapes_, cinfo_.name());
@@ -59,8 +59,7 @@ class PriorityQueueOp : public TypedQueueOp {
 
   std::vector<TensorShape> component_shapes_;
 
-  PriorityQueueOp(const PriorityQueueOp&) = delete;
-  void operator=(const PriorityQueueOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(PriorityQueueOp);
 };
 
 REGISTER_KERNEL_BUILDER(Name("PriorityQueue").Device(DEVICE_CPU),

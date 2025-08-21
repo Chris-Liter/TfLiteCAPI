@@ -49,7 +49,7 @@ SessionOptions SessionOptionsWithInlining() {
   return session_options;
 }
 
-absl::Status Rewrite(std::unique_ptr<Graph>* graph) {
+Status Rewrite(std::unique_ptr<Graph>* graph) {
   FunctionLibraryDefinition flib_def((*graph)->flib_def());
   GraphOptimizationPassOptions opt_options;
   SessionOptions session_options = SessionOptionsWithInlining();

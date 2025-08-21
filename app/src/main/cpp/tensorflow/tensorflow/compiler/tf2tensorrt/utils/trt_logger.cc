@@ -61,7 +61,7 @@ bool filter_string(string msg) {
   return false;
 }
 
-// Use TF logging for TensorRT information
+// Use TF logging for TensorRT informations
 void Logger::log(Severity severity, const char* msg) noexcept {
   static const bool filter_messages = []() {
     return !isExperimentalFeatureActivated("disable_logger_filtering");

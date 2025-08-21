@@ -21,23 +21,23 @@ limitations under the License.
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include "absl/status/status.h"
-#include "xla/tsl/lib/core/status_test_util.h"
 #include "tensorflow/core/platform/path.h"
 #include "tensorflow/core/platform/test.h"
 #include "tensorflow/tools/proto_splitter/cc/test_util.h"
 #include "tensorflow/tools/proto_splitter/chunk.pb.h"
 #include "tensorflow/tools/proto_splitter/testdata/test_message.pb.h"
-#include "tsl/platform/protobuf.h"
-#include "tsl/platform/status.h"
-#include "tsl/platform/status_matchers.h"
-#include "tsl/platform/statusor.h"
+#include "tensorflow/tsl/lib/core/status_test_util.h"
+#include "tensorflow/tsl/platform/protobuf.h"
+#include "tensorflow/tsl/platform/status.h"
+#include "tensorflow/tsl/platform/status_matchers.h"
+#include "tensorflow/tsl/platform/statusor.h"
 
 namespace tensorflow {
 namespace tools::proto_splitter {
 namespace {
 
-using ::tensorflow::proto_splitter::ChunkedField;
-using ::tensorflow::proto_splitter_testdata::ManyFields;
+using ::proto_splitter::ChunkedField;
+using ::proto_splitter_testdata::ManyFields;
 using ::testing::HasSubstr;
 using tsl::testing::IsOkAndHolds;
 using tsl::testing::StatusIs;
@@ -45,7 +45,7 @@ using tsl::testing::StatusIs;
 // Required in OSS to prevent string to bool conversion in FieldType variant.
 using namespace std::string_literals;  // NOLINT
 
-absl::StatusOr<ManyFields> MakeManyFields() {
+tsl::StatusOr<ManyFields> MakeManyFields() {
   return ParseTextProto<ManyFields>(
       R"pb(field_one {
              repeated_field {}
@@ -66,8 +66,7 @@ absl::StatusOr<ManyFields> MakeManyFields() {
            })pb");
 }
 
-absl::StatusOr<
-    tsl::protobuf::RepeatedPtrField<::tensorflow::proto_splitter::FieldIndex>>
+tsl::StatusOr<tsl::protobuf::RepeatedPtrField<::proto_splitter::FieldIndex>>
 MakeFieldTags() {
   TF_ASSIGN_OR_RETURN(auto ret, ParseTextProto<ChunkedField>(R"pb(
                         field_tag { field: 2 }
@@ -78,8 +77,7 @@ MakeFieldTags() {
   return ret.field_tag();
 }
 
-absl::StatusOr<
-    tsl::protobuf::RepeatedPtrField<::tensorflow::proto_splitter::FieldIndex>>
+tsl::StatusOr<tsl::protobuf::RepeatedPtrField<::proto_splitter::FieldIndex>>
 MakeFieldTagsTooManyIndices() {
   TF_ASSIGN_OR_RETURN(auto ret, ParseTextProto<ChunkedField>(R"pb(
                         field_tag { field: 2 }
@@ -91,8 +89,7 @@ MakeFieldTagsTooManyIndices() {
   return ret.field_tag();
 }
 
-absl::StatusOr<
-    tsl::protobuf::RepeatedPtrField<::tensorflow::proto_splitter::FieldIndex>>
+tsl::StatusOr<tsl::protobuf::RepeatedPtrField<::proto_splitter::FieldIndex>>
 MakeFieldTagsTooManyMapKeys() {
   TF_ASSIGN_OR_RETURN(auto ret, ParseTextProto<ChunkedField>(R"pb(
                         field_tag { field: 2 }
@@ -104,8 +101,7 @@ MakeFieldTagsTooManyMapKeys() {
   return ret.field_tag();
 }
 
-absl::StatusOr<
-    tsl::protobuf::RepeatedPtrField<::tensorflow::proto_splitter::FieldIndex>>
+tsl::StatusOr<tsl::protobuf::RepeatedPtrField<::proto_splitter::FieldIndex>>
 MakeFieldTagsMisplacedIndex() {
   TF_ASSIGN_OR_RETURN(auto ret, ParseTextProto<ChunkedField>(R"pb(
                         field_tag { field: 2 }
@@ -117,8 +113,7 @@ MakeFieldTagsMisplacedIndex() {
   return ret.field_tag();
 }
 
-absl::StatusOr<
-    tsl::protobuf::RepeatedPtrField<::tensorflow::proto_splitter::FieldIndex>>
+tsl::StatusOr<tsl::protobuf::RepeatedPtrField<::proto_splitter::FieldIndex>>
 MakeFieldTagsMisplacedMapKey() {
   TF_ASSIGN_OR_RETURN(auto ret, ParseTextProto<ChunkedField>(R"pb(
                         field_tag { field: 2 }
@@ -530,8 +525,8 @@ TEST(UtilTest, TestReadChunk) {
     reader.Close();
     TF_ASSERT_OK(read_metadata.status());
   }
-  ::tensorflow::proto_splitter::ChunkMetadata metadata = read_metadata.value();
-  std::vector<::tensorflow::proto_splitter::ChunkInfo> chunks_info(
+  ::proto_splitter::ChunkMetadata metadata = read_metadata.value();
+  std::vector<::proto_splitter::ChunkInfo> chunks_info(
       metadata.chunks().begin(), metadata.chunks().end());
 
   for (const auto& chunk_info : chunks_info) {

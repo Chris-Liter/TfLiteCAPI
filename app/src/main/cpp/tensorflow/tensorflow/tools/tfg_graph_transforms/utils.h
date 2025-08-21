@@ -18,15 +18,11 @@ limitations under the License.
 
 #include <string>
 
-#include "absl/log/log.h"
-#include "absl/status/status.h"
 #include "tensorflow/core/platform/env.h"
 #include "tensorflow/core/platform/errors.h"
 #include "tensorflow/core/platform/path.h"
 #include "tensorflow/core/platform/status.h"
-#include "tensorflow/core/platform/stringpiece.h"
 #include "tensorflow/core/protobuf/saved_model.pb.h"
-#include "tsl/platform/errors.h"
 
 namespace mlir {
 namespace tfg {
@@ -36,9 +32,10 @@ namespace graph_transforms {
 // If the format of proto cannot be identified based on the file extension,
 // attempts to load in a binary format first and then in a text format.
 template <class T>
-absl::Status ReadModelProto(const std::string& input_file, T& model_proto) {
+tensorflow::Status ReadModelProto(const std::string& input_file,
+                                  T& model_proto) {
   // Proto might be either in binary or text format.
-  absl::string_view extension = tensorflow::io::Extension(input_file);
+  tensorflow::StringPiece extension = tensorflow::io::Extension(input_file);
   bool binary_extenstion = !extension.compare("pb");
   bool text_extension = !extension.compare("pbtxt");
 
@@ -75,7 +72,8 @@ absl::Status ReadModelProto(const std::string& input_file, T& model_proto) {
 bool IsTextProto(const std::string& input_file);
 
 template <class T>
-absl::Status SerializeProto(T model_proto, const std::string& output_file) {
+tensorflow::Status SerializeProto(T model_proto,
+                                  const std::string& output_file) {
   auto output_dir = tensorflow::io::Dirname(output_file);
 
   TF_RETURN_IF_ERROR(tensorflow::Env::Default()->RecursivelyCreateDir(
@@ -91,15 +89,15 @@ absl::Status SerializeProto(T model_proto, const std::string& output_file) {
                                      model_proto),
         "Error while writing the resulting model proto");
   }
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 // Read and write to the experimental SavedModel Image format.
-absl::Status ReadSavedModelImageFormat(const std::string& input_file,
-                                       tensorflow::SavedModel& model_proto);
-absl::Status WriteSavedModelImageFormat(tensorflow::SavedModel* model_proto,
-                                        const std::string& output_file,
-                                        int debug_max_size);
+tensorflow::Status ReadSavedModelImageFormat(
+    const std::string& input_file, tensorflow::SavedModel& model_proto);
+tensorflow::Status WriteSavedModelImageFormat(
+    tensorflow::SavedModel* model_proto, const std::string& output_file,
+    int debug_max_size);
 
 }  // namespace graph_transforms
 }  // namespace tfg

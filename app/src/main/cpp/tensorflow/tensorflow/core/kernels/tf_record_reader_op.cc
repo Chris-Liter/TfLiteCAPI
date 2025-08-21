@@ -36,36 +36,36 @@ class TFRecordReader : public ReaderBase {
         offset_(0),
         compression_type_(compression_type) {}
 
-  absl::Status OnWorkStartedLocked() override {
+  Status OnWorkStartedLocked() override {
     offset_ = 0;
     TF_RETURN_IF_ERROR(env_->NewRandomAccessFile(current_work(), &file_));
 
     io::RecordReaderOptions options =
         io::RecordReaderOptions::CreateRecordReaderOptions(compression_type_);
     reader_.reset(new io::RecordReader(file_.get(), options));
-    return absl::OkStatus();
+    return OkStatus();
   }
 
-  absl::Status OnWorkFinishedLocked() override {
+  Status OnWorkFinishedLocked() override {
     reader_.reset(nullptr);
     file_.reset(nullptr);
-    return absl::OkStatus();
+    return OkStatus();
   }
 
-  absl::Status ReadLocked(tstring* key, tstring* value, bool* produced,
-                          bool* at_end) override {
+  Status ReadLocked(tstring* key, tstring* value, bool* produced,
+                    bool* at_end) override {
     *key = strings::StrCat(current_work(), ":", offset_);
-    absl::Status status = reader_->ReadRecord(&offset_, value);
+    Status status = reader_->ReadRecord(&offset_, value);
     if (absl::IsOutOfRange(status)) {
       *at_end = true;
-      return absl::OkStatus();
+      return OkStatus();
     }
     if (!status.ok()) return status;
     *produced = true;
-    return absl::OkStatus();
+    return OkStatus();
   }
 
-  absl::Status ResetLocked() override {
+  Status ResetLocked() override {
     offset_ = 0;
     reader_.reset(nullptr);
     file_.reset(nullptr);

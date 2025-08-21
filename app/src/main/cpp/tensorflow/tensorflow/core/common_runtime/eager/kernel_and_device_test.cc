@@ -31,7 +31,6 @@ limitations under the License.
 #include "tensorflow/core/common_runtime/eager/attr_builder.h"
 #include "tensorflow/core/common_runtime/function.h"
 #include "tensorflow/core/common_runtime/process_function_library_runtime.h"
-#include "tensorflow/core/framework/op.h"
 #include "tensorflow/core/platform/env.h"
 #include "tensorflow/core/platform/test.h"
 #include "tensorflow/core/platform/test_benchmark.h"
@@ -43,7 +42,7 @@ namespace {
 
 class TestEnv {
  public:
-  TestEnv() : flib_def_(OpRegistry::Global(), FunctionDefLibrary()) {
+  TestEnv() : flib_def_(OpRegistry::Global(), {}) {
     std::vector<std::unique_ptr<Device>> devices;
     devices.push_back(
         DeviceFactory::NewDevice("CPU", {}, "/job:a/replica:0/task:0"));
@@ -118,14 +117,14 @@ void BM_KernelAndDeviceInit(::testing::benchmark::State& state) {
   KernelAndDeviceOp k(nullptr, false, env.function_library_runtime(), nullptr,
                       nullptr, env.cpu_device());
   for (auto s : state) {
-    TF_CHECK_OK(k.Init({}, ndef, nullptr, std::nullopt));
+    TF_CHECK_OK(k.Init({}, ndef, nullptr));
   }
 }
 BENCHMARK(BM_KernelAndDeviceInit);
 
 void BM_KernelAndDeviceRun(::testing::benchmark::State& state) {
   Tensor t(Input({{1.0f, 2.0f}, {3.0f, 4.0f}}).tensor());
-  absl::InlinedVector<TensorValue, 4UL> inputs;
+  gtl::InlinedVector<TensorValue, 4> inputs;
   inputs.push_back(TensorValue(&t));
   inputs.push_back(TensorValue(&t));
   std::vector<EagerKernelRet> outputs;
@@ -138,7 +137,7 @@ void BM_KernelAndDeviceRun(::testing::benchmark::State& state) {
   TestEnv env;
   KernelAndDeviceOp k(nullptr, false, env.function_library_runtime(), nullptr,
                       nullptr, env.cpu_device());
-  TF_CHECK_OK(k.Init({}, ndef, nullptr, std::nullopt));
+  TF_CHECK_OK(k.Init({}, ndef, nullptr));
   const EagerKernelArgs args(std::move(inputs));
   for (auto s : state) {
     TF_CHECK_OK(k.Run(nullptr, args, &outputs, nullptr, std::nullopt,

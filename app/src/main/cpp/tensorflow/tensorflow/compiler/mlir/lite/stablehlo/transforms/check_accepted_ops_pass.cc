@@ -15,7 +15,7 @@ limitations under the License.
 
 #include "tensorflow/compiler/mlir/lite/stablehlo/transforms/check_accepted_ops_pass.h"
 
-#include <memory>
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -37,7 +37,7 @@ class CheckAcceptedOpsPass
 
   explicit CheckAcceptedOpsPass(
       const std::vector<std::string> &optional_accepted_dialects)
-      : accepted_dialects_(GetAcceptedStableHLODialects()),
+      : accepted_dialects_(GetAcceptedDialects()),
         optional_accepted_dialects_(optional_accepted_dialects) {}
 
   // Check if TF dialect ops exist over the module.

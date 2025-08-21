@@ -18,6 +18,7 @@ limitations under the License.
 #include "mlir/IR/PatternMatch.h"  // from @llvm-project
 #include "mlir/Support/LogicalResult.h"  // from @llvm-project
 #include "tensorflow/core/framework/types.h"
+#include "tensorflow/core/ir/tf_op_wrapper.h"
 #include "tensorflow/core/transforms/utils/utils.h"
 
 namespace mlir {

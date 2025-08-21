@@ -108,10 +108,10 @@ FindSerializedTensorInTrackable(
 // RestoreV2 and load them back into the "object" they came from via their
 // overridden "restore" method:
 // https://github.com/tensorflow/tensorflow/blob/ddc1bbad3dfd4a089eb96014f26cc16664b1b2f8/tensorflow/python/training/saving/saveable_object.py#L85
-absl::Status RestoreCheckpoint(SavedModelV2Bundle* bundle,
-                               const RevivedObjects& revived_objects,
-                               const std::string& directory,
-                               ImmediateExecutionContext* context) {
+Status RestoreCheckpoint(SavedModelV2Bundle* bundle,
+                         const RevivedObjects& revived_objects,
+                         const std::string& directory,
+                         ImmediateExecutionContext* context) {
   // TODO(bmzhao): Batch up all the restores into a single restore op per
   // device, following logic in MultiDeviceSaver.
   TF_RETURN_IF_ERROR(bundle->VisitObjectsToRestore(
@@ -126,7 +126,7 @@ absl::Status RestoreCheckpoint(SavedModelV2Bundle* bundle,
                           "implemented yet. (Kind="
                        << bundle->saved_object_graph().nodes(node).kind_case()
                        << ")";
-          return absl::OkStatus();
+          return OkStatus();
         }
 
         Variable* variable = revived_objects.variables.at(node).get();
@@ -145,7 +145,7 @@ absl::Status RestoreCheckpoint(SavedModelV2Bundle* bundle,
         if (!bundle->variable_reader()->Contains(checkpoint_key)) {
           LOG(WARNING) << "No checkpoint entry found for " << checkpoint_key
                        << ". Variable will be uninitialized.";
-          return absl::Status();
+          return Status();
         }
 
         std::string variables_path_prefix =
@@ -160,21 +160,21 @@ absl::Status RestoreCheckpoint(SavedModelV2Bundle* bundle,
         return variable->Assign(restored_output.get());
       }));
 
-  return absl::Status();
+  return Status();
 }
 
-absl::Status InitializeAllResources(const RevivedObjects& revived) {
+Status InitializeAllResources(const RevivedObjects& revived) {
   for (const auto& node_and_resource : revived.restored_resources) {
     const RestoredResource& resource = node_and_resource.second;
     TF_RETURN_IF_ERROR(resource.Initialize());
   }
-  return absl::Status();
+  return Status();
 }
 
 }  // namespace
 
-absl::Status TFSavedModelAPI::GetFunction(const std::string& function_path,
-                                          ConcreteFunction** function) {
+Status TFSavedModelAPI::GetFunction(const std::string& function_path,
+                                    ConcreteFunction** function) {
   absl::optional<int> node =
       internal::FindNodeAtPath(function_path, bundle_.saved_object_graph());
   if (!node.has_value()) {
@@ -186,10 +186,10 @@ absl::Status TFSavedModelAPI::GetFunction(const std::string& function_path,
     return errors::NotFound("No function found at path ", function_path);
   }
 
-  return absl::Status();
+  return Status();
 }
 
-absl::Status TFSavedModelAPI::GetFunctions(
+Status TFSavedModelAPI::GetFunctions(
     int node_id,
     absl::flat_hash_map<std::string, ConcreteFunction*>* functions) {
   const auto& nodes = bundle_.saved_object_graph().nodes();
@@ -201,15 +201,15 @@ absl::Status TFSavedModelAPI::GetFunctions(
   const SavedObject* current_node = &nodes.Get(node_id);
   for (const auto& child : current_node->children()) {
     ConcreteFunction* concrete_fn;
-    absl::Status status = GetFunction(child.local_name(), &concrete_fn);
+    Status status = GetFunction(child.local_name(), &concrete_fn);
     if (status.ok()) {
       (*functions)[child.local_name()] = concrete_fn;
     }
   }
-  return absl::Status();
+  return Status();
 }
 
-absl::Status TFSavedModelAPI::GetSignatureDefFunction(
+Status TFSavedModelAPI::GetSignatureDefFunction(
     const std::string& signature_def_key, SignatureDefFunction** function) {
   auto signatures_iter =
       revived_objects_.signatures_map.find(signature_def_key);
@@ -227,11 +227,11 @@ absl::Status TFSavedModelAPI::GetSignatureDefFunction(
   }
 
   *function = function_iter->second.get();
-  return absl::Status();
+  return Status();
 }
 
-absl::Status TFSavedModelAPI::GetVariable(const std::string& variable_path,
-                                          Variable** variable) {
+Status TFSavedModelAPI::GetVariable(const std::string& variable_path,
+                                    Variable** variable) {
   absl::optional<int> node =
       internal::FindNodeAtPath(variable_path, bundle_.saved_object_graph());
   if (!node.has_value()) {
@@ -244,7 +244,7 @@ absl::Status TFSavedModelAPI::GetVariable(const std::string& variable_path,
   }
 
   *variable = variables_iter->second.get();
-  return absl::Status();
+  return Status();
 }
 
 SavedModelV2Bundle* TFSavedModelAPI::GetBundle() { return &this->bundle_; }
@@ -256,7 +256,7 @@ TFSavedModelAPI::TFSavedModelAPI(const std::string& directory,
       bundle_(std::move(bundle)),
       revived_objects_(std::move(revived_objects)) {}
 
-absl::Status TFSavedModelAPI::Load(
+Status TFSavedModelAPI::Load(
     const std::string& directory,
     const absl::optional<std::unordered_set<std::string>>& tags,
     ImmediateExecutionContext* context, std::unique_ptr<TFSavedModelAPI>* out) {
@@ -310,7 +310,7 @@ absl::Status TFSavedModelAPI::Load(
 
   out->reset(new TFSavedModelAPI(directory, std::move(bundle),
                                  std::move(revived_objects)));
-  return absl::Status();
+  return Status();
 }
 
 }  // namespace tensorflow

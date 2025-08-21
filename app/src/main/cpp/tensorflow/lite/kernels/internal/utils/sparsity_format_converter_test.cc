@@ -14,8 +14,9 @@ limitations under the License.
 ==============================================================================*/
 #include "tensorflow/lite/kernels/internal/utils/sparsity_format_converter.h"
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include "tensorflow/lite/c/common.h"
+#include "tensorflow/lite/core/model.h"
 
 namespace tflite {
 namespace internal {

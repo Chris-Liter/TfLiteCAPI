@@ -44,8 +44,8 @@ string EncodeTensorNameSlice(const string& name, const TensorSlice& slice) {
   return buffer;
 }
 
-absl::Status DecodeTensorNameSlice(const string& code, string* name,
-                                   tensorflow::TensorSlice* slice) {
+Status DecodeTensorNameSlice(const string& code, string* name,
+                             tensorflow::TensorSlice* slice) {
   StringPiece src(code);
   uint64 x;
   if (!tensorflow::strings::OrderedCode::ReadNumIncreasing(&src, &x)) {
@@ -86,12 +86,11 @@ absl::Status DecodeTensorNameSlice(const string& code, string* name,
       slice->set_length(d, length);
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status ParseShapeAndSlice(const string& shape_and_slice,
-                                TensorShape* shape, TensorSlice* slice,
-                                TensorShape* shape_slice) {
+Status ParseShapeAndSlice(const string& shape_and_slice, TensorShape* shape,
+                          TensorSlice* slice, TensorShape* shape_slice) {
   CHECK(!shape_and_slice.empty());
   // Syntax: dim0 dim1 dim2 ... <slice string>
   // Where slice string is defined in core/framework/tensor_slice.h

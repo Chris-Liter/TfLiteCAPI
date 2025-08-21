@@ -17,7 +17,7 @@
 #include <tensorflow/lite/builtin_op_data.h>
 #include <tensorflow/lite/version.h>
 
-#include <opencv2/objdetect/objdetect.hpp>
+//#include <opencv2/objdetect/objdetect.hpp>
 
 //#include <tensorflow/lite/delegates/gpu/metal_delegate.h>
 
@@ -41,12 +41,9 @@ Java_com_logic_tflitecapi_MainActivity_stringFromJNI(
     return env->NewStringUTF(hello.c_str());
 }
 
-
 ///////////////////////
 //flatc --cpp schema.fbs
 ////////////////////////
-
-
 
 struct BoundingBox {
     int x;
@@ -83,7 +80,6 @@ public:
     BoundingBox boundingBox;
     vector<Categoria> categories;
 };
-
 
 
 void bitmapToMat(JNIEnv * env, jobject bitmap, cv::Mat &dst, jboolean needUnPremultiplyAlpha) {
@@ -133,149 +129,139 @@ std::vector<std::string> getClassNames(const std::string& labelsPath) {
     return names;
 }
 
-extern "C"{
-    JNIEXPORT jobject Java_com_logic_tflitecapi_MainActivity_detector(JNIEnv* env, jobject /**/, jobject bitmapIn){
-        Mat inputMat;
-        Mat copiaSize;
+extern "C" JNIEXPORT jobject
+JNICALL Java_com_logic_tflitecapi_MainActivity_detector(JNIEnv* env, jobject /**/, jobject bitmapIn){
+    Mat inputMat;
+    Mat copiaSize;
 
-        bitmapToMat(env, bitmapIn, inputMat, false);
+    bitmapToMat(env, bitmapIn, inputMat, false);
 
-        //Mat norma;
-        inputMat.copyTo(copiaSize);
-        resize(inputMat, inputMat, Size(320, 320));
-        cvtColor(inputMat, inputMat, cv::COLOR_BGR2RGB);
+    //Mat norma;
+    inputMat.copyTo(copiaSize);
+    resize(inputMat, inputMat, Size(320, 320));
+    cvtColor(inputMat, inputMat, cv::COLOR_BGR2RGB);
 
-        inputMat.convertTo(inputMat, CV_8UC3);
-        uint8_t* input = interprete->typed_input_tensor<uint8_t>(0); // Obtener puntero al tensor
+    inputMat.convertTo(inputMat, CV_8UC3);
+    uint8_t* input = interprete->typed_input_tensor<uint8_t>(0); // Obtener puntero al tensor
 
-        memcpy(input, inputMat.data, 320 * 320 * 3);
+    memcpy(input, inputMat.data, 320 * 320 * 3);
 
-        if (interprete->Invoke() != kTfLiteOk) {
-            LOGE("Error durante la invocación del intérprete TFLite.");
-            //return nullptr;
+    if (interprete->Invoke() != kTfLiteOk) {
+        LOGE("Error durante la invocación del intérprete TFLite.");
+        //return nullptr;
+    }
+
+    float* boxes = interprete->typed_output_tensor<float>(0);  // TFLite_Detection_PostProcess:1
+    float* classes = interprete->typed_output_tensor<float>(1);  // TFLite_Detection_PostProcess:2
+    float* scores = interprete->typed_output_tensor<float>(2);  // TFLite_Detection_PostProcess:3 interprete->typed_output_tensor<float>(2)[0]
+    int num_detections = static_cast<int>(interprete->typed_output_tensor<float>(3)[0]);  // Número de detecciones
+    //float* outputTensor = interprete->typed_output_tensor<float>(0); // Identificador: 975
+
+
+    int num_classes = interprete->tensor(interprete->outputs()[1])->dims->data[1];
+    std::cout << "Número de clases: " << num_classes << std::endl;
+
+    // Dibujar las cajas delimitadoras en la imagen original
+    string lab = "Nada";
+    vector<Resultados> resultadoEnv;
+
+
+    float scaleX = static_cast<float>(copiaSize.cols) / inputMat.cols;
+    float scaleY = static_cast<float>(copiaSize.rows) / inputMat.rows;
+
+    int maximo = 0;
+
+
+    for (int i = 0; i < num_detections; i++) {
+        if (scores[i] >= 0.5) {  // Umbral de confianza
+            if(maximo >= 5) break;
+            int ymin = static_cast<int>(boxes[i * 4] * 320 * scaleY );
+            int xmin = static_cast<int>(boxes[i * 4 + 1] * 320 * scaleX);
+            int ymax = static_cast<int>(boxes[i * 4 + 2] * 320 * scaleY);
+            int xmax = static_cast<int>(boxes[i * 4 + 3] * 320 * scaleX);
+
+            xmin = std::max(0, std::min(xmin, copiaSize.cols - 1));
+            xmax = std::max(0, std::min(xmax, copiaSize.cols - 1));
+            ymin = std::max(0, std::min(ymin, copiaSize.rows - 1));
+            ymax = std::max(0, std::min(ymax, copiaSize.rows - 1));
+
+
+
+            int class_id = static_cast<int>(classes[i]);
+            std::string label = (class_id < cocoNames.size()) ? cocoNames[class_id] : "No se";
+            float score = scores[i];
+
+            //cv::rectangle(inputMat, cv::Point(xmin, ymin), cv::Point(xmax, ymax), cv::Scalar(0, 255, 0), 2);
+
+            std::string label_text = label + ": " + std::to_string(score);
+            lab = label;
+            //cv::putText(inputMat, label_text, cv::Point(xmin, ymin - 10), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
+            Resultados resultados;
+            resultados.boundingBox.x = xmin;
+            resultados.boundingBox.y = ymin;
+            resultados.boundingBox.width = xmax - xmin;
+            resultados.boundingBox.height = ymax - ymin;
+            Categoria cate;
+            cate.label = label;
+            cate.score = score;
+            resultados.categories.push_back(cate);
+            resultadoEnv.push_back(resultados);
+            maximo++;
         }
+    }
+    //return env->NewStringUTF(lab.c_str());
 
-        float* boxes = interprete->typed_output_tensor<float>(0);  // TFLite_Detection_PostProcess:1
-        float* classes = interprete->typed_output_tensor<float>(1);  // TFLite_Detection_PostProcess:2
-        float* scores = interprete->typed_output_tensor<float>(2);  // TFLite_Detection_PostProcess:3 interprete->typed_output_tensor<float>(2)[0]
-        int num_detections = static_cast<int>(interprete->typed_output_tensor<float>(3)[0]);  // Número de detecciones
-        //float* outputTensor = interprete->typed_output_tensor<float>(0); // Identificador: 975
+    // Referencias a las clases Java
+    jclass arrayListClass = env->FindClass("java/util/ArrayList");
+    jmethodID arrayListConstructor = env->GetMethodID(arrayListClass, "<init>", "()V");
+    jmethodID arrayListAdd = env->GetMethodID(arrayListClass, "add", "(Ljava/lang/Object;)Z");
 
+    jclass resultsClass = env->FindClass("com/logic/tflitecapi/Results");
+    jmethodID resultsConstructor = env->GetMethodID(resultsClass, "<init>", "()V");
+    jfieldID boundingBoxField = env->GetFieldID(resultsClass, "boundingBoxes", "Landroid/graphics/RectF;");
+    jfieldID categoriesField = env->GetFieldID(resultsClass, "categories", "Ljava/util/List;");
 
-        int num_classes = interprete->tensor(interprete->outputs()[1])->dims->data[1];
-        std::cout << "Número de clases: " << num_classes << std::endl;
+    jclass categoryClass = env->FindClass("com/logic/tflitecapi/Category");
+    jmethodID categoryConstructor = env->GetMethodID(categoryClass, "<init>", "()V");
+    jfieldID labelField = env->GetFieldID(categoryClass, "label", "Ljava/lang/String;");
+    jfieldID scoreField = env->GetFieldID(categoryClass, "score", "F");
 
-        // Dibujar las cajas delimitadoras en la imagen original
-        string lab = "Nada";
-        vector<Resultados> resultadoEnv;
+    jclass rectFClass = env->FindClass("android/graphics/RectF");
+    jmethodID rectFConstructor = env->GetMethodID(rectFClass, "<init>", "(FFFF)V");
 
+    // Crear el ArrayList para los resultados
+    jobject resultsList = env->NewObject(arrayListClass, arrayListConstructor);
 
-        float scaleX = static_cast<float>(copiaSize.cols) / inputMat.cols;
-        float scaleY = static_cast<float>(copiaSize.rows) / inputMat.rows;
+    for (const auto& result : resultadoEnv) {
+        // Crear un objeto Results
+        jobject resultsObject = env->NewObject(resultsClass, resultsConstructor);
 
-        int maximo = 0;
+        // Crear el objeto RectF para el bounding box
+        jobject rectFObject = env->NewObject(rectFClass, rectFConstructor,
+                                             static_cast<jfloat>(result.boundingBox.x),
+                                             static_cast<jfloat>(result.boundingBox.y),
+                                             static_cast<jfloat>(result.boundingBox.x + result.boundingBox.width),
+                                             static_cast<jfloat>(result.boundingBox.y + result.boundingBox.height));
+        env->SetObjectField(resultsObject, boundingBoxField, rectFObject);
 
-        string ruta = "";
-        CascadeClassifier cascada = CascadeClassifier(ruta);
+        // Crear el ArrayList para las categorías
+        jobject categoriesList = env->NewObject(arrayListClass, arrayListConstructor);
 
-        vector<Rect> body;
+        for (const auto& category : result.categories) {
+            // Crear un objeto Category
+            jobject categoryObject = env->NewObject(categoryClass, categoryConstructor);
 
-        cascada.detectMultiScale(inputMat, body);
+            // Asignar los valores de la categoría
+            jstring label = env->NewStringUTF(category.label.c_str());
+            env->SetObjectField(categoryObject, labelField, label);
+            env->SetFloatField(categoryObject, scoreField, category.score);
 
-        for(int i = 0; i < body.size(); i++){
+            // Agregar la categoría al ArrayList
+            env->CallBooleanMethod(categoriesList, arrayListAdd, categoryObject);
 
-        }
-
-        for (int i = 0; i < num_detections; i++) {
-            if (scores[i] >= 0.5) {  // Umbral de confianza
-                if(maximo >= 5) break;
-                int ymin = static_cast<int>(boxes[i * 4] * 320 * scaleY );
-                int xmin = static_cast<int>(boxes[i * 4 + 1] * 320 * scaleX);
-                int ymax = static_cast<int>(boxes[i * 4 + 2] * 320 * scaleY);
-                int xmax = static_cast<int>(boxes[i * 4 + 3] * 320 * scaleX);
-
-                xmin = std::max(0, std::min(xmin, copiaSize.cols - 1));
-                xmax = std::max(0, std::min(xmax, copiaSize.cols - 1));
-                ymin = std::max(0, std::min(ymin, copiaSize.rows - 1));
-                ymax = std::max(0, std::min(ymax, copiaSize.rows - 1));
-
-
-
-                int class_id = static_cast<int>(classes[i]);
-                std::string label = (class_id < cocoNames.size()) ? cocoNames[class_id] : "No se";
-                float score = scores[i];
-
-                //cv::rectangle(inputMat, cv::Point(xmin, ymin), cv::Point(xmax, ymax), cv::Scalar(0, 255, 0), 2);
-
-                std::string label_text = label + ": " + std::to_string(score);
-                lab = label;
-                //cv::putText(inputMat, label_text, cv::Point(xmin, ymin - 10), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
-                Resultados resultados;
-                resultados.boundingBox.x = xmin;
-                resultados.boundingBox.y = ymin;
-                resultados.boundingBox.width = xmax - xmin;
-                resultados.boundingBox.height = ymax - ymin;
-                Categoria cate;
-                cate.label = label;
-                cate.score = score;
-                resultados.categories.push_back(cate);
-                resultadoEnv.push_back(resultados);
-                maximo++;
-            }
-        }
-        //return env->NewStringUTF(lab.c_str());
-
-        // Referencias a las clases Java
-        jclass arrayListClass = env->FindClass("java/util/ArrayList");
-        jmethodID arrayListConstructor = env->GetMethodID(arrayListClass, "<init>", "()V");
-        jmethodID arrayListAdd = env->GetMethodID(arrayListClass, "add", "(Ljava/lang/Object;)Z");
-
-        jclass resultsClass = env->FindClass("com/logic/tflitecapi/Results");
-        jmethodID resultsConstructor = env->GetMethodID(resultsClass, "<init>", "()V");
-        jfieldID boundingBoxField = env->GetFieldID(resultsClass, "boundingBoxes", "Landroid/graphics/RectF;");
-        jfieldID categoriesField = env->GetFieldID(resultsClass, "categories", "Ljava/util/List;");
-
-        jclass categoryClass = env->FindClass("com/logic/tflitecapi/Category");
-        jmethodID categoryConstructor = env->GetMethodID(categoryClass, "<init>", "()V");
-        jfieldID labelField = env->GetFieldID(categoryClass, "label", "Ljava/lang/String;");
-        jfieldID scoreField = env->GetFieldID(categoryClass, "score", "F");
-
-        jclass rectFClass = env->FindClass("android/graphics/RectF");
-        jmethodID rectFConstructor = env->GetMethodID(rectFClass, "<init>", "(FFFF)V");
-
-        // Crear el ArrayList para los resultados
-        jobject resultsList = env->NewObject(arrayListClass, arrayListConstructor);
-
-        for (const auto& result : resultadoEnv) {
-            // Crear un objeto Results
-            jobject resultsObject = env->NewObject(resultsClass, resultsConstructor);
-
-            // Crear el objeto RectF para el bounding box
-            jobject rectFObject = env->NewObject(rectFClass, rectFConstructor,
-                                                 static_cast<jfloat>(result.boundingBox.x),
-                                                 static_cast<jfloat>(result.boundingBox.y),
-                                                 static_cast<jfloat>(result.boundingBox.x + result.boundingBox.width),
-                                                 static_cast<jfloat>(result.boundingBox.y + result.boundingBox.height));
-            env->SetObjectField(resultsObject, boundingBoxField, rectFObject);
-
-            // Crear el ArrayList para las categorías
-            jobject categoriesList = env->NewObject(arrayListClass, arrayListConstructor);
-
-            for (const auto& category : result.categories) {
-                // Crear un objeto Category
-                jobject categoryObject = env->NewObject(categoryClass, categoryConstructor);
-
-                // Asignar los valores de la categoría
-                jstring label = env->NewStringUTF(category.label.c_str());
-                env->SetObjectField(categoryObject, labelField, label);
-                env->SetFloatField(categoryObject, scoreField, category.score);
-
-                // Agregar la categoría al ArrayList
-                env->CallBooleanMethod(categoriesList, arrayListAdd, categoryObject);
-
-                // Liberar referencias locales
-                env->DeleteLocalRef(categoryObject);
-                env->DeleteLocalRef(label);
+            // Liberar referencias locales
+            env->DeleteLocalRef(categoryObject);
+            env->DeleteLocalRef(label);
             }
 
             // Asignar la lista de categorías al objeto Results
@@ -289,15 +275,14 @@ extern "C"{
             env->DeleteLocalRef(categoriesList);
             env->DeleteLocalRef(rectFObject);
         }
-
         // Devolver el ArrayList
         return resultsList;
 
     }
 
-
-    JNIEXPORT jboolean Java_com_logic_tflitecapi_MainActivity_CreateSession(JNIEnv* env, jobject /**/, jstring modelo, jstring labels, jboolean gpu){
-        if(interprete == nullptr){
+    extern "C" JNIEXPORT jboolean
+    JNICALL Java_com_logic_tflitecapi_MainActivity_CreateSession(JNIEnv* env, jobject /**/, jstring modelo, jstring labels, jboolean gpu){
+        //if(interprete == nullptr){
             const char* model = env->GetStringUTFChars(modelo, nullptr);
             const char* etiqueta = env->GetStringUTFChars(labels, nullptr);
             //const char* gpu = env->GetBoolea(GPU);
@@ -305,7 +290,7 @@ extern "C"{
 
             string labelsPath = etiqueta;
             cocoNames = getClassNames(labelsPath);
-            const std::string modelPath = model;          // Path to TFLite model
+            const std::string modelPath = model;
             _model = tflite::FlatBufferModel::BuildFromFile(modelPath.c_str());
             tflite::ops::builtin::BuiltinOpResolver resolver;
 
@@ -319,7 +304,7 @@ extern "C"{
                 options.inference_priority2 = TFLITE_GPU_INFERENCE_PRIORITY_MAX_PRECISION;
                 options.inference_priority3 = TFLITE_GPU_INFERENCE_PRIORITY_AUTO;
                 options.inference_preference = TFLITE_GPU_INFERENCE_PREFERENCE_SUSTAINED_SPEED;
-//                options.experimental_flags = TFLITE_GPU_EXPERIMENTAL_FLAGS_GL_ONLY;
+                //                options.experimental_flags = TFLITE_GPU_EXPERIMENTAL_FLAGS_GL_ONLY;
 
                 //options.is_precision_loss_allowed = 1;
 
@@ -344,25 +329,30 @@ extern "C"{
                     fprintf(stderr, "Fallo nuevamente :(");
                     return false;
                 }
-                return true;
-            }
+                    return true;
+                }
 
-            if(interprete->AllocateTensors() != kTfLiteOk){
-                fprintf(stderr, "Fallo nuevamente :(");
-                return false;
-            }
+                if(interprete->AllocateTensors() != kTfLiteOk){
+                    fprintf(stderr, "Fallo nuevamente :(");
+                    return false;
+                }
 
-            return true;
-        }
-        return true;
-
+                    return true;
+                //}
+        //return true;
     }
 
+extern "C"{
 
-    JNICALL void Java_com_logic_tflitecapi_MainActivity_LiberarRecursos(JNIEnv* env, jobject /**/){
-//        _model = nullptr;
-//        gpuDelegate = nullptr;
-//        interprete = nullptr;
-        //std _model;
-    }
+
+
+
+
+
+//    JNICALL void Java_com_logic_tflitecapi_MainActivity_LiberarRecursos(JNIEnv* env, jobject /**/){
+////        _model = nullptr;
+////        gpuDelegate = nullptr;
+////        interprete = nullptr;
+//        //std _model;
+//    }
 }

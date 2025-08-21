@@ -23,12 +23,10 @@ limitations under the License.
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
-#include "absl/log/log.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/time/clock.h"
 #include "absl/types/span.h"
 #include "tensorflow/compiler/mlir/tensorflow/translate/upgrade_graph.h"
-#include "tensorflow/compiler/tf2xla/functionalize_control_flow.h"
 #include "tensorflow/core/common_runtime/function_body.h"
 #include "tensorflow/core/common_runtime/function_def_utils.h"
 #include "tensorflow/core/common_runtime/graph_constructor.h"
@@ -48,9 +46,7 @@ limitations under the License.
 #include "tensorflow/core/platform/statusor.h"
 #include "tensorflow/core/protobuf/config.pb.h"
 #include "tensorflow/core/tfrt/fallback/fallback_state.h"
-#include "tensorflow/core/tfrt/graph_executor/config.h"
 #include "tensorflow/core/util/dump_graph.h"
-#include "tsl/platform/errors.h"
 
 namespace tensorflow {
 namespace tfrt_stub {
@@ -100,7 +96,7 @@ absl::flat_hash_set<std::string> FindFunctionsToOptimize(
 
 // Preprocesses `graph_def`, returns the functions to optimize if
 // `run_placer_grappler_on_functions` is true.
-absl::StatusOr<absl::flat_hash_set<std::string>> PreprocessGraph(
+StatusOr<absl::flat_hash_set<std::string>> PreprocessGraph(
     tensorflow::GraphDef& graph_def, bool run_placer_grappler_on_functions) {
   if (VLOG_IS_ON(1)) {
     DumpGraphDefToFile("before_generate_resource_shared_name_graph_def",
@@ -121,42 +117,21 @@ absl::StatusOr<absl::flat_hash_set<std::string>> PreprocessGraph(
   return absl::flat_hash_set<std::string>();
 }
 
-bool GetTf2xlaMlirBridgeState(
-    const tensorflow::tfrt_stub::RuntimeConfig* runtime_config) {
-  bool enable_tf2xla_mlir_bridge = true;
-  if (runtime_config == nullptr) return enable_tf2xla_mlir_bridge;
-  if (auto mlir_bridge_config =
-          runtime_config->Get<tensorflow::tf2xla::v1::MlirBridgeConfig>();
-      mlir_bridge_config.ok()) {
-    if (mlir_bridge_config->has_enable_tf2xla_mlir_bridge()) {
-      LOG(INFO) << "enable_tf2xla_mlir_bridge in mlir_bridge_config is "
-                << mlir_bridge_config->enable_tf2xla_mlir_bridge();
-      enable_tf2xla_mlir_bridge =
-          mlir_bridge_config->enable_tf2xla_mlir_bridge();
-    }
-  }
-  return enable_tf2xla_mlir_bridge;
-}
-
 }  // namespace
 
-absl::StatusOr<std::unique_ptr<TfrtGraphExecutionState>>
-TfrtGraphExecutionState::Create(
-    const TfrtGraphExecutionState::Options& options,
-    tensorflow::GraphDef graph_def, const FallbackState& fallback_state,
-    tensorflow::tfrt_stub::RuntimeConfig* runtime_config) {
+StatusOr<std::unique_ptr<TfrtGraphExecutionState>>
+TfrtGraphExecutionState::Create(const TfrtGraphExecutionState::Options& options,
+                                tensorflow::GraphDef graph_def,
+                                const FallbackState& fallback_state) {
   TF_ASSIGN_OR_RETURN(
       auto functions_to_optimize,
       PreprocessGraph(graph_def, options.run_placer_grappler_on_functions));
-
-  bool enable_tf2xla_mlir_bridge = GetTf2xlaMlirBridgeState(runtime_config);
 
   // `CreateGraphExecutionState()` will preprocess the graph (e.g., apply
   // Placer to the top level graph).
   TF_ASSIGN_OR_RETURN(auto graph_execution_state,
                       fallback_state.CreateGraphExecutionState(
-                          std::move(graph_def), options.run_placer_on_graph,
-                          enable_tf2xla_mlir_bridge));
+                          std::move(graph_def), options.run_placer_on_graph));
 
   return std::make_unique<TfrtGraphExecutionState>(
       options, std::move(graph_execution_state), fallback_state,
@@ -197,11 +172,9 @@ tensorflow::GraphDef CreateGraphDefFromGraphAndFlibDef(
 }
 
 // Creates a pruned graph from `graph_def` according to `callable_options`.
-absl::StatusOr<std::unique_ptr<tensorflow::Graph>> CreatePrunedGraph(
+StatusOr<std::unique_ptr<tensorflow::Graph>> CreatePrunedGraph(
     tensorflow::GraphDef graph_def, const CallableOptions& callable_options) {
-  // clang-tidy off
   VLOG(1) << "Creating pruned graph: " << callable_options.DebugString();
-  // clang-tidy on
 
   // Prune the graph with `callable_options`. Although
   // grappler has model_pruner stage, it may leave v1 control flows in an
@@ -253,7 +226,7 @@ NodeDef CreateNewIdentityNode(const NodeDef& node,
 
 }  // namespace
 
-absl::StatusOr<TfrtGraphExecutionState::OptimizationResult>
+StatusOr<TfrtGraphExecutionState::OptimizationResult>
 TfrtGraphExecutionState::CreateOptimizedGraph(
     tensorflow::GraphImportConfig& graph_import_config) {
   OptimizationResult result;
@@ -275,9 +248,9 @@ TfrtGraphExecutionState::CreateOptimizedGraph(
     DumpGraphDefToFile("before_pruning", graph_def);
   }
 
-  TF_ASSIGN_OR_RETURN(result.graph,
-                      CreatePrunedGraph(std::move(graph_def),
-                                        build_graph_options.callable_options));
+  TF_ASSIGN_OR_RETURN(
+      result.graph,
+      CreatePrunedGraph(graph_def, build_graph_options.callable_options));
   DCHECK(result.graph);
 
   if (VLOG_IS_ON(1)) {
@@ -289,14 +262,11 @@ TfrtGraphExecutionState::CreateOptimizedGraph(
   // Perform functionalization to convert v1 control flow to v2 control flow. It
   // should be applied to the unoptimized graph, because Grappler may cause
   // unfunctionalizablity.
-  TF_RETURN_WITH_CONTEXT_IF_ERROR(
-      FunctionalizeControlFlow(
-          result.graph.get(),
-          const_cast<tensorflow::FunctionLibraryDefinition*>(
-              &result.graph->flib_def()),
-          NodeFilter{},
-          /*include_functions=*/true),
-      tensorflow::kFunctionalizeControlFlowFailureMessage);
+  TF_RETURN_IF_ERROR(tensorflow::UpgradeLegacyGraph(
+      result.graph.get(),
+      const_cast<tensorflow::FunctionLibraryDefinition*>(
+          &result.graph->flib_def()),
+      /*restrict_functionalization_to_compiled_nodes=*/false));
 
   if (VLOG_IS_ON(1)) {
     DumpGraphToFile("after_functionalization", *result.graph);
@@ -324,7 +294,7 @@ TfrtGraphExecutionState::CreateOptimizedGraph(
   return result;
 }
 
-absl::Status TfrtGraphExecutionState::Extend(const GraphDef& graph) {
+Status TfrtGraphExecutionState::Extend(const GraphDef& graph) {
   std::unique_ptr<GraphExecutionState> new_state;
   absl::MutexLock lock(&graph_execution_state_mu_);
   TF_RETURN_IF_ERROR(graph_execution_state_->Extend(graph, &new_state));
@@ -336,13 +306,13 @@ absl::Status TfrtGraphExecutionState::Extend(const GraphDef& graph) {
       functions_to_optimize_,
       PreprocessGraph(*graph_def, options_.run_placer_grappler_on_functions));
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 namespace {
 
 // Given an "Exit" node, finds its corresponding "LoopCond" node.
-absl::StatusOr<const NodeDef*> FindLoopCondFromExitNode(
+StatusOr<const NodeDef*> FindLoopCondFromExitNode(
     const NodeDef& exit_node,
     const absl::flat_hash_map<std::string, NodeDef*>& name_to_node) {
   const NodeDef* switch_node = nullptr;
@@ -383,8 +353,8 @@ absl::StatusOr<const NodeDef*> FindLoopCondFromExitNode(
 
 }  // namespace
 
-absl::Status PruneGraphDef(GraphDef& graph_def,
-                           const CallableOptions& callable_options) {
+Status PruneGraphDef(GraphDef& graph_def,
+                     const CallableOptions& callable_options) {
   // Gather node names and create a map from names to NodeDefs.
   absl::flat_hash_map<std::string, NodeDef*> name_to_node;
   // All exit nodes in order to track all while loops.
@@ -512,11 +482,10 @@ absl::Status PruneGraphDef(GraphDef& graph_def,
     *graph_def.add_node() = std::move(node);
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status EliminateRefVariablesFromV1ControlFlow(
-    tensorflow::GraphDef& graph_def) {
+Status EliminateRefVariablesFromV1ControlFlow(tensorflow::GraphDef& graph_def) {
   auto* op_factory = OpRegistry::Global();
 
   absl::flat_hash_set<std::string> ref_nodes;
@@ -590,7 +559,7 @@ absl::Status EliminateRefVariablesFromV1ControlFlow(
   }
 
   graph_def.mutable_node()->Swap(updated_graph_def.mutable_node());
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 void RemoveInputShapesInFunctions(tensorflow::GraphDef& graph_def) {
@@ -606,7 +575,7 @@ namespace {
 // `functions_to_optimize`) using `flib` and `fallback_state`. Each
 // function is converted to a graph and optimized with Placer and Grappler, then
 // converted back to a function to replace the old one.
-absl::Status OptimizeFunctions(
+Status OptimizeFunctions(
     FunctionDefLibrary& flib_proto, const FunctionLibraryDefinition& flib,
     const FallbackState& fallback_state,
     const absl::flat_hash_set<std::string>& functions_to_optimize) {
@@ -672,12 +641,12 @@ absl::Status OptimizeFunctions(
 
     fdef = std::move(new_fdef);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace
 
-absl::StatusOr<std::unique_ptr<tensorflow::Graph>>
+StatusOr<std::unique_ptr<tensorflow::Graph>>
 TfrtGraphExecutionState::OptimizeGraph(
     const tensorflow::Graph& graph,
     const tensorflow::BuildGraphOptions& build_graph_options) {

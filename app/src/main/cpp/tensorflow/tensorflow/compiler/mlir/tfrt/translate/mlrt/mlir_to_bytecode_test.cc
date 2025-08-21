@@ -19,24 +19,12 @@ limitations under the License.
 #include <vector>
 
 #include <gmock/gmock.h>
-#include <gtest/gtest.h>
-#include "absl/status/status.h"
-#include "absl/status/statusor.h"
-#include "absl/strings/string_view.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"  // from @llvm-project
-#include "mlir/IR/Attributes.h"  // from @llvm-project
-#include "mlir/IR/BuiltinAttributes.h"  // from @llvm-project
-#include "mlir/IR/BuiltinOps.h"  // from @llvm-project
-#include "mlir/IR/BuiltinTypes.h"  // from @llvm-project
-#include "mlir/IR/DialectRegistry.h"  // from @llvm-project
-#include "mlir/IR/MLIRContext.h"  // from @llvm-project
 #include "mlir/Parser/Parser.h"  // from @llvm-project
-#include "mlir/Support/LLVM.h"  // from @llvm-project
-#include "tensorflow/core/tfrt/mlrt/bytecode/bytecode.h"
 #include "tensorflow/core/tfrt/mlrt/bytecode/executable.h"
 #include "tensorflow/core/tfrt/mlrt/interpreter/attribute_span.h"
-#include "tsl/platform/resource_loader.h"
-#include "tsl/platform/status_matchers.h"
+#include "tensorflow/tsl/platform/resource_loader.h"
+#include "tensorflow/tsl/platform/status_matchers.h"
 
 namespace mlrt {
 namespace {
@@ -136,7 +124,7 @@ TEST(MlirToByteCodeTest, BasicAttributes) {
 
   auto attributes = executable.attributes();
 
-  ASSERT_EQ(attributes.size(), 15);
+  ASSERT_EQ(attributes.size(), 14);
 
   auto attr_iter = attributes.begin();
 
@@ -190,13 +178,9 @@ TEST(MlirToByteCodeTest, BasicAttributes) {
 
   bc::Vector<int32_t> empty_dense_array((*attr_iter).data());
   EXPECT_TRUE(empty_dense_array.empty());
-  ++attr_iter;
-
-  bc::Vector<uint8_t> dense_array_of_bool((*attr_iter).data());
-  EXPECT_THAT(dense_array_of_bool, ElementsAreArray({true, false}));
 
   auto kernels = executable.functions()[0].kernels();
-  ASSERT_EQ(kernels.size(), 16);
+  ASSERT_EQ(kernels.size(), 15);
   auto kernel_iter = kernels.begin();
 
   auto attribute_span = [&](auto kernel_iter) {
@@ -251,10 +235,6 @@ TEST(MlirToByteCodeTest, BasicAttributes) {
 
   EXPECT_THAT(attribute_span(kernel_iter).GetAs<bc::Vector<int32_t>>(0),
               IsEmpty());
-  ++kernel_iter;
-
-  EXPECT_THAT(attribute_span(kernel_iter).GetAs<bc::Vector<bool>>(0),
-              ElementsAreArray({true, false}));
 }
 
 TEST(MlirToByteCodeTest, UnsupportedAttributes) {
@@ -319,13 +299,13 @@ class CustomDense {
 
 absl::StatusOr<std::string> EncodeCustomDense(const ModuleEmitterContext&,
                                               mlir::Attribute attr) {
-  auto dense_int_attr = mlir::dyn_cast<mlir::DenseIntElementsAttr>(attr);
+  auto dense_int_attr = attr.dyn_cast<mlir::DenseIntElementsAttr>();
   if (!dense_int_attr)
     return absl::InvalidArgumentError(
         "The element of the custom dense attribute must be an integer.");
 
-  if (mlir::cast<mlir::IntegerType>(dense_int_attr.getElementType())
-          .getWidth() != 32) {
+  if (dense_int_attr.getElementType().cast<mlir::IntegerType>().getWidth() !=
+      32) {
     return absl::InvalidArgumentError(
         "The element of the custom dense attribute must be an i32 integer.");
   }

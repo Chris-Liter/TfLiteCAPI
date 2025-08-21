@@ -79,13 +79,13 @@ void PopulateTensorFromExtra(const RecvBufRespExtra& extra,
   }
 }
 
-absl::Status PopulateTensorFromResponse(const RecvBufResponse& response,
-                                        Tensor* cpu_tensor) {
+Status PopulateTensorFromResponse(const RecvBufResponse& response,
+                                  Tensor* cpu_tensor) {
   const bool has_transport_options = response.has_transport_options();
 
   // If there are no transport options, then the tensor has already been
   // copied into request.buf_ptr.
-  if (!has_transport_options) return absl::OkStatus();
+  if (!has_transport_options) return OkStatus();
 
   const int64_t total_bytes = cpu_tensor->TotalBytes();
   int64_t num_bytes = 0;
@@ -101,7 +101,7 @@ absl::Status PopulateTensorFromResponse(const RecvBufResponse& response,
                             " bytes, expected: ", cpu_tensor->TotalBytes());
   }
   PopulateTensorFromExtra(extra, cpu_tensor);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace
@@ -129,8 +129,9 @@ void CollectiveRemoteAccessDistributed::RecvFromPeer(
   };
   State* state = new State;
 
-  absl::Status s = dev_resolver_->GetDeviceAttributes(
-      peer_device, &state->server_attributes);
+  DeviceAttributes server_attributes;
+  Status s = dev_resolver_->GetDeviceAttributes(peer_device,
+                                                &state->server_attributes);
   if (!s.ok()) {
     delete state;
     done(s);
@@ -144,7 +145,7 @@ void CollectiveRemoteAccessDistributed::RecvFromPeer(
     // Use GPU-registered memory for the CPU tensor so the transfer
     // goes faster.
 
-    absl::Status status = dev_mgr_->LookupDevice("CPU:0", &cpu_dev);
+    Status status = dev_mgr_->LookupDevice("CPU:0", &cpu_dev);
     if (!status.ok()) {
       delete state;
       done(s);
@@ -152,7 +153,7 @@ void CollectiveRemoteAccessDistributed::RecvFromPeer(
     }
     AllocatorAttributes cpu_attr;
     cpu_attr.set_gpu_compatible(true);
-    tsl::profiler::ScopedMemoryDebugAnnotation op_annotation(
+    profiler::ScopedMemoryDebugAnnotation op_annotation(
         "CollectiveRemoteAccessDistributed::RecvFromPeer"
         "::recv_buf_callback",
         step_id_, "dynamic", to_tensor->dtype(),
@@ -169,7 +170,7 @@ void CollectiveRemoteAccessDistributed::RecvFromPeer(
   // Logic to be executed on the RecvBufAsync callback.
   auto recv_buf_callback =
       [this, state, to_device, to_alloc_attr, to_device_ctx, to_tensor, cpu_dev,
-       dev_to_dev_stream_index, dst_tensor, done](const absl::Status& s) {
+       dev_to_dev_stream_index, dst_tensor, done](const Status& s) {
         if (s.ok()) {
           // In this generic implementation the bytes come back in one of 2
           // ways:
@@ -183,7 +184,7 @@ void CollectiveRemoteAccessDistributed::RecvFromPeer(
           // (NOP in 2nd case) In case the final to_tensor is on GPU, buf_ptr
           // points to a tmp CPU buffer and needs to be copied over to
           // to_tensor.
-          absl::Status status =
+          Status status =
               PopulateTensorFromResponse(state->call->resp_, dst_tensor);
           if (!status.ok()) {
             done(status);
@@ -198,7 +199,7 @@ void CollectiveRemoteAccessDistributed::RecvFromPeer(
                                nullptr /*send_dev_ctx*/, to_device_ctx, cpu_dev,
                                to_device, cpu_attr, to_alloc_attr, dst_tensor,
                                to_tensor, dev_to_dev_stream_index,
-                               [this, state, done](const absl::Status& s) {
+                               [this, state, done](const Status& s) {
                                  delete state;
                                  // This callback must not block, so execute
                                  // done in another thread.
@@ -211,10 +212,10 @@ void CollectiveRemoteAccessDistributed::RecvFromPeer(
         done(s);
       };
 
-  state->call = std::make_unique<RecvBufCall>(
+  state->call.reset(new RecvBufCall(
       step_id_, peer_device, peer_task, key, to_device, to_device_ctx,
       to_alloc_attr, dst_tensor, client_locality, state->server_attributes,
-      cancellation_manager, worker_cache_);
+      cancellation_manager, worker_cache_));
   CancellationToken abortion_token =
       abortion_cancel_mgr_.get_cancellation_token();
   bool already_aborted = !abortion_cancel_mgr_.RegisterCallback(
@@ -222,12 +223,11 @@ void CollectiveRemoteAccessDistributed::RecvFromPeer(
   if (already_aborted) {
     recv_buf_callback(errors::Cancelled("collective ops already aborted"));
   } else {
-    state->call->Start(
-        [this, abortion_token,
-         done = std::move(recv_buf_callback)](const absl::Status& s) {
-          abortion_cancel_mgr_.DeregisterCallback(abortion_token);
-          done(s);
-        });
+    state->call->Start([this, abortion_token,
+                        done = std::move(recv_buf_callback)](const Status& s) {
+      abortion_cancel_mgr_.DeregisterCallback(abortion_token);
+      done(s);
+    });
   }
 }
 
@@ -236,7 +236,7 @@ void CollectiveRemoteAccessDistributed::CheckPeerHealth(
     const StatusCallback& done) {
   if (peer_task == task_name_) {
     // Fast path if the peer is the worker itself.
-    done(absl::OkStatus());
+    done(OkStatus());
     return;
   }
   // We send a GetStatus RPC to check the health of a peer task. If the RPC
@@ -259,7 +259,7 @@ void CollectiveRemoteAccessDistributed::CheckPeerHealth(
   // cancelled.
   wi->GetStatusAsync(
       opts, req, resp, /*fail_fast*/ true,
-      [this, opts, req, resp, wi, peer_task, done](absl::Status s) {
+      [this, opts, req, resp, wi, peer_task, done](Status s) {
         std::vector<DeviceAttributes> cached_attrs;
         if (s.ok()) {
           s = dev_resolver_->GetAllDeviceAttributes(peer_task, &cached_attrs);
@@ -282,7 +282,7 @@ void CollectiveRemoteAccessDistributed::CheckPeerHealth(
           // Skip validating device incarnation if we don't know what the
           // incarnation should be. The device attribute is cached after the
           // first collective.
-          s = absl::OkStatus();
+          s = OkStatus();
         }
         delete opts;
         delete req;
@@ -292,7 +292,7 @@ void CollectiveRemoteAccessDistributed::CheckPeerHealth(
       });
 }
 
-void CollectiveRemoteAccessDistributed::StartAbort(const absl::Status& s) {
+void CollectiveRemoteAccessDistributed::StartAbort(const Status& s) {
   CollectiveRemoteAccessLocal::StartAbort(s);
   abortion_cancel_mgr_.StartCancel();
 }

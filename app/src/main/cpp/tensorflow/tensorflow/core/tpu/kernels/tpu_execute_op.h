@@ -46,10 +46,9 @@ class TPUExecuteOp : public AsyncOpKernel {
   std::vector<int> fused_device_var_updates_in_computation_outputs_;
 
  private:
-  absl::Status DoWork(OpKernelContext* context);
+  Status DoWork(OpKernelContext* context);
 
-  TPUExecuteOp(const TPUExecuteOp&) = delete;
-  void operator=(const TPUExecuteOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(TPUExecuteOp);
 };
 
 // A variant of TPUExecuteOp that contains fused device variable reads and
@@ -60,9 +59,7 @@ class TPUExecuteAndUpdateVariablesOp : public TPUExecuteOp {
   ~TPUExecuteAndUpdateVariablesOp() override = default;
 
  private:
-  TPUExecuteAndUpdateVariablesOp(const TPUExecuteAndUpdateVariablesOp&) =
-      delete;
-  void operator=(const TPUExecuteAndUpdateVariablesOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(TPUExecuteAndUpdateVariablesOp);
 };
 
 }  // namespace tensorflow

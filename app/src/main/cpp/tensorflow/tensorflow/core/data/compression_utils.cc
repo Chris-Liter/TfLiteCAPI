@@ -14,20 +14,19 @@ limitations under the License.
 ==============================================================================*/
 #include "tensorflow/core/data/compression_utils.h"
 
-#include <cstddef>
+#include <limits>
 #include <string>
 #include <vector>
 
-#include "absl/log/log.h"
-#include "absl/status/status.h"
 #include "tensorflow/core/common_runtime/dma_helper.h"
-#include "tensorflow/core/framework/dataset.pb.h"
 #include "tensorflow/core/framework/tensor.pb.h"
+#include "tensorflow/core/framework/tensor_shape.pb.h"
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/framework/variant_op_registry.h"
 #include "tensorflow/core/platform/errors.h"
 #include "tensorflow/core/platform/snappy.h"
 #include "tensorflow/core/platform/status.h"
+#include "tensorflow/core/platform/statusor.h"
 #include "tensorflow/core/platform/types.h"
 
 namespace tensorflow {
@@ -64,8 +63,8 @@ class Iov {
   size_t num_bytes_;
 };
 
-absl::Status CompressElement(const std::vector<Tensor>& element,
-                             CompressedElement* out) {
+Status CompressElement(const std::vector<Tensor>& element,
+                       CompressedElement* out) {
   // First pass: preprocess the non`memcpy`able tensors.
   size_t num_string_tensors = 0;
   size_t num_string_tensor_strings = 0;
@@ -135,11 +134,11 @@ absl::Status CompressElement(const std::vector<Tensor>& element,
   out->set_version(kCompressedElementVersion);
   VLOG(3) << "Compressed element from " << iov.NumBytes() << " bytes to "
           << out->data().size() << " bytes";
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status UncompressElement(const CompressedElement& compressed,
-                               std::vector<Tensor>* out) {
+Status UncompressElement(const CompressedElement& compressed,
+                         std::vector<Tensor>* out) {
   if (compressed.version() != kCompressedElementVersion) {
     return errors::Internal("Unsupported compressed element version: ",
                             compressed.version());
@@ -231,7 +230,7 @@ absl::Status UncompressElement(const CompressedElement& compressed,
       nonmemcpyable_pos += metadata.uncompressed_bytes(0);
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 REGISTER_UNARY_VARIANT_DECODE_FUNCTION(CompressedElement,

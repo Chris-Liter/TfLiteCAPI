@@ -883,10 +883,7 @@ class BinaryOpTest(test.TestCase):
     z = math_ops.pow(x, y)
     self.assertAllEqual(self.evaluate(z), [0, 1, 1, 1, -1])
 
-  @test.disable_with_predicate(
-      pred=test.is_built_with_rocm, skip_message="On ROCm this test fails"
-  )
-  def testFloorModfInfDenominator(self):
+  def testFloorModInfDenominator(self):
     """Regression test for GitHub issue #58369."""
     if not test_util.is_gpu_available():
       self.skipTest("Requires GPU")

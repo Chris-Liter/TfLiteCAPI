@@ -13,14 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
+#include "tensorflow/compiler/tf2xla/shape_util.h"
+#include "tensorflow/compiler/tf2xla/xla_compiler.h"
 #include "tensorflow/compiler/tf2xla/xla_op_kernel.h"
 #include "tensorflow/compiler/tf2xla/xla_op_registry.h"
-#include "xla/hlo/builder/lib/quantize.h"
-#include "xla/hlo/builder/xla_builder.h"
-#include "xla/xla_data.pb.h"
+#include "tensorflow/compiler/xla/client/lib/quantize.h"
+#include "tensorflow/compiler/xla/client/xla_builder.h"
+#include "tensorflow/compiler/xla/xla_data.pb.h"
 #include "tensorflow/core/framework/op_kernel.h"
-#include "tensorflow/core/framework/op_requires.h"
-#include "tensorflow/core/platform/types.h"
 
 namespace tensorflow {
 namespace {
@@ -51,8 +51,7 @@ class XlaDequantizeOp : public XlaOpKernel {
   float max_range_;
   bool transpose_output_;
   string mode_;
-  XlaDequantizeOp(const XlaDequantizeOp&) = delete;
-  void operator=(const XlaDequantizeOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(XlaDequantizeOp);
 };
 
 REGISTER_XLA_OP(Name("XlaDequantize"), XlaDequantizeOp);

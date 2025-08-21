@@ -250,13 +250,13 @@ bool HasFanoutValue(const FanoutsMap& fanouts, const FanoutsMap::iterator& it) {
   return it != fanouts.end() && !it->second.empty();
 }
 
-absl::Status MutationError(absl::string_view function_name,
-                           absl::string_view params, absl::string_view msg) {
+Status MutationError(absl::string_view function_name, absl::string_view params,
+                     absl::string_view msg) {
   return errors::InvalidArgument(absl::Substitute(
       "MutableGraphView::$0($1) error: $2.", function_name, params, msg));
 }
 
-using ErrorHandler = std::function<absl::Status(absl::string_view)>;
+using ErrorHandler = std::function<Status(absl::string_view)>;
 
 ErrorHandler UpdateFanoutsError(absl::string_view from_node_name,
                                 absl::string_view to_node_name) {
@@ -267,55 +267,53 @@ ErrorHandler UpdateFanoutsError(absl::string_view from_node_name,
   };
 }
 
-absl::Status CheckFaninIsRegular(const TensorId& fanin, ErrorHandler handler) {
+Status CheckFaninIsRegular(const TensorId& fanin, ErrorHandler handler) {
   if (!IsTensorIdRegular(fanin)) {
     return handler(absl::Substitute("fanin '$0' must be a regular tensor id",
                                     fanin.ToString()));
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status CheckFaninIsValid(const TensorId& fanin, ErrorHandler handler) {
+Status CheckFaninIsValid(const TensorId& fanin, ErrorHandler handler) {
   if (!IsTensorIdPortValid(fanin)) {
     return handler(absl::Substitute("fanin '$0' must be a valid tensor id",
                                     fanin.ToString()));
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status CheckAddingFaninToSelf(absl::string_view node_name,
-                                    const TensorId& fanin,
-                                    ErrorHandler handler) {
+Status CheckAddingFaninToSelf(absl::string_view node_name,
+                              const TensorId& fanin, ErrorHandler handler) {
   if (node_name == fanin.node()) {
     return handler(
         absl::Substitute("can't add fanin '$0' to self", fanin.ToString()));
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status CheckRemovingFaninFromSelf(absl::string_view node_name,
-                                        const TensorId& fanin,
-                                        ErrorHandler handler) {
+Status CheckRemovingFaninFromSelf(absl::string_view node_name,
+                                  const TensorId& fanin, ErrorHandler handler) {
   if (node_name == fanin.node()) {
     return handler(absl::Substitute("can't remove fanin '$0' from self",
                                     fanin.ToString()));
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 string NodeMissingErrorMsg(absl::string_view node_name) {
   return absl::Substitute("node '$0' was not found", node_name);
 }
 
-absl::Status CheckNodeExists(absl::string_view node_name, NodeDef* node,
-                             ErrorHandler handler) {
+Status CheckNodeExists(absl::string_view node_name, NodeDef* node,
+                       ErrorHandler handler) {
   if (node == nullptr) {
     return handler(NodeMissingErrorMsg(node_name));
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status CheckPortRange(int port, int min, int max, ErrorHandler handler) {
+Status CheckPortRange(int port, int min, int max, ErrorHandler handler) {
   if (port < min || port > max) {
     if (max < min) {
       return handler("no available ports as node has no regular fanins");
@@ -323,7 +321,7 @@ absl::Status CheckPortRange(int port, int min, int max, ErrorHandler handler) {
     return handler(
         absl::Substitute("port must be in range [$0, $1]", min, max));
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 string SwapNodeNamesSwitchControlErrorMsg(absl::string_view node_name) {
@@ -388,8 +386,8 @@ void MutableGraphView::AddAndDedupFanouts(NodeDef* node) {
         fanouts()[output].emplace(node, Graph::kControlSlot);
       } else {
         max_input_port = pos;
-        int& max_port = max_regular_output_port()[output.node];
-        max_port = std::max(max_port, output.port_id);
+        max_regular_output_port()[output.node] =
+            std::max(max_regular_output_port()[output.node], output.port_id);
         fanouts()[output].emplace(node, pos);
       }
       ++pos;
@@ -464,7 +462,7 @@ NodeDef* MutableGraphView::AddNode(NodeDef&& node) {
   return node_in_graph;
 }
 
-absl::Status MutableGraphView::AddSubgraph(GraphDef&& subgraph) {
+Status MutableGraphView::AddSubgraph(GraphDef&& subgraph) {
   // 1. Add all new functions and check that functions with the same name
   // have identical definition.
   const int function_size = subgraph.library().function_size();
@@ -510,10 +508,10 @@ absl::Status MutableGraphView::AddSubgraph(GraphDef&& subgraph) {
     AddAndDedupFanouts(node);
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status MutableGraphView::UpdateNode(
+Status MutableGraphView::UpdateNode(
     absl::string_view node_name, absl::string_view op, absl::string_view device,
     absl::Span<const std::pair<string, AttrValue>> attrs) {
   auto error_status = [node_name, op, device, attrs](absl::string_view msg) {
@@ -551,7 +549,7 @@ absl::Status MutableGraphView::UpdateNode(
   }
 
   if (node->op() == op) {
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   node->set_op(string(op));
@@ -564,12 +562,12 @@ absl::Status MutableGraphView::UpdateNode(
     }
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status MutableGraphView::UpdateNodeName(absl::string_view from_node_name,
-                                              absl::string_view to_node_name,
-                                              bool update_fanouts) {
+Status MutableGraphView::UpdateNodeName(absl::string_view from_node_name,
+                                        absl::string_view to_node_name,
+                                        bool update_fanouts) {
   auto error_status = [from_node_name, to_node_name,
                        update_fanouts](absl::string_view msg) {
     string params = absl::Substitute(
@@ -582,7 +580,7 @@ absl::Status MutableGraphView::UpdateNodeName(absl::string_view from_node_name,
   TF_RETURN_IF_ERROR(CheckNodeExists(from_node_name, node, error_status));
 
   if (node->name() == to_node_name) {
-    return absl::OkStatus();
+    return OkStatus();
   }
   if (HasNode(to_node_name)) {
     return error_status(
@@ -607,12 +605,12 @@ absl::Status MutableGraphView::UpdateNodeName(absl::string_view from_node_name,
   nodes().erase(node->name());
   node->set_name(string(to_node_name));
   nodes().emplace(node->name(), node);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status MutableGraphView::SwapNodeNames(absl::string_view from_node_name,
-                                             absl::string_view to_node_name,
-                                             bool update_fanouts) {
+Status MutableGraphView::SwapNodeNames(absl::string_view from_node_name,
+                                       absl::string_view to_node_name,
+                                       bool update_fanouts) {
   auto error_status = [from_node_name, to_node_name,
                        update_fanouts](absl::string_view msg) {
     string params = absl::Substitute(
@@ -624,7 +622,7 @@ absl::Status MutableGraphView::SwapNodeNames(absl::string_view from_node_name,
   NodeDef* from_node = GetNode(from_node_name);
   TF_RETURN_IF_ERROR(CheckNodeExists(from_node_name, from_node, error_status));
   if (from_node_name == to_node_name) {
-    return absl::OkStatus();
+    return OkStatus();
   }
   NodeDef* to_node = GetNode(to_node_name);
   TF_RETURN_IF_ERROR(CheckNodeExists(to_node_name, to_node, error_status));
@@ -641,7 +639,7 @@ absl::Status MutableGraphView::SwapNodeNames(absl::string_view from_node_name,
     SwapFanoutInputs(*this, &fanouts(), &max_regular_output_port(), from_node,
                      to_node);
     swap_names();
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   bool from_is_switch = IsSwitch(*from_node);
@@ -752,11 +750,11 @@ absl::Status MutableGraphView::SwapNodeNames(absl::string_view from_node_name,
     }
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status MutableGraphView::UpdateFanouts(absl::string_view from_node_name,
-                                             absl::string_view to_node_name) {
+Status MutableGraphView::UpdateFanouts(absl::string_view from_node_name,
+                                       absl::string_view to_node_name) {
   NodeDef* from_node = GetNode(from_node_name);
   TF_RETURN_IF_ERROR(
       CheckNodeExists(from_node_name, from_node,
@@ -768,12 +766,12 @@ absl::Status MutableGraphView::UpdateFanouts(absl::string_view from_node_name,
   return UpdateFanoutsInternal(from_node, to_node);
 }
 
-absl::Status MutableGraphView::UpdateFanoutsInternal(NodeDef* from_node,
-                                                     NodeDef* to_node) {
+Status MutableGraphView::UpdateFanoutsInternal(NodeDef* from_node,
+                                               NodeDef* to_node) {
   VLOG(2) << absl::Substitute("Update fanouts from '$0' to '$1'.",
                               from_node->name(), to_node->name());
   if (from_node == to_node) {
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   // Update internal state with the new output_port->input_port edge.
@@ -862,7 +860,7 @@ absl::Status MutableGraphView::UpdateFanoutsInternal(NodeDef* from_node,
     max_regular_output_port().erase(from_node);
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 bool MutableGraphView::AddFaninInternal(NodeDef* node,
@@ -913,8 +911,8 @@ bool MutableGraphView::AddFaninInternal(NodeDef* node,
   return true;
 }
 
-absl::Status MutableGraphView::AddRegularFanin(absl::string_view node_name,
-                                               const TensorId& fanin) {
+Status MutableGraphView::AddRegularFanin(absl::string_view node_name,
+                                         const TensorId& fanin) {
   auto error_status = [node_name, fanin](absl::string_view msg) {
     string params = absl::Substitute("node_name='$0', fanin='$1'", node_name,
                                      fanin.ToString());
@@ -929,11 +927,12 @@ absl::Status MutableGraphView::AddRegularFanin(absl::string_view node_name,
   TF_RETURN_IF_ERROR(CheckNodeExists(fanin.node(), fanin_node, error_status));
 
   AddFaninInternal(node, {fanin_node, fanin.index()});
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status MutableGraphView::AddRegularFaninByPort(
-    absl::string_view node_name, int port, const TensorId& fanin) {
+Status MutableGraphView::AddRegularFaninByPort(absl::string_view node_name,
+                                               int port,
+                                               const TensorId& fanin) {
   auto error_status = [node_name, port, fanin](absl::string_view msg) {
     string params = absl::Substitute("node_name='$0', port=$1, fanin='$2'",
                                      node_name, port, fanin.ToString());
@@ -972,7 +971,7 @@ absl::Status MutableGraphView::AddRegularFaninByPort(
     RemoveControllingFaninInternal(node, fanin_node);
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 NodeDef* MutableGraphView::GetControllingFaninToAdd(absl::string_view node_name,
@@ -1034,8 +1033,8 @@ NodeDef* MutableGraphView::GetOrCreateIdentityConsumingSwitch(
   return identity_node;
 }
 
-absl::Status MutableGraphView::AddControllingFanin(absl::string_view node_name,
-                                                   const TensorId& fanin) {
+Status MutableGraphView::AddControllingFanin(absl::string_view node_name,
+                                             const TensorId& fanin) {
   auto error_status = [node_name, fanin](absl::string_view msg) {
     string params = absl::Substitute("node_name='$0', fanin='$1'", node_name,
                                      fanin.ToString());
@@ -1062,7 +1061,7 @@ absl::Status MutableGraphView::AddControllingFanin(absl::string_view node_name,
   }
   AddFaninInternal(node, {control_node, Graph::kControlSlot});
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 bool MutableGraphView::RemoveRegularFaninInternal(NodeDef* node,
@@ -1121,8 +1120,8 @@ bool MutableGraphView::RemoveRegularFaninInternal(NodeDef* node,
   return modified;
 }
 
-absl::Status MutableGraphView::RemoveRegularFanin(absl::string_view node_name,
-                                                  const TensorId& fanin) {
+Status MutableGraphView::RemoveRegularFanin(absl::string_view node_name,
+                                            const TensorId& fanin) {
   auto error_status = [node_name, fanin](absl::string_view msg) {
     string params = absl::Substitute("node_name='$0', fanin='$1'", node_name,
                                      fanin.ToString());
@@ -1138,11 +1137,11 @@ absl::Status MutableGraphView::RemoveRegularFanin(absl::string_view node_name,
   TF_RETURN_IF_ERROR(CheckNodeExists(fanin.node(), fanin_node, error_status));
 
   RemoveRegularFaninInternal(node, {fanin_node, fanin.index()});
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status MutableGraphView::RemoveRegularFaninByPort(
-    absl::string_view node_name, int port) {
+Status MutableGraphView::RemoveRegularFaninByPort(absl::string_view node_name,
+                                                  int port) {
   auto error_status = [node_name, port](absl::string_view msg) {
     string params =
         absl::Substitute("node_name='$0', port=$1", node_name, port);
@@ -1181,7 +1180,7 @@ absl::Status MutableGraphView::RemoveRegularFaninByPort(
     max_regular_input_port()[node] = updated_last_regular_input_port;
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 bool MutableGraphView::RemoveControllingFaninInternal(NodeDef* node,
@@ -1202,7 +1201,7 @@ bool MutableGraphView::RemoveControllingFaninInternal(NodeDef* node,
   return false;
 }
 
-absl::Status MutableGraphView::RemoveControllingFanin(
+Status MutableGraphView::RemoveControllingFanin(
     absl::string_view node_name, absl::string_view fanin_node_name) {
   auto error_status = [node_name, fanin_node_name](absl::string_view msg) {
     string params = absl::Substitute("node_name='$0', fanin_node_name='$1'",
@@ -1219,11 +1218,11 @@ absl::Status MutableGraphView::RemoveControllingFanin(
       CheckNodeExists(fanin_node_name, fanin_node, error_status));
 
   RemoveControllingFaninInternal(node, fanin_node);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status MutableGraphView::RemoveAllFanins(absl::string_view node_name,
-                                               bool keep_controlling_fanins) {
+Status MutableGraphView::RemoveAllFanins(absl::string_view node_name,
+                                         bool keep_controlling_fanins) {
   NodeDef* node = GetNode(node_name);
   if (node == nullptr) {
     string params =
@@ -1234,7 +1233,7 @@ absl::Status MutableGraphView::RemoveAllFanins(absl::string_view node_name,
   }
 
   if (node->input().empty()) {
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   const int num_regular_fanins =
@@ -1242,7 +1241,7 @@ absl::Status MutableGraphView::RemoveAllFanins(absl::string_view node_name,
   RemoveFaninsInternal(node, keep_controlling_fanins);
   if (keep_controlling_fanins) {
     if (num_regular_fanins == 0) {
-      return absl::OkStatus();
+      return OkStatus();
     } else if (num_regular_fanins < node->input_size()) {
       node->mutable_input()->DeleteSubrange(0, num_regular_fanins);
     } else {
@@ -1251,12 +1250,12 @@ absl::Status MutableGraphView::RemoveAllFanins(absl::string_view node_name,
   } else {
     node->clear_input();
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status MutableGraphView::UpdateFanin(absl::string_view node_name,
-                                           const TensorId& from_fanin,
-                                           const TensorId& to_fanin) {
+Status MutableGraphView::UpdateFanin(absl::string_view node_name,
+                                     const TensorId& from_fanin,
+                                     const TensorId& to_fanin) {
   auto error_status = [node_name, from_fanin, to_fanin](absl::string_view msg) {
     string params =
         absl::Substitute("node_name='$0', from_fanin='$1', to_fanin='$2'",
@@ -1290,7 +1289,7 @@ absl::Status MutableGraphView::UpdateFanin(absl::string_view node_name,
   }
 
   if (from_fanin == to_fanin) {
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   bool from_fanin_is_control = IsTensorIdControlling(from_fanin);
@@ -1305,7 +1304,7 @@ absl::Status MutableGraphView::UpdateFanin(absl::string_view node_name,
     if (modified) {
       AddFaninInternal(node, {to_fanin_node, to_fanin.index()});
     }
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   // In place mutation of regular fanins, requires no shifting of ports.
@@ -1341,11 +1340,12 @@ absl::Status MutableGraphView::UpdateFanin(absl::string_view node_name,
     }
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status MutableGraphView::UpdateRegularFaninByPort(
-    absl::string_view node_name, int port, const TensorId& fanin) {
+Status MutableGraphView::UpdateRegularFaninByPort(absl::string_view node_name,
+                                                  int port,
+                                                  const TensorId& fanin) {
   auto error_status = [node_name, port, fanin](absl::string_view msg) {
     string params = absl::Substitute("node_name='$0', port=$1, fanin='$2'",
                                      node_name, port, fanin.ToString());
@@ -1365,7 +1365,7 @@ absl::Status MutableGraphView::UpdateRegularFaninByPort(
 
   TensorId tensor_id = ParseTensorName(node->input(port));
   if (tensor_id == fanin) {
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   InputPort input(node, port);
@@ -1384,11 +1384,11 @@ absl::Status MutableGraphView::UpdateRegularFaninByPort(
     RemoveControllingFaninInternal(node, fanin_node);
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status MutableGraphView::SwapRegularFaninsByPorts(
-    absl::string_view node_name, int from_port, int to_port) {
+Status MutableGraphView::SwapRegularFaninsByPorts(absl::string_view node_name,
+                                                  int from_port, int to_port) {
   auto error_status = [node_name, from_port, to_port](absl::string_view msg) {
     string params = absl::Substitute("node_name='$0', from_port=$1, to_port=$2",
                                      node_name, from_port, to_port);
@@ -1405,12 +1405,12 @@ absl::Status MutableGraphView::SwapRegularFaninsByPorts(
                                     error_status));
 
   if (from_port == to_port) {
-    return absl::OkStatus();
+    return OkStatus();
   }
   TensorId from_fanin = ParseTensorName(node->input(from_port));
   TensorId to_fanin = ParseTensorName(node->input(to_port));
   if (from_fanin == to_fanin) {
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   InputPort from_input(node, from_port);
@@ -1428,10 +1428,10 @@ absl::Status MutableGraphView::SwapRegularFaninsByPorts(
 
   node->mutable_input()->SwapElements(from_port, to_port);
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status MutableGraphView::UpdateAllRegularFaninsToControlling(
+Status MutableGraphView::UpdateAllRegularFaninsToControlling(
     absl::string_view node_name) {
   auto error_status = [node_name](absl::string_view msg) {
     string params = absl::Substitute("node_name='$0'", node_name);
@@ -1499,10 +1499,10 @@ absl::Status MutableGraphView::UpdateAllRegularFaninsToControlling(
   node->mutable_input()->DeleteSubrange(pos, node->input_size() - pos);
   max_regular_input_port().erase(node);
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status MutableGraphView::CheckNodesCanBeDeleted(
+Status MutableGraphView::CheckNodesCanBeDeleted(
     const absl::flat_hash_set<string>& nodes_to_delete) {
   std::vector<string> missing_nodes;
   std::vector<string> nodes_with_fanouts;
@@ -1562,10 +1562,10 @@ absl::Status MutableGraphView::CheckNodesCanBeDeleted(
     return MutationError("DeleteNodes", params, error_msg);
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status MutableGraphView::DeleteNodes(
+Status MutableGraphView::DeleteNodes(
     const absl::flat_hash_set<string>& nodes_to_delete) {
   TF_RETURN_IF_ERROR(CheckNodesCanBeDeleted(nodes_to_delete));
 
@@ -1600,7 +1600,7 @@ absl::Status MutableGraphView::DeleteNodes(
     graph()->mutable_node()->DeleteSubrange(last_pos + 1, last_idx - last_pos);
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 void MutableGraphView::RemoveFaninsInternal(NodeDef* deleted_node,

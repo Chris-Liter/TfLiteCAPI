@@ -14,29 +14,21 @@ limitations under the License.
 ==============================================================================*/
 #include "tensorflow/lite/delegates/utils/simple_opaque_delegate.h"
 
-#include <stddef.h>
-#include <stdint.h>
-#include <string.h>
-
 #include <array>
 #include <memory>
 #include <utility>
 #include <vector>
 
 #include <gtest/gtest.h>
-#include "tensorflow/lite/builtin_ops.h"
+#include "tensorflow/core/platform/resource_loader.h"
 #include "tensorflow/lite/c/c_api.h"
 #include "tensorflow/lite/c/c_api_opaque.h"
 #include "tensorflow/lite/c/c_api_types.h"
 #include "tensorflow/lite/c/common.h"
 #include "tensorflow/lite/delegates/delegate_test_util.h"
 #include "tensorflow/lite/delegates/utils/experimental/sample_stable_delegate/sample_stable_delegate.h"
-#include "tensorflow/lite/interpreter.h"
-#include "tensorflow/lite/interpreter_builder.h"
-#include "tensorflow/lite/kernels/internal/compatibility.h"
 #include "tensorflow/lite/kernels/kernel_util.h"
 #include "tensorflow/lite/kernels/register.h"
-#include "tensorflow/lite/model_builder.h"
 
 namespace tflite {
 
@@ -53,8 +45,9 @@ TEST_F(TestDelegate, TestDataAddBin_SingleInputSingleOutput_FullyDelegated) {
   //
   // Create the model and the interpreter
   //
-  TfLiteModel* model =
-      TfLiteModelCreateFromFile("tensorflow/lite/testdata/add.bin");
+  TfLiteModel* model = TfLiteModelCreateFromFile(
+      tensorflow::GetDataDependencyFilepath("tensorflow/lite/testdata/add.bin")
+          .c_str());
   ASSERT_NE(model, nullptr);
   TfLiteInterpreterOptions* options = TfLiteInterpreterOptionsCreate();
   ASSERT_NE(options, nullptr);
@@ -130,8 +123,9 @@ TEST(DelegateTest,
       TfLiteOpaqueDelegateFactory::Create(
           std::make_unique<example::SampleStableDelegate>());
 
-  TfLiteModel* model =
-      TfLiteModelCreateFromFile("tensorflow/lite/testdata/add.bin");
+  TfLiteModel* model = TfLiteModelCreateFromFile(
+      tensorflow::GetDataDependencyFilepath("tensorflow/lite/testdata/add.bin")
+          .c_str());
   ASSERT_NE(model, nullptr);
 
   TfLiteInterpreterOptions* options = TfLiteInterpreterOptionsCreate();
@@ -207,8 +201,10 @@ TEST(DelegateTest, TestDataMultiAddBin_MultiInputMultiOutput_FullyDelegated) {
       TfLiteOpaqueDelegateFactory::Create(
           std::make_unique<example::SampleStableDelegate>());
 
-  TfLiteModel* model = TfLiteModelCreateFromFile(
-      "tensorflow/lite/testdata/multi_add.bin");
+  TfLiteModel* model =
+      TfLiteModelCreateFromFile(tensorflow::GetDataDependencyFilepath(
+                                    "tensorflow/lite/testdata/multi_add.bin")
+                                    .c_str());
   ASSERT_NE(model, nullptr);
 
   TfLiteInterpreterOptions* options = TfLiteInterpreterOptionsCreate();
@@ -272,19 +268,20 @@ TEST(DelegateTest, TestDataMultiAddBin_MultiInputMultiOutput_FullyDelegated) {
   TfLiteModelDelete(model);
 }
 
-TfLiteOperator* CreateDelegateKernelRegistrationImpl(
+TfLiteRegistrationExternal* CreateDelegateKernelRegistrationImpl(
     SimpleOpaqueDelegateInterface* delegate) {
-  TfLiteOperator* kernel_registration = TfLiteOperatorCreate(
-      kTfLiteBuiltinDelegate, delegate->Name(), 1, /*user_data=*/nullptr);
-  TfLiteOperatorSetFreeWithData(
+  TfLiteRegistrationExternal* kernel_registration =
+      TfLiteRegistrationExternalCreate(kTfLiteBuiltinDelegate, delegate->Name(),
+                                       1);
+  TfLiteRegistrationExternalSetFree(
       kernel_registration,
-      [](void* user_data, TfLiteOpaqueContext* context, void* buffer) -> void {
+      [](TfLiteOpaqueContext* context, void* buffer) -> void {
         delete reinterpret_cast<SimpleOpaqueDelegateInterface*>(buffer);
       });
 
-  TfLiteOperatorSetInitWithData(
+  TfLiteRegistrationExternalSetInit(
       kernel_registration,
-      [](void* user_data, TfLiteOpaqueContext* context, const char* buffer,
+      [](TfLiteOpaqueContext* context, const char* buffer,
          size_t length) -> void* {
         auto* params =
             reinterpret_cast<const TfLiteOpaqueDelegateParams*>(buffer);
@@ -301,18 +298,18 @@ TfLiteOperator* CreateDelegateKernelRegistrationImpl(
         }
         return delegate_kernel.release();
       });
-  TfLiteOperatorSetPrepareWithData(
+  TfLiteRegistrationExternalSetPrepare(
       kernel_registration,
-      [](void* user_data, TfLiteOpaqueContext* context,
+      [](TfLiteOpaqueContext* context,
          TfLiteOpaqueNode* opaque_node) -> TfLiteStatus {
         SimpleOpaqueDelegateKernelInterface* delegate_kernel =
             reinterpret_cast<SimpleOpaqueDelegateKernelInterface*>(
                 TfLiteOpaqueNodeGetUserData(opaque_node));
         return delegate_kernel->Prepare(context, opaque_node);
       });
-  TfLiteOperatorSetInvokeWithData(
+  TfLiteRegistrationExternalSetInvoke(
       kernel_registration,
-      [](void* user_data, TfLiteOpaqueContext* context,
+      [](TfLiteOpaqueContext* context,
          TfLiteOpaqueNode* opaque_node) -> TfLiteStatus {
         SimpleOpaqueDelegateKernelInterface* delegate_kernel =
             reinterpret_cast<SimpleOpaqueDelegateKernelInterface*>(
@@ -351,7 +348,7 @@ class MySimpleOpaqueDelegateWithBufferHandleSupport
   static constexpr int kDelegateOutputValue = 42;
   TfLiteStatus CopyFromBufferHandle(TfLiteOpaqueContext* context,
                                     TfLiteBufferHandle buffer_handle,
-                                    TfLiteOpaqueTensor* tensor) override {
+                                    TfLiteOpaqueTensor* tensor) {
     auto* output = reinterpret_cast<float*>(TfLiteOpaqueTensorData(tensor));
     std::vector<float> test_output(
         example::helpers::CalculateNumElements(tensor), kDelegateOutputValue);
@@ -361,7 +358,8 @@ class MySimpleOpaqueDelegateWithBufferHandleSupport
   }
 
   void FreeBufferHandle(TfLiteOpaqueContext* context,  // NOLINT
-                        TfLiteBufferHandle* handle) override {
+                        TfLiteOpaqueDelegate* delegate,
+                        TfLiteBufferHandle* handle) {
     recorded_buffer_handle_ = *handle;
     free_buffer_handle_called_ = true;
   }
@@ -393,7 +391,7 @@ TEST_F(TestDelegate, SetBufferHandle) {
     TfLiteIntArray* execution_plan;
     TF_LITE_ENSURE_STATUS(
         TfLiteOpaqueContextGetExecutionPlan(opaque_context, &execution_plan));
-    TfLiteOperator* delegate_kernel_registration =
+    TfLiteRegistrationExternal* delegate_kernel_registration =
         CreateDelegateKernelRegistrationImpl(simple_opaque_delegate);
 
     return TfLiteOpaqueContextReplaceNodeSubsetsWithDelegateKernels(
@@ -418,7 +416,7 @@ TEST_F(TestDelegate, SetBufferHandle) {
                                                 TfLiteBufferHandle* handle) {
     auto* simple_opaque_delegate =
         reinterpret_cast<MySimpleOpaqueDelegateWithBufferHandleSupport*>(data);
-    simple_opaque_delegate->FreeBufferHandle(context, handle);
+    simple_opaque_delegate->FreeBufferHandle(context, delegate, handle);
   };
   TfLiteDelegate tflite_delegate{};
   tflite_delegate.opaque_delegate_builder = &opaque_delegate_builder;
@@ -426,7 +424,9 @@ TEST_F(TestDelegate, SetBufferHandle) {
   // Load a model and build an interpreter.
   std::unique_ptr<tflite::FlatBufferModel> model =
       tflite::FlatBufferModel::BuildFromFile(
-          "tensorflow/lite/testdata/add.bin");
+          tensorflow::GetDataDependencyFilepath(
+              "tensorflow/lite/testdata/add.bin")
+              .c_str());
   ASSERT_NE(model, nullptr);
   tflite::ops::builtin::BuiltinOpResolver resolver;
   tflite::InterpreterBuilder builder(*model, resolver);
@@ -496,7 +496,9 @@ TEST(DelegateTest,
       TfLiteOpaqueDelegateFactory::Create(
           std::make_unique<example::SampleStableDelegate>());
   TfLiteModel* model = TfLiteModelCreateFromFile(
-      "tensorflow/lite/testdata/conv_huge_im2col.bin");
+      tensorflow::GetDataDependencyFilepath(
+          "tensorflow/lite/testdata/conv_huge_im2col.bin")
+          .c_str());
   ASSERT_NE(model, nullptr);
 
   TfLiteInterpreterOptions* options = TfLiteInterpreterOptionsCreate();

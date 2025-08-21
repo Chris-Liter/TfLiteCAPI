@@ -171,7 +171,7 @@ const std::unordered_set<string>& GrapplerItem::devices() const {
   return devices_;
 }
 
-absl::Status GrapplerItem::AddDevice(const string& device) {
+Status GrapplerItem::AddDevice(const string& device) {
   DeviceNameUtils::ParsedName name;
 
   if (!DeviceNameUtils::ParseFullName(device, &name)) {
@@ -184,31 +184,31 @@ absl::Status GrapplerItem::AddDevice(const string& device) {
   }
 
   devices_.insert(DeviceNameUtils::ParsedNameToString(name));
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status GrapplerItem::AddDevices(const GrapplerItem& other) {
+Status GrapplerItem::AddDevices(const GrapplerItem& other) {
   std::vector<absl::string_view> invalid_devices;
   for (const string& device : other.devices()) {
-    absl::Status added = AddDevice(device);
+    Status added = AddDevice(device);
     if (!added.ok()) invalid_devices.emplace_back(device);
   }
   return invalid_devices.empty()
-             ? absl::OkStatus()
+             ? OkStatus()
              : errors::InvalidArgument("Skipped invalid devices: [",
                                        absl::StrJoin(invalid_devices, ", "),
                                        "]");
 }
 
-absl::Status GrapplerItem::InferDevicesFromGraph() {
+Status GrapplerItem::InferDevicesFromGraph() {
   absl::flat_hash_set<absl::string_view> invalid_devices;
   for (const NodeDef& node : graph.node()) {
-    absl::Status added = AddDevice(node.device());
+    Status added = AddDevice(node.device());
     if (!added.ok()) invalid_devices.insert(node.device());
   }
   VLOG(2) << "Inferred device set: [" << absl::StrJoin(devices_, ", ") << "]";
   return invalid_devices.empty()
-             ? absl::OkStatus()
+             ? OkStatus()
              : errors::InvalidArgument("Skipped invalid devices: [",
                                        absl::StrJoin(invalid_devices, ", "),
                                        "]");

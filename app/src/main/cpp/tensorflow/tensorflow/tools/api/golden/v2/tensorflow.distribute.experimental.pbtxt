@@ -6,7 +6,7 @@ tf_module {
   }
   member {
     name: "CollectiveCommunication"
-    mtype: "<class \'enum.EnumType\'>"
+    mtype: "<class \'enum.EnumMeta\'>"
   }
   member {
     name: "CollectiveHints"
@@ -14,7 +14,7 @@ tf_module {
   }
   member {
     name: "CommunicationImplementation"
-    mtype: "<class \'enum.EnumType\'>"
+    mtype: "<class \'enum.EnumMeta\'>"
   }
   member {
     name: "CommunicationOptions"

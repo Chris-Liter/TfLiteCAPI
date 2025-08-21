@@ -54,24 +54,17 @@ class TestCluster {
     int64_t worker_heartbeat_interval_ms = 0;
     int64_t job_gc_check_interval_ms = 0;
     int64_t job_gc_timeout_ms = 0;
-    int64_t worker_max_concurrent_snapshots = 0;
-    std::string work_dir;
   };
 
   // Creates a new test cluster with a dispatcher and `num_workers` workers.
-  explicit TestCluster(
-      int num_workers,
-      std::optional<std::string> data_transfer_protocol = std::nullopt);
+  explicit TestCluster(int num_workers);
   explicit TestCluster(const Config& config);
-  virtual ~TestCluster();
 
   // Initializes the test cluster. This must be called before interacting with
   // the cluster. Initialize should be called only once.
-  absl::Status Initialize();
+  Status Initialize();
   // Adds a new worker to the cluster.
-  absl::Status AddWorker(
-      std::optional<int> port = std::nullopt,
-      std::optional<std::string> data_transfer_protocol = std::nullopt);
+  Status AddWorker(std::optional<int> port = std::nullopt);
   // Returns the number of workers in this cluster.
   size_t NumWorkers() const { return workers_.size(); }
   // Returns the port number of a worker.
@@ -79,7 +72,7 @@ class TestCluster {
     return workers_[worker_index]->BoundPort();
   }
   // Returns the number of active iterations.
-  absl::StatusOr<size_t> NumActiveIterations() const {
+  StatusOr<size_t> NumActiveIterations() const {
     return dispatcher_->NumActiveIterations();
   }
   // Returns the dispatcher address in the form "hostname:port".
@@ -101,7 +94,6 @@ class TestCluster {
  private:
   bool initialized_ = false;
   int num_workers_;
-  std::optional<std::string> data_transfer_protocol_;
   Config config_;
   std::unique_ptr<DispatchGrpcDataServer> dispatcher_;
   std::string dispatcher_address_;
@@ -129,7 +121,7 @@ class DatasetClient {
   explicit DatasetClient(const TestCluster& cluster);
 
   // Registers the dataset and returns the dataset ID.
-  absl::StatusOr<std::string> RegisterDataset(const DatasetDef& dataset);
+  StatusOr<std::string> RegisterDataset(const DatasetDef& dataset);
 
   // Maps a worker address to the data it produces when calling `Read`.
   using WorkerResultMap = absl::flat_hash_map<std::string, std::vector<T>>;
@@ -141,14 +133,14 @@ class DatasetClient {
       ProcessingModeDef::ShardingPolicy sharding_policy,
       TargetWorkers target_workers);
   // Creates an iteration and returns the iteration client ID.
-  absl::StatusOr<int64_t> CreateIteration(const DatasetDef& dataset);
+  StatusOr<int64_t> CreateIteration(const DatasetDef& dataset);
   // Gets the tasks for iteration `iteration_client_id`. The iteration has one
   // task processed by every worker.
-  absl::StatusOr<std::vector<TaskInfo>> GetTasks(int64_t iteration_client_id);
+  StatusOr<std::vector<TaskInfo>> GetTasks(int64_t iteration_client_id);
 
  private:
   // Creates an iteration and returns the iteration client ID.
-  absl::StatusOr<int64_t> CreateIteration(
+  StatusOr<int64_t> CreateIteration(
       const std::string& dataset_id,
       ProcessingModeDef::ShardingPolicy sharding_policy,
       TargetWorkers target_workers);
@@ -156,7 +148,7 @@ class DatasetClient {
   // finished.
   StatusOr<WorkerResultMap> ReadFromTasks(const std::vector<TaskInfo>& tasks);
   // Reads the next element from the specified task.
-  absl::StatusOr<GetElementResult> ReadFromTask(const TaskInfo& task_info);
+  StatusOr<GetElementResult> ReadFromTask(const TaskInfo& task_info);
 
   const TestCluster& cluster_;
   std::unique_ptr<DataServiceDispatcherClient> dispatcher_client_;
@@ -172,11 +164,8 @@ DatasetClient<T>::DatasetClient(const TestCluster& cluster)
 
   for (size_t i = 0; i < cluster.NumWorkers(); ++i) {
     worker_clients_[cluster_.WorkerAddress(i)] =
-        std::make_unique<DataServiceWorkerClient>(
-            cluster_.WorkerAddress(i), /*protocol=*/"grpc",
-            /*transfer_protocol=*/"grpc",
-            /*fall_back_to_grpc_at_get_element_time=*/true,
-            /*accelerator_device_info=*/nullptr, /*allocator=*/nullptr);
+        std::make_unique<DataServiceWorkerClient>(cluster_.WorkerAddress(i),
+                                                  "grpc", "grpc");
   }
 }
 
@@ -195,7 +184,7 @@ StatusOr<typename DatasetClient<T>::WorkerResultMap> DatasetClient<T>::Read(
 }
 
 template <class T>
-absl::StatusOr<std::string> DatasetClient<T>::RegisterDataset(
+StatusOr<std::string> DatasetClient<T>::RegisterDataset(
     const DatasetDef& dataset) {
   std::string dataset_id;
   TF_RETURN_IF_ERROR(dispatcher_client_->RegisterDataset(
@@ -205,7 +194,7 @@ absl::StatusOr<std::string> DatasetClient<T>::RegisterDataset(
 }
 
 template <class T>
-absl::StatusOr<int64_t> DatasetClient<T>::CreateIteration(
+StatusOr<int64_t> DatasetClient<T>::CreateIteration(
     const std::string& dataset_id,
     ProcessingModeDef::ShardingPolicy sharding_policy,
     TargetWorkers target_workers) {
@@ -223,15 +212,14 @@ absl::StatusOr<int64_t> DatasetClient<T>::CreateIteration(
 }
 
 template <class T>
-absl::StatusOr<int64_t> DatasetClient<T>::CreateIteration(
-    const DatasetDef& dataset) {
+StatusOr<int64_t> DatasetClient<T>::CreateIteration(const DatasetDef& dataset) {
   TF_ASSIGN_OR_RETURN(const std::string dataset_id, RegisterDataset(dataset));
   return CreateIteration(dataset_id, ProcessingModeDef::OFF,
                          TARGET_WORKERS_ANY);
 }
 
 template <class T>
-absl::StatusOr<std::vector<TaskInfo>> DatasetClient<T>::GetTasks(
+StatusOr<std::vector<TaskInfo>> DatasetClient<T>::GetTasks(
     const int64_t iteration_client_id) {
   ClientHeartbeatRequest request;
   ClientHeartbeatResponse response;
@@ -253,7 +241,7 @@ DatasetClient<T>::ReadFromTasks(const std::vector<TaskInfo>& tasks) {
   while (!all_workers_finished) {
     all_workers_finished = true;
     for (const TaskInfo& task : tasks) {
-      absl::StatusOr<GetElementResult> element_result = ReadFromTask(task);
+      StatusOr<GetElementResult> element_result = ReadFromTask(task);
       // A task may be cancelled when it has finished but other workers are
       // still producing data.
       if (absl::IsCancelled(element_result.status())) {
@@ -272,7 +260,7 @@ DatasetClient<T>::ReadFromTasks(const std::vector<TaskInfo>& tasks) {
 }
 
 template <class T>
-absl::StatusOr<GetElementResult> DatasetClient<T>::ReadFromTask(
+StatusOr<GetElementResult> DatasetClient<T>::ReadFromTask(
     const TaskInfo& task_info) {
   GetElementRequest request;
   GetElementResult element_result;

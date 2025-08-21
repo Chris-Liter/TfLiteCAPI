@@ -220,9 +220,9 @@ string Signature::ToString() const {
   return result;
 }
 
-absl::Status Signature::Compute() {
+Status Signature::Compute() {
   if (map.size() > kMaxGraphSize) {
-    return absl::Status(
+    return Status(
         absl::StatusCode::kInvalidArgument,
         absl::StrFormat(
             "A graph of %d nodes is too big for signature computation, "
@@ -248,7 +248,7 @@ absl::Status Signature::Compute() {
 
   OrderLinks();
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 void Signature::PrepareNodes() {

@@ -48,13 +48,12 @@ limitations under the License.
 #include "tensorflow/c/tf_status.h"
 #include "tensorflow/c/tf_status_helper.h"
 #include "tensorflow/c/tf_tensor_internal.h"
+#include "tensorflow/compiler/mlir/tensorflow/translate/export_graphdef.h"
 #include "tensorflow/compiler/mlir/tensorflow/translate/mlir_roundtrip_flags.h"
-#include "tensorflow/compiler/mlir/tf2xla/api/v2/tf_executor_to_graph.h"
-#include "xla/status_macros.h"
-#include "xla/stream_executor/tpu/c_api_decl.h"
-#include "xla/stream_executor/tpu/tpu_platform_interface.h"
-#include "xla/stream_executor/tpu/tpu_topology.h"
-#include "xla/tsl/util/env_var.h"
+#include "tensorflow/compiler/xla/status_macros.h"
+#include "tensorflow/compiler/xla/stream_executor/tpu/c_api_decl.h"
+#include "tensorflow/compiler/xla/stream_executor/tpu/tpu_platform_interface.h"
+#include "tensorflow/compiler/xla/stream_executor/tpu/tpu_topology.h"
 #include "tensorflow/core/common_runtime/device_set.h"
 #include "tensorflow/core/common_runtime/eager/context.h"
 #include "tensorflow/core/common_runtime/eager/eager_operation.h"
@@ -77,7 +76,6 @@ limitations under the License.
 #include "tensorflow/core/platform/fingerprint.h"
 #include "tensorflow/core/platform/types.h"
 #include "tensorflow/core/profiler/lib/traceme.h"
-#include "tensorflow/core/util/debug_data_dumper.h"
 #include "tensorflow/core/util/dump_graph.h"
 #include "tensorflow/dtensor/cc/constants.h"
 #include "tensorflow/dtensor/cc/dstatus.h"
@@ -92,8 +90,9 @@ limitations under the License.
 #include "tensorflow/dtensor/mlir/op_utils.h"
 #include "tensorflow/dtensor/mlir/spmd_expander.h"
 #include "tensorflow/dtensor/proto/layout.pb.h"
-#include "tsl/platform/status.h"
-#include "tsl/platform/statusor.h"
+#include "tensorflow/tsl/platform/status.h"
+#include "tensorflow/tsl/platform/statusor.h"
+#include "tensorflow/tsl/util/env_var.h"
 
 using tensorflow::EagerExecutor;
 
@@ -232,8 +231,8 @@ class DTensorDevice {
     default_mesh_ = global_default_mesh_;
   }
 
-  absl::Status SetTPUCoreIDs(const std::string& mesh_name,
-                             const std::vector<int>& tpu_core_ids) {
+  Status SetTPUCoreIDs(const std::string& mesh_name,
+                       const std::vector<int>& tpu_core_ids) {
     if (VLOG_IS_ON(1)) {
       LOG(INFO) << "Setting TPU core IDs for "
                 << (mesh_name.empty() ? "default mesh" : mesh_name) << ": ";
@@ -249,7 +248,7 @@ class DTensorDevice {
     }
     Mesh::tpu_core_ids()[mesh_name].assign(tpu_core_ids.begin(),
                                            tpu_core_ids.end());
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   void ClearTPUCoreIDs() { Mesh::tpu_core_ids().clear(); }
@@ -871,7 +870,7 @@ StatusOr<NameAttrList> FetchAttributes(const TFE_OpAttrs* attributes) {
   if (TF_GetCode(status) == TF_OK) {
     TF_DeleteStatus(status);
   } else {
-    absl::Status failure_status = StatusFromTF_Status(status);
+    Status failure_status = StatusFromTF_Status(status);
     TF_DeleteStatus(status);
     return failure_status;
   }
@@ -979,7 +978,7 @@ TFE_TensorHandle* DTensorDevice::ToTensorHandle(TFE_Context* context,
       TF_SetStatus(status, TF_INTERNAL, tensor.status().ToString().c_str());
       return tensor_handle;
     }
-    absl::Status tf_tensor_from_tensor_status;
+    Status tf_tensor_from_tensor_status;
     TF_Tensor* tf_tensor =
         TF_TensorFromTensor(*tensor, &tf_tensor_from_tensor_status);
     if (!tf_tensor_from_tensor_status.ok()) {
@@ -1513,12 +1512,15 @@ StatusOr<std::unique_ptr<Graph>> SelectGraphToExecute(
     }
   }
 
+  VLOG(4) << tensorflow::DumpGraphToFile("selected_graph_to_execute_",
+                                         *new_graph);
+
   return new_graph;
 }
 
 // Adds processed graph to run for each mesh computation in
 // `execution_functions` to function definition library.
-absl::Status AddExecutionFunctionDefsToFunctionDefLibrary(
+Status AddExecutionFunctionDefsToFunctionDefLibrary(
     const std::string doperation_name, const StackTracesMap& stack_traces,
     const absl::flat_hash_set<Node*>& control_ret_nodes, TFE_Context* context,
     const Graph& graph, ExecutionFunctions* execution_functions) {
@@ -1536,13 +1538,7 @@ absl::Status AddExecutionFunctionDefsToFunctionDefLibrary(
     TF_ASSIGN_OR_RETURN(
         std::unique_ptr<Graph> new_graph,
         SelectGraphToExecute(function, graph, &selected_call_node_name));
-
-    if (VLOG_IS_ON(4) || DEBUG_DATA_DUMPER()->ShouldDump(
-                             "selected_graph", kDebugGroupDTensorGraph)) {
-      DEBUG_DATA_DUMPER()->DumpGraph("selected_graph", kDebugGroupDTensorGraph,
-                                     doperation_name, new_graph.get(),
-                                     /*func_lib_def=*/nullptr, true);
-    }
+    VLOG(4) << tensorflow::DumpGraphToFile("selected_graph_", *new_graph);
 
     // Add unique identifier based on the function we are executing to the
     // function/graph and convert graph to functiondef.
@@ -1582,16 +1578,16 @@ absl::Status AddExecutionFunctionDefsToFunctionDefLibrary(
             to_run, stack_traces));
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 StatusOr<DTensorDevice::DTensorOperationLoweringContext>
 DTensorDevice::DTensorOperationToModule(
     TFE_Context* context, const std::vector<TensorWithLayout*>& inputs,
     const DTensorOperation& doperation, const NameAttrList& eager_attributes) {
-  tsl::profiler::TraceMe activity(
+  profiler::TraceMe activity(
       [&] { return "DTensorDevice::DTensorOperationToModule"; },
-      tsl::profiler::TraceMeLevel::kInfo);
+      profiler::TraceMeLevel::kInfo);
   FunctionLibraryDefinition* flib_def =
       tensorflow::unwrap(context)->FuncLibDef();
   DTensorOperationLoweringContext result;
@@ -1640,13 +1636,9 @@ DTensorDevice::DTensorOperationToModule(
       *module_manager_, inputs, doperation, *flib_def, eager_attributes,
       result.output_layouts, result.graph.get(), &result.global_output_shapes));
 
-  if (VLOG_IS_ON(4) || DEBUG_DATA_DUMPER()->ShouldDump(
-                           "after_prepare_for_mlir", kDebugGroupDTensorGraph)) {
-    DEBUG_DATA_DUMPER()->DumpGraph("after_prepare_for_mlir",
-                                   kDebugGroupDTensorGraph, doperation.name,
-                                   result.graph.get(),
-                                   /*func_lib_def=*/flib_def, true);
-  }
+  VLOG(4) << tensorflow::DumpGraphToFile("after_prepare_for_mlir",
+                                         *result.graph, flib_def);
+
   // Converts Graph to MLIR Module.
   TF_ASSIGN_OR_RETURN(
       mlir::OwningOpRef<mlir::ModuleOp> mlir_module_ref,
@@ -1679,9 +1671,9 @@ void DTensorDevice::ModuleToExecutionFunctions(
     const DTensorOperation& doperation, const NameAttrList& eager_attributes,
     int num_outputs, DTensorOperationLoweringContext& lowering_context,
     const ExecutionFunctions** execution_functions, TF_Status* status) {
-  tsl::profiler::TraceMe activity(
+  profiler::TraceMe activity(
       [&] { return "DTensorDevice::ModuleToExecutionFunctions"; },
-      tsl::profiler::TraceMeLevel::kInfo);
+      profiler::TraceMeLevel::kInfo);
   FunctionLibraryDefinition* flib_def =
       tensorflow::unwrap(context)->FuncLibDef();
   const FunctionDef* function_def = doperation.function_def;
@@ -1706,9 +1698,8 @@ void DTensorDevice::ModuleToExecutionFunctions(
                   "ModuleOp for ExecutionFunctions extraction is missing.");
   }
   {
-    tsl::profiler::TraceMe activity(
-        [&] { return "DTensorDevice::RunMLIRPasses"; },
-        tsl::profiler::TraceMeLevel::kInfo);
+    profiler::TraceMe activity([&] { return "DTensorDevice::RunMLIRPasses"; },
+                               profiler::TraceMeLevel::kInfo);
     RETURN_C_STATUS_IF_NOT_OK(pass_runner_.Run(*lowering_context.module),
                               status);
   }
@@ -1716,20 +1707,12 @@ void DTensorDevice::ModuleToExecutionFunctions(
   absl::flat_hash_set<Node*> control_ret_nodes;
   GraphExportConfig export_config;
   RETURN_C_STATUS_IF_NOT_OK(
-      tensorflow::tf2xla::v2::ConvertTfExecutorToGraph(
-          *lowering_context.module, export_config, &(lowering_context.graph),
-          flib_def, &control_ret_nodes),
+      ConvertMlirToGraph(*lowering_context.module, export_config,
+                         &(lowering_context.graph), flib_def,
+                         &control_ret_nodes),
       status);
   Graph* graph = lowering_context.graph.get();
-
-  if (VLOG_IS_ON(4) ||
-      DEBUG_DATA_DUMPER()->ShouldDump("after_dtensor_mlir_pass",
-                                      kDebugGroupDTensorGraph)) {
-    DEBUG_DATA_DUMPER()->DumpGraph("after_dtensor_mlir_pass",
-                                   kDebugGroupDTensorGraph, doperation.name,
-                                   graph,
-                                   /*func_lib_def=*/flib_def, true);
-  }
+  VLOG(4) << DumpGraphToFile("after_dtensor_mlir_pass", *graph, flib_def);
 
   // After MLIR transformations, exactly one StatefulPartitionedCall op is
   // returned for mesh cluster in computation. Identity all functions to execute
@@ -1745,14 +1728,8 @@ void DTensorDevice::ModuleToExecutionFunctions(
   RETURN_C_STATUS_IF_NOT_OK(MaybeInsertIdentityNodes(function_def, graph),
                             status);
 
-  if (VLOG_IS_ON(4) ||
-      DEBUG_DATA_DUMPER()->ShouldDump("after_post_processing_graph",
-                                      kDebugGroupDTensorGraph)) {
-    DEBUG_DATA_DUMPER()->DumpGraph("after_post_processing_graph",
-                                   kDebugGroupDTensorGraph, doperation.name,
-                                   graph,
-                                   /*func_lib_def=*/flib_def, true);
-  }
+  VLOG(4) << tensorflow::DumpGraphToFile("after_post_processing_graph", *graph,
+                                         flib_def);
 
   RETURN_C_STATUS_IF_NOT_OK(AddExecutionFunctionDefsToFunctionDefLibrary(
                                 doperation.name, doperation.stack_traces,
@@ -2070,7 +2047,7 @@ void DTensorDevice::ExecuteRegularOperation(
       // for DeviceId. This is done as the first arg is always DeviceId, and it
       // isn't mapped to input Tensors.
       const int resource_index_to_update = entry.first - 1;
-      const absl::Status s =
+      const Status s =
           llvm::cast<ResourceHandleWithLayout>(inputs[resource_index_to_update])
               ->UpdateLayout(entry.second);
       if (!s.ok()) {
@@ -2223,8 +2200,7 @@ void DTensorDevice::ExecuteRegularOperation(
         for (int i = 0; i < result->size(); ++i) {
           auto& result_tensor = (*result)[i];
           const std::vector<int64_t>* result_tensor_shape;
-          absl::Status shape_status =
-              result_tensor->Shape(&result_tensor_shape);
+          Status shape_status = result_tensor->Shape(&result_tensor_shape);
           if (!shape_status.ok()) {
             Set_TF_Status_from_Status(status, shape_status);
             return;
@@ -2386,9 +2362,6 @@ void DTensorDevice::Execute(const TFE_Op* original_op, int* num_outputs,
   absl::flat_hash_set<Mesh> input_meshes;
   std::vector<int> single_device_input_indices;
 
-  VLOG(4) << "DTensorOperation: " << dtensor_operation.name
-          << " num_inputs are " << num_inputs;
-
   typed_inputs.resize(num_inputs);
   for (int j = 0; j < num_inputs; ++j) {
     TFE_TensorHandle* input = inputs[j];
@@ -2397,8 +2370,6 @@ void DTensorDevice::Execute(const TFE_Op* original_op, int* num_outputs,
     if (name_ != input_device) {
       single_device_input_indices.push_back(j);
       typed_inputs[j] = nullptr;
-      VLOG(5) << "Input " << j << ": "
-              << tensorflow::unwrap(input)->DebugString();
       continue;
     }
     // Handle input which is on DTensor device already.
@@ -2411,14 +2382,9 @@ void DTensorDevice::Execute(const TFE_Op* original_op, int* num_outputs,
       input_meshes.insert(t->layout().mesh());
     }
     typed_inputs[j] = t;
-    VLOG(5) << "Input " << j << ": " << typed_inputs[j]->DebugString();
   }
 
   const std::optional<Mesh> mesh = ChooseBroadcastingMesh(input_meshes, dtypes);
-
-  VLOG(4) << "Execution DTensorOperation: " << dtensor_operation.name
-          << " with broadcast mesh "
-          << (mesh.has_value() ? mesh->ToString() : "no broadcast mesh");
 
   // TODO(feyu): This short circuit only allows running unsupported op
   // via DTensorDevice in eager mode. for tf.function and its graph, we will
@@ -2589,7 +2555,7 @@ bool DTensorDevice::ShouldFastExecuteEagerPureOperation(
   // Fetch the ops registy to get the output dtype for the op. Certain dtypes
   // like string are not supported by the broadcast.
   const OpDef* op_def = nullptr;
-  absl::Status status =
+  Status status =
       OpRegistry::Global()->LookUpOpDef(dtensor_operation.name, &op_def);
   if (!status.ok()) return false;
   for (const auto& output_arg : op_def->output_arg()) {
@@ -2827,7 +2793,7 @@ void ExperimentalSetDefaultLayout(const std::string& serialized_layout,
   StatusOr<Layout> layout = Layout::FromString(serialized_layout);
   if (!layout.ok()) {
     RETURN_STATUS(status, TF_INTERNAL,
-                  absl::StatusMessageAsCStr(layout.status()));
+                  tsl::NullTerminatedMessage(layout.status()));
   }
   DTensorDevice* device = reinterpret_cast<DTensorDevice*>(device_info);
   device->SetDefaultLayout(layout.value());
@@ -2843,7 +2809,7 @@ void ExperimentalSetDefaultMesh(const std::string& serialized_mesh,
   StatusOr<Mesh> mesh = Mesh::FromString(serialized_mesh);
   if (!mesh.ok()) {
     RETURN_STATUS(status, TF_INTERNAL,
-                  absl::StatusMessageAsCStr(mesh.status()));
+                  tsl::NullTerminatedMessage(mesh.status()));
   }
   DTensorDevice* device = reinterpret_cast<DTensorDevice*>(device_info);
   device->SetDefaultMesh(mesh.value());

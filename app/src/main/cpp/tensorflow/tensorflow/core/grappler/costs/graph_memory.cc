@@ -31,13 +31,13 @@ limitations under the License.
 namespace tensorflow {
 namespace grappler {
 
-absl::Status GraphMemory::InferStatically(
+Status GraphMemory::InferStatically(
     const std::unordered_map<string, DeviceProperties>& devices) {
   VirtualCluster cluster(devices);
   TF_RETURN_IF_ERROR(cluster.Provision());
   TF_RETURN_IF_ERROR(cluster.Initialize(item_));
   RunMetadata metadata;
-  absl::Status s = cluster.Run(item_, &metadata);
+  Status s = cluster.Run(item_, &metadata);
   // The virtual cluster returns the RESOURCE_EXHAUSTED error when it detects
   // that the model would run out of memory. We still get the metadata we need
   // out of the simulation, so we just ignore this error.
@@ -45,10 +45,10 @@ absl::Status GraphMemory::InferStatically(
     return s;
   }
   InferFromTrace(metadata.step_stats());
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status GraphMemory::InferDynamically(Cluster* cluster) {
+Status GraphMemory::InferDynamically(Cluster* cluster) {
   if (!cluster->DetailedStatsEnabled()) {
     return errors::Unavailable("Detailed stats collection must be enabled");
   }
@@ -57,7 +57,7 @@ absl::Status GraphMemory::InferDynamically(Cluster* cluster) {
   RunMetadata metadata;
   TF_RETURN_IF_ERROR(cluster->Run(item_, &metadata));
   InferFromTrace(metadata.step_stats());
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 int64_t GraphMemory::GetWorstCaseMemoryUsage() const {

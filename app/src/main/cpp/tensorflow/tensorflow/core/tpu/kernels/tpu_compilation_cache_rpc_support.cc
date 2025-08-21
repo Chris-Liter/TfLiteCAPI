@@ -23,7 +23,7 @@ limitations under the License.
 #include "tensorflow/core/tpu/kernels/tpu_compilation_cache.pb.h"
 #endif
 #include "absl/cleanup/cleanup.h"
-#include "xla/stream_executor/tpu/proto_helper.h"
+#include "tensorflow/compiler/xla/stream_executor/tpu/proto_helper.h"
 #include "tensorflow/core/tpu/kernels/tpu_compilation_cache_common.pb.h"
 #include "tensorflow/core/tpu/kernels/tpu_program_group.h"
 
@@ -67,7 +67,7 @@ Status DeserializeRpcResponseToCacheEntry<GetTpuProgramResponseExternal>(
   return OkStatus();
 }
 
-absl::StatusOr<std::vector<::grpc::Slice>> SerializeCacheEntryToBufferSlices(
+xla::StatusOr<std::vector<::grpc::Slice>> SerializeCacheEntryToBufferSlices(
     const TpuCompilationCacheEntry& cache_entry) {
   if (cache_entry.tpu_program_group() == nullptr) {
     // It's possible that the sharding/unsharding entry does not exist, but the

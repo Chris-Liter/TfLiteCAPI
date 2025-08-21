@@ -80,21 +80,21 @@ void InitializeTensor(DataType type, Tensor* tensor) {
 
 // Applies the same graph pruning logic to the graph as Session.Run in TF.
 // If the returned status is not OK, item state may be inconsistent.
-absl::Status PruneGraph(GrapplerItem* item) {
+Status PruneGraph(GrapplerItem* item) {
   ModelPruner pruner;
   GraphDef pruned_graph;
   Cluster* cluster = nullptr;  // ModelPruner doesn't check cluster.
   TF_RETURN_IF_ERROR(pruner.Optimize(cluster, *item, &pruned_graph));
   item->graph = std::move(pruned_graph);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Replace any unknown dimensions in a shape with
 // cfg.placeholder_unknown_output_shape_dim if it is no less than 0.
-absl::Status ReplaceUnknownShapeDim(const ItemConfig& cfg,
-                                    const TensorShapeProto& shape_pb_in,
-                                    TensorShapeProto* shape_pb_out,
-                                    TensorShape* shape_out) {
+Status ReplaceUnknownShapeDim(const ItemConfig& cfg,
+                              const TensorShapeProto& shape_pb_in,
+                              TensorShapeProto* shape_pb_out,
+                              TensorShape* shape_out) {
   std::vector<int32> dims;
   for (const auto& dim_proto : shape_pb_in.dim()) {
     if (cfg.placeholder_unknown_output_shape_dim >= 0 &&
@@ -115,7 +115,7 @@ absl::Status ReplaceUnknownShapeDim(const ItemConfig& cfg,
 // the Placeholder node has _output_shapes.
 // Otherwise keep it intact to keep compatible with shape annotation
 // (b/134092018).
-absl::Status UpdatePlaceholderShape(
+Status UpdatePlaceholderShape(
     const ItemConfig& cfg,
     const std::unordered_set<string>& signature_feed_nodes,
     GrapplerItem* new_item, NodeDef* node) {
@@ -140,7 +140,7 @@ absl::Status UpdatePlaceholderShape(
   // shape is not empty if the shape is partially defined.
   TensorShape shape;
   TensorShapeProto shape_proto;
-  absl::Status make_shape_status = ReplaceUnknownShapeDim(
+  Status make_shape_status = ReplaceUnknownShapeDim(
       cfg, node->attr().at("shape").shape(), &shape_proto, &shape);
   if (!make_shape_status.ok()) {
     return absl::InternalError(
@@ -203,14 +203,14 @@ absl::Status UpdatePlaceholderShape(
   if (!shape_proto.dim().empty())
     *(node->mutable_attr()->at("shape").mutable_shape()) = shape_proto;
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace
 
-absl::Status RuntimeGraphOptimizer(const GraphDef& graph_def_arg,
-                                   GraphDef* output_graph_def,
-                                   const ItemConfig& cfg) {
+Status RuntimeGraphOptimizer(const GraphDef& graph_def_arg,
+                             GraphDef* output_graph_def,
+                             const ItemConfig& cfg) {
   // This is a temporary change that optimizes the graph in context of a single
   // gpu machine. Down the line, we may want to make grappler_item_builder aware
   // of the cluster type (E.g: single cpu, multiple gpu, etc)  being simulated
@@ -223,7 +223,7 @@ absl::Status RuntimeGraphOptimizer(const GraphDef& graph_def_arg,
     if (output_graph_def != &graph_def_arg) {
       *output_graph_def = graph_def_arg;
     }
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   // Create a session option for a single GPU device.
@@ -369,8 +369,8 @@ std::unique_ptr<GrapplerItem> GrapplerItemFromMetaGraphDef(
                                     NodeName(input.name()))) {
           TensorShape shape;
           TensorShapeProto shape_proto;
-          absl::Status s = ReplaceUnknownShapeDim(cfg, input.tensor_shape(),
-                                                  &shape_proto, &shape);
+          Status s = ReplaceUnknownShapeDim(cfg, input.tensor_shape(),
+                                            &shape_proto, &shape);
           if (!s.ok()) {
             LOG(ERROR) << "Invalid shape for signature input " << input.name()
                        << ": " << s << ", skipping this input";
@@ -551,8 +551,8 @@ std::unique_ptr<GrapplerItem> GrapplerItemFromMetaGraphDef(
 
   for (auto& node : *new_item->graph.mutable_node()) {
     if (IsPlaceholder(node) && node.op() != "PlaceholderWithDefault") {
-      absl::Status s = UpdatePlaceholderShape(cfg, signature_feed_nodes,
-                                              new_item.get(), &node);
+      Status s = UpdatePlaceholderShape(cfg, signature_feed_nodes,
+                                        new_item.get(), &node);
       if (!s.ok()) return nullptr;
     } else if (IsConstant(node)) {
       auto it = asset_node_to_value.find(node.name());
@@ -619,7 +619,7 @@ std::unique_ptr<GrapplerItem> GrapplerItemFromMetaGraphDef(
   }
 
   // Instantiate all the missing attributes with their default values.
-  absl::Status attr_status = AddDefaultAttrsToGraphDef(
+  Status attr_status = AddDefaultAttrsToGraphDef(
       &new_item->graph,
       FunctionLibraryDefinition(OpRegistry::Global(),
                                 new_item->graph.library()),
@@ -633,7 +633,7 @@ std::unique_ptr<GrapplerItem> GrapplerItemFromMetaGraphDef(
   // Optimize the graph (function inlining, l1 optimizations, etc).
   VLOG(1) << "Number of nodes in graph before RuntimeGraphOptimizer: "
           << new_item->graph.node_size();
-  absl::Status optimize_status =
+  Status optimize_status =
       RuntimeGraphOptimizer(new_item->graph, &new_item->graph, cfg);
   if (!optimize_status.ok()) {
     LOG(ERROR) << "Graph preprocessing failed: " << optimize_status;

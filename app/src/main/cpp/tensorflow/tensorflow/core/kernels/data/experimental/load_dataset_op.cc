@@ -81,20 +81,19 @@ class LoadDatasetOp::Dataset : public DatasetBase {
     return metadata_.num_elements();
   }
 
-  absl::Status CheckExternalState() const override {
+  Status CheckExternalState() const override {
     return captured_reader_func_->CheckExternalState();
   }
 
-  absl::Status InputDatasets(
-      std::vector<const DatasetBase*>* inputs) const override {
+  Status InputDatasets(std::vector<const DatasetBase*>* inputs) const override {
     inputs->clear();
-    return absl::OkStatus();
+    return OkStatus();
   }
 
  protected:
-  absl::Status AsGraphDefInternal(SerializationContext* ctx,
-                                  DatasetGraphDefBuilder* b,
-                                  Node** output) const override {
+  Status AsGraphDefInternal(SerializationContext* ctx,
+                            DatasetGraphDefBuilder* b,
+                            Node** output) const override {
     Node* path_node = nullptr;
     TF_RETURN_IF_ERROR(b->AddScalar(path_, &path_node));
 
@@ -123,7 +122,7 @@ class LoadDatasetOp::Dataset : public DatasetBase {
          std::make_pair(kReaderFuncTarguments,
                         reader_func_arguments_types_attr)},  // Attrs
         output));
-    return absl::OkStatus();
+    return OkStatus();
   }
 
  private:
@@ -138,7 +137,7 @@ class LoadDatasetOp::Dataset : public DatasetBase {
       }
     }
 
-    absl::Status Initialize(IteratorContext* ctx) override {
+    Status Initialize(IteratorContext* ctx) override {
       mutex_lock l(mu_);
       TF_RETURN_IF_ERROR(dataset()->captured_reader_func_->Instantiate(
           ctx, &instantiated_captured_reader_func_));
@@ -146,9 +145,9 @@ class LoadDatasetOp::Dataset : public DatasetBase {
       return input_->MakeIterator(ctx, this, prefix(), &input_impl_);
     }
 
-    absl::Status GetNextInternal(IteratorContext* ctx,
-                                 std::vector<Tensor>* out_tensors,
-                                 bool* end_of_sequence) override {
+    Status GetNextInternal(IteratorContext* ctx,
+                           std::vector<Tensor>* out_tensors,
+                           bool* end_of_sequence) override {
       mutex_lock l(mu_);
       return input_impl_->GetNext(ctx, out_tensors, end_of_sequence);
     }
@@ -159,20 +158,20 @@ class LoadDatasetOp::Dataset : public DatasetBase {
       return model::MakeUnknownRatioNode(std::move(args));
     }
 
-    absl::Status SaveInternal(SerializationContext* ctx,
-                              IteratorStateWriter* writer) override {
+    Status SaveInternal(SerializationContext* ctx,
+                        IteratorStateWriter* writer) override {
       mutex_lock l(mu_);
       return this->SaveInput(ctx, writer, input_impl_);
     }
 
-    absl::Status RestoreInternal(IteratorContext* ctx,
-                                 IteratorStateReader* reader) override {
+    Status RestoreInternal(IteratorContext* ctx,
+                           IteratorStateReader* reader) override {
       mutex_lock l(mu_);
       return this->RestoreInput(ctx, reader, input_impl_);
     }
 
    private:
-    absl::Status InitializeInput(IteratorContext* ctx)
+    Status InitializeInput(IteratorContext* ctx)
         TF_EXCLUSIVE_LOCKS_REQUIRED(mu_) {
       auto run_dir = snapshot_util::RunDirectory(
           TranslateFileName(dataset()->path_), dataset()->metadata_.run_id());
@@ -211,7 +210,7 @@ class LoadDatasetOp::Dataset : public DatasetBase {
       // We need to take a reference here as we will use the input_ and
       // its iterator.
       input_->Ref();
-      return absl::OkStatus();
+      return OkStatus();
     }
 
     mutex mu_;

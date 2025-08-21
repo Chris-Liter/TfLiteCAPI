@@ -36,16 +36,14 @@ class FakeTask : public BatchTask {
  private:
   const size_t size_;
 
-  FakeTask(const FakeTask&) = delete;
-  void operator=(const FakeTask&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(FakeTask);
 };
 
 // Creates a FakeTask of size 'task_size', and calls 'scheduler->Schedule()' on
 // that task. Returns the resulting status.
-absl::Status ScheduleTask(size_t task_size,
-                          BatchScheduler<FakeTask>* scheduler) {
+Status ScheduleTask(size_t task_size, BatchScheduler<FakeTask>* scheduler) {
   std::unique_ptr<FakeTask> task(new FakeTask(task_size));
-  absl::Status status = scheduler->Schedule(&task);
+  Status status = scheduler->Schedule(&task);
   // Schedule() should have consumed 'task' iff it returned Status::OK.
   CHECK_EQ(status.ok(), task == nullptr);
   return status;

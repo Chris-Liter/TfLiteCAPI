@@ -88,8 +88,8 @@ class alignas(64) Value {
 
   Value(const Value&);
   Value& operator=(const Value&);
-  Value(Value&&) noexcept;
-  Value& operator=(Value&&) noexcept;
+  Value(Value&&);
+  Value& operator=(Value&&);
 
   // Construct Value and store `t` as the payload.
   template <typename T,
@@ -341,11 +341,11 @@ inline Value& Value::operator=(const Value& v) {
   return *this;
 }
 
-inline Value::Value(Value&& v) noexcept {
+inline Value::Value(Value&& v) {
   if (v.HasValue()) v.handler_(value_internal::Action::kMove, &v, this);
 }
 
-inline Value& Value::operator=(Value&& v) noexcept {
+inline Value& Value::operator=(Value&& v) {
   Reset();
   if (v.HasValue()) v.handler_(value_internal::Action::kMove, &v, this);
   return *this;

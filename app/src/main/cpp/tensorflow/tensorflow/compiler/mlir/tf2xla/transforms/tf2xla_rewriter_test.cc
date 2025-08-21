@@ -16,11 +16,12 @@ limitations under the License.
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include "absl/status/status.h"
-#include "absl/status/statusor.h"
+#include "absl/memory/memory.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/raw_ostream.h"
@@ -37,16 +38,16 @@ limitations under the License.
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_ops.h"
 #include "tensorflow/compiler/mlir/tf2xla/transforms/test_utils.h"
 #include "tensorflow/compiler/tf2xla/xla_op_registry.h"
-#include "xla/hlo/builder/xla_builder.h"
-#include "xla/hlo/builder/xla_computation.h"
-#include "xla/mlir_hlo/mhlo/IR/hlo_ops.h"
-#include "xla/shape_util.h"
-#include "xla/tsl/lib/core/status_test_util.h"
-#include "xla/xla_data.pb.h"
+#include "tensorflow/compiler/xla/client/xla_builder.h"
+#include "tensorflow/compiler/xla/client/xla_computation.h"
+#include "tensorflow/compiler/xla/mlir_hlo/mhlo/IR/hlo_ops.h"
+#include "tensorflow/compiler/xla/shape_util.h"
+#include "tensorflow/compiler/xla/xla_data.pb.h"
 #include "tensorflow/core/framework/op_kernel.h"
-#include "tsl/platform/errors.h"
-#include "tsl/platform/status.h"
-#include "tsl/platform/statusor.h"
+#include "tensorflow/tsl/lib/core/status_test_util.h"
+#include "tensorflow/tsl/platform/errors.h"
+#include "tensorflow/tsl/platform/status.h"
+#include "tensorflow/tsl/platform/statusor.h"
 
 namespace mlir {
 namespace mhlo {
@@ -102,7 +103,7 @@ class Tf2XlaRewriterTestPeer {
         tf2xla_rewriter_(op, empty_rewriter_,
                          /*device_type=*/"XLA_CPU_JIT") {}
 
-  absl::StatusOr<TupleOp> ImportXlaComputationIntoModule(
+  tsl::StatusOr<TupleOp> ImportXlaComputationIntoModule(
       XlaComputation& computation) {
     return tf2xla_rewriter_.ImportXlaComputation(computation);
   }
@@ -126,7 +127,7 @@ class Tf2XlaRewriterTest : public ::testing::Test {
         module_, test::GetMlirModuleFromString(module_string, &context_));
 
     context_.loadAllAvailableDialects();
-    return absl::OkStatus();
+    return tsl::OkStatus();
   }
 
   Status LegalizeSingleOp(Operation& op) {
@@ -142,7 +143,7 @@ class Tf2XlaRewriterTest : public ::testing::Test {
       return tsl::errors::Internal("Failed to rewrite op");
     }
 
-    return absl::OkStatus();
+    return tsl::OkStatus();
   }
 
   Status LegalizeModule(std::string module_string = kMlirModuleStr) {
@@ -169,7 +170,7 @@ class Tf2XlaRewriterTest : public ::testing::Test {
       return tsl::errors::Internal("Could not legalize all ops");
     }
 
-    return absl::OkStatus();
+    return tsl::OkStatus();
   }
 
   mlir::func::FuncOp GetMainFunc() {
@@ -184,7 +185,7 @@ class Tf2XlaRewriterTest : public ::testing::Test {
     return main_func.getBody().front().front();
   }
 
-  absl::StatusOr<TupleOp> ImportXlaComputationIntoModule(
+  StatusOr<TupleOp> ImportXlaComputationIntoModule(
       XlaComputation& computation) {
     SourceMgrDiagnosticHandler sourceMgrHandler(source_manager_, &context_);
 
@@ -285,53 +286,6 @@ TEST_F(Tf2XlaRewriterTest, InsertsConstantParameters) {
   TF_ASSERT_OK(LegalizeModule(kModuleWithConstParam));
 }
 
-TEST_F(Tf2XlaRewriterTest, DoesntEnforceCompileTimeConstantCheck) {
-  static constexpr char kModuleWithNonConstParam[] = R"(
-  module attributes {tf.versions = {bad_consumers = [], min_consumer = 0 : i32, producer = 1610 : i32}} {
-    func.func @main(%arg0: tensor<3x3x10xbf16>, %arg1: tensor<3xi32>) -> tensor<1x?x4xbf16> attributes {allow_soft_placement = false, tf.entry_function = {control_outputs = "", inputs = "_arg0,_arg1,_arg2", outputs = "_retval0"}} {
-      %cst = "tf.Const"() {value = dense<[1, -1, 4]> : tensor<3xi32>} : () -> tensor<3xi32>
-      %0 = "tf.Slice"(%arg0, %arg1, %cst) {_XlaHasReferenceVars = false, _xla_inferred_shapes = [#tf_type.shape<1x?x4>], device = "/job:localhost/replica:0/task:0/device:TPU:0"} : (tensor<3x3x10xbf16>, tensor<3xi32>, tensor<3xi32>) -> tensor<1x?x4xbf16>
-      return %0 : tensor<1x?x4xbf16>
-    }
-  })";
-
-  TF_ASSERT_OK(LegalizeModule(kModuleWithNonConstParam));
-}
-
-TEST_F(Tf2XlaRewriterTest, CreatesDefaultValues) {
-  // If a TF op has default value attributes and the mlir is missing them then
-  // the LegalizeOp should insert the default values when converting the dialect
-  // op to a node def.
-  // TF.RandomUniform would fail without the seeds being set if they were not
-  // automatically inserted with the default values.
-  static constexpr char kModuleWithOpWithoutValuesThatShouldBeDefaulted[] = R"(
-  module attributes {tf.versions = {bad_consumers = [], min_consumer = 0 : i32, producer = 1610 : i32}} {
-    func.func @main() -> tensor<1x2x3x4xf32> attributes {allow_soft_placement = false, tf.entry_function = {control_outputs = "", inputs = "_arg0,_arg1,_arg2", outputs = "_retval0"}} {
-      %cst = "tf.Const"() {value = dense<[1, 2, 3, 4]> : tensor<4xi32>} : () -> tensor<4xi32>
-      %0 = "tf.RandomUniform"(%cst) : (tensor<4xi32>) -> tensor<1x2x3x4xf32>
-      return %0 : tensor<1x2x3x4xf32>
-    }
-  })";
-
-  TF_ASSERT_OK(LegalizeModule(kModuleWithOpWithoutValuesThatShouldBeDefaulted));
-}
-
-TEST_F(Tf2XlaRewriterTest, OpWithLocationDoesntBreakNodeDefName) {
-  // A named location 'Name(Source)' causes the GetNameFromLoc method to append
-  // all the other locations to the name with a ';' separator. This test ensures
-  // that the name used for the NodeDef does not contain that invalid character.
-  static constexpr char kModuleWithOpWithoutValuesThatShouldBeDefaulted[] =
-      R"mlir(
-  module attributes {tf.versions = {bad_consumers = [], min_consumer = 0 : i32, producer = 1610 : i32}} {
-    func.func @main(%arg0: tensor<2xf32>) -> tensor<2xf32> {
-    %0 = "tf.Exp"(%arg0) : (tensor<2xf32>) -> tensor<2xf32> loc(fused["exp"("exp"), "exp"])
-    func.return %0 : tensor<2xf32>
-  }
-  })mlir";
-
-  TF_ASSERT_OK(LegalizeModule(kModuleWithOpWithoutValuesThatShouldBeDefaulted));
-}
-
 TEST_F(Tf2XlaRewriterTest, ErrorsWithInvalidNumberOfParametersToArgs) {
   XlaBuilder builder("test_builder");
   XlaComputation to_apply;
@@ -356,7 +310,7 @@ TEST_F(Tf2XlaRewriterTest, ErrorsWithInvalidNumberOfParametersToArgs) {
   EXPECT_EQ(computation.proto().computations_size(), 2);
 
   TF_ASSERT_OK(CreateMlirModule());
-  absl::StatusOr<TupleOp> status_or_tuple_op =
+  tsl::StatusOr<TupleOp> status_or_tuple_op =
       ImportXlaComputationIntoModule(computation);
   EXPECT_FALSE(status_or_tuple_op.ok());
 }

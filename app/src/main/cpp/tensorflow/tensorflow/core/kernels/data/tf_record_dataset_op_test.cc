@@ -14,29 +14,10 @@ limitations under the License.
 #include <memory>
 #include <string>
 
-#include <gtest/gtest.h>
-#include "absl/log/log.h"
-#include "absl/status/status.h"
-#include "absl/strings/str_cat.h"
-#include "absl/strings/str_join.h"
-#include "absl/strings/string_view.h"
-#include "xla/tsl/lib/core/status_test_util.h"
 #include "tensorflow/core/data/dataset_test_base.h"
-#include "tensorflow/core/data/name_utils.h"
-#include "tensorflow/core/framework/dataset.h"
-#include "tensorflow/core/framework/tensor.h"
-#include "tensorflow/core/framework/tensor_shape.h"
-#include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/lib/io/record_reader.h"
 #include "tensorflow/core/platform/env.h"
-#include "tensorflow/core/platform/errors.h"
 #include "tensorflow/core/platform/file_system.h"
-#include "tensorflow/core/platform/status.h"
-#include "tensorflow/core/platform/test.h"
-#include "tensorflow/core/platform/tstring.h"
-#include "tensorflow/core/platform/types.h"
-#include "tsl/platform/errors.h"
-#include "tsl/platform/status.h"
 
 namespace tensorflow {
 namespace data {
@@ -50,12 +31,12 @@ int64_t GetOffset(const std::string& filename, int64_t index) {
   Env* env_ = Env::Default();
   std::unique_ptr<RandomAccessFile> file_;
   std::unique_ptr<io::SequentialRecordReader> reader;
-  absl::Status s1 = env_->NewRandomAccessFile(filename, &file_);
+  Status s1 = env_->NewRandomAccessFile(filename, &file_);
   TF_CHECK_OK(s1) << s1;
   reader = std::make_unique<io::SequentialRecordReader>(file_.get());
   for (int i = 0; i < index; ++i) {
     tstring record;
-    absl::Status s2 = reader->ReadRecord(&record);
+    Status s2 = reader->ReadRecord(&record);
     TF_CHECK_OK(s2) << s2;
   }
   return reader->TellOffset();
@@ -85,7 +66,7 @@ class TFRecordDatasetParams : public DatasetParams {
         CreateTensor<int64_t>(TensorShape({num_byte_offsets}), byte_offsets_)};
   }
 
-  absl::Status GetInputNames(std::vector<string>* input_names) const override {
+  Status GetInputNames(std::vector<string>* input_names) const override {
     input_names->clear();
     *input_names = {
         TFRecordDatasetOp::kFileNames,
@@ -93,13 +74,13 @@ class TFRecordDatasetParams : public DatasetParams {
         TFRecordDatasetOp::kBufferSize,
         TFRecordDatasetOp::kByteOffsets,
     };
-    return absl::OkStatus();
+    return OkStatus();
   }
 
-  absl::Status GetAttributes(AttributeVector* attr_vector) const override {
+  Status GetAttributes(AttributeVector* attr_vector) const override {
     attr_vector->clear();
     attr_vector->emplace_back("metadata", "");
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   string dataset_type() const override {
@@ -115,9 +96,9 @@ class TFRecordDatasetParams : public DatasetParams {
 
 class TFRecordDatasetOpTest : public DatasetOpsTestBase {};
 
-absl::Status CreateTestFiles(const std::vector<tstring>& filenames,
-                             const std::vector<std::vector<string>>& contents,
-                             CompressionType compression_type) {
+Status CreateTestFiles(const std::vector<tstring>& filenames,
+                       const std::vector<std::vector<string>>& contents,
+                       CompressionType compression_type) {
   if (filenames.size() != contents.size()) {
     return tensorflow::errors::InvalidArgument(
         "The number of files does not match with the contents");
@@ -130,7 +111,7 @@ absl::Status CreateTestFiles(const std::vector<tstring>& filenames,
                                            contents[i].end());
     TF_RETURN_IF_ERROR(WriteDataToTFRecordFile(filenames[i], records, params));
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Test case 1: multiple text files with ZLIB compression.
@@ -142,8 +123,8 @@ TFRecordDatasetParams TFRecordDatasetParams1() {
                                                {"a", "bb", "ccc"}};
   CompressionType compression_type = CompressionType::ZLIB;
   if (!CreateTestFiles(filenames, contents, compression_type).ok()) {
-    LOG(WARNING) << "Failed to create the test files: "
-                 << absl::StrJoin(filenames, ", ");
+    VLOG(WARNING) << "Failed to create the test files: "
+                  << absl::StrJoin(filenames, ", ");
   }
   return TFRecordDatasetParams(filenames,
                                /*compression_type=*/compression_type,
@@ -161,8 +142,8 @@ TFRecordDatasetParams TFRecordDatasetParams2() {
                                                {"a", "bb", "ccc"}};
   CompressionType compression_type = CompressionType::GZIP;
   if (!CreateTestFiles(filenames, contents, compression_type).ok()) {
-    LOG(WARNING) << "Failed to create the test files: "
-                 << absl::StrJoin(filenames, ", ");
+    VLOG(WARNING) << "Failed to create the test files: "
+                  << absl::StrJoin(filenames, ", ");
   }
   return TFRecordDatasetParams(filenames,
                                /*compression_type=*/compression_type,
@@ -180,8 +161,8 @@ TFRecordDatasetParams TFRecordDatasetParams3() {
                                                {"a", "bb", "ccc"}};
   CompressionType compression_type = CompressionType::UNCOMPRESSED;
   if (!CreateTestFiles(filenames, contents, compression_type).ok()) {
-    LOG(WARNING) << "Failed to create the test files: "
-                 << absl::StrJoin(filenames, ", ");
+    VLOG(WARNING) << "Failed to create the test files: "
+                  << absl::StrJoin(filenames, ", ");
   }
   return TFRecordDatasetParams(filenames,
                                /*compression_type=*/compression_type,

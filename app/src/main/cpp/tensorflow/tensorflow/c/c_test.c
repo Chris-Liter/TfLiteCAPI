@@ -20,10 +20,6 @@ limitations under the License.
 #include <time.h>
 #include <unistd.h>
 
-#ifdef _WIN32
-#include <process.h>
-#endif
-
 #include "tensorflow/c/c_api.h"
 #include "tensorflow/c/c_api_experimental.h"
 #include "tensorflow/c/env.h"

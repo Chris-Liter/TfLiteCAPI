@@ -21,13 +21,11 @@ import functools
 import os
 import threading
 
-from xla.tsl.protobuf import coordination_config_pb2
 from tensorflow.python.distribute import cross_device_ops as cross_device_ops_lib
 from tensorflow.python.distribute import device_util
 from tensorflow.python.distribute import distribute_lib
 from tensorflow.python.distribute import input_lib
 from tensorflow.python.distribute import input_util
-from tensorflow.python.distribute import load_context
 from tensorflow.python.distribute import mirrored_run
 from tensorflow.python.distribute import multi_worker_util
 from tensorflow.python.distribute import parameter_server_strategy
@@ -48,9 +46,11 @@ from tensorflow.python.ops import variable_scope as vs
 from tensorflow.python.platform import tf_logging as logging
 from tensorflow.python.trackable import base as trackable
 from tensorflow.python.training import server_lib
+from tensorflow.python.util import keras_deps
 from tensorflow.python.util import nest
 from tensorflow.python.util import tf_inspect
 from tensorflow.python.util.tf_export import tf_export
+from tensorflow.tsl.protobuf import coordination_config_pb2
 
 
 ALLOWED_TASK_TYPES = ("chief", "worker", "ps")
@@ -59,21 +59,11 @@ ALLOWED_TASK_TYPES = ("chief", "worker", "ps")
 # is used. Refer to the discussion in b/249134783 for more.
 _HEARTBEAT_TIMEOUT_SECS = 5
 
-# Set the number of retries during initial connection for fault tolerance.
-# Retries follow an exponential backoff waiting period as defined in the
-# runtime, with min value 1ms, max value 10s, and exponent 1.3. So 50 retries
-# enables ~3 minutes of retrying. In general, this means the first 35 retries
-# consist of 42 seconds of backoff waiting, and each subsequent retry waits for
-# 10 seconds. So to enable 30 minutes of retrying, we would want
-# 35 + (30 * 60 - 42) // 10 = 210 retries.
-_SET_SERVER_DEF_RETRIES = 50
-
 
 @tf_export(
     "distribute.experimental.ParameterServerStrategy",
     "distribute.ParameterServerStrategy",
-    v1=[],
-)
+    v1=[])
 class ParameterServerStrategyV2(distribute_lib.Strategy):
   """An multi-worker tf.distribute strategy with parameter servers.
 
@@ -556,12 +546,6 @@ class ParameterServerStrategyV2(distribute_lib.Strategy):
     distribute_lib.distribution_strategy_replica_gauge.get_cell(
         "ps_strategy_num_ps").set(self._num_ps)
 
-    # Explicitly connect to the cluster here. Enable retries in case of worker
-    # preemptions during connection.
-    context.set_server_def_retries(_SET_SERVER_DEF_RETRIES)
-    # Perform connection by initializing context.
-    context.ensure_initialized()
-
   def _verify_args_and_config(self, cluster_resolver: base_cluster_resolver.ClusterResolver):
     if not cluster_resolver.cluster_spec():
       raise ValueError("Cluster spec must be non-empty in "
@@ -608,16 +592,14 @@ class ParameterServerStrategyV2Extended(
     self._being_scheduled = False
     self._set_num_gpus()
     distribute_lib.distribution_strategy_replica_gauge.get_cell(
-        "num_gpus_per_worker"
-    ).set(self._num_gpus_per_worker)
+        "num_gpus_per_worker").set(self._num_gpus_per_worker)
 
     # Don't canonicalize the devices here since this code is executed on Chief,
     # but we want the reduce evaluation to be done on each worker. Placer will
     # automatically choose the right device based on current context.
     # TODO(ishark): Use select_cross_device_ops instead.
     self._cross_device_ops = cross_device_ops_lib.ReductionToOneDevice(
-        reduce_to_device="/device:CPU:0"
-    )
+        reduce_to_device="/device:CPU:0")
     self._cross_device_ops._canonicalize_devices = False  # pylint: disable=protected-access
     self._allow_run_without_coordinator = False
     self._coordinator_creation_lock = threading.Lock()
@@ -653,24 +635,17 @@ class ParameterServerStrategyV2Extended(
       # Create and wrap the variable.
       v = next_creator(**kwargs)
       wrapped_v = ps_values.CachingVariable(v)
-      wrapped = ps_values.AggregatingVariable(
-          self._container_strategy(), wrapped_v, aggregation
-      )
+      wrapped = ps_values.AggregatingVariable(self._container_strategy(),
+                                              wrapped_v, aggregation)
       return wrapped
 
     if self._num_replicas_in_sync > 1:
-      if aggregation not in (
-          vs.VariableAggregation.NONE,
-          vs.VariableAggregation.SUM,
-          vs.VariableAggregation.MEAN,
-          vs.VariableAggregation.ONLY_FIRST_REPLICA,
-      ):
-        raise ValueError(
-            "Invalid variable aggregation mode: "
-            + aggregation
-            + " for variable: "
-            + kwargs["name"]
-        )
+      if aggregation not in (vs.VariableAggregation.NONE,
+                             vs.VariableAggregation.SUM,
+                             vs.VariableAggregation.MEAN,
+                             vs.VariableAggregation.ONLY_FIRST_REPLICA):
+        raise ValueError("Invalid variable aggregation mode: " + aggregation +
+                         " for variable: " + kwargs["name"])
       return var_creator
     else:
 
@@ -683,8 +658,7 @@ class ParameterServerStrategyV2Extended(
   def _create_per_worker_variable(self, next_creator, **kwargs):
     """Create an unsynced, unaggregated variable on each worker."""
     return ps_values.PerWorkerVariable(
-        self._container_strategy(), next_creator, **kwargs
-    )
+        self._container_strategy(), next_creator, **kwargs)
 
   def _create_variable(self, next_creator, **kwargs):
     """Implements StrategyExtendedV2._create_variable.
@@ -719,10 +693,7 @@ class ParameterServerStrategyV2Extended(
           var = var_creator(**kwargs)
           logging.debug(
               "Creating variable (name:%s, shape:%r) that colocates with %s",
-              var.name,
-              var.shape,
-              kwargs["colocate_with"].name,
-          )
+              var.name, var.shape, kwargs["colocate_with"].name)
           return var
 
     if self._variable_partitioner is None:
@@ -780,15 +751,11 @@ class ParameterServerStrategyV2Extended(
       return self._create_variable_round_robin(var_creator, **kwargs)
 
     num_partitions = self._variable_partitioner(shape=shape, dtype=dtype)
-    if (
-        not num_partitions
-        or num_partitions[0] == 0
-        or any(v != 1 for v in num_partitions[1:])
-    ):
+    if not num_partitions or num_partitions[0] == 0 or any(
+        v != 1 for v in num_partitions[1:]):
       raise ValueError(
           "variable_partitioner must return a list/tuple whose elements are 1"
-          " besides the first element (non-zero), got: %r" % num_partitions
-      )
+          " besides the first element (non-zero), got: %r" % num_partitions)
 
     if num_partitions[0] == 1:  # no partition
       return self._create_variable_round_robin(var_creator, **kwargs)
@@ -811,25 +778,19 @@ class ParameterServerStrategyV2Extended(
     def init_shard_fn(shard_index):
       if not init_from_fn:
         logging.log_if(
-            logging.WARN,
-            _INEFFICIENT_INIT_WARNING % name,
-            shard_index == 0
-            and shape.num_elements() > _LARGE_VARIABLE_NUM_ELEMENTS,
-        )
-        return initial_value[offsets[shard_index] : offsets[shard_index + 1]]
-      partition_shape = (
-          offsets[shard_index + 1] - offsets[shard_index],
-      ) + shape[1:]
+            logging.WARN, _INEFFICIENT_INIT_WARNING % name, shard_index == 0 and
+            shape.num_elements() > _LARGE_VARIABLE_NUM_ELEMENTS)
+        return initial_value[offsets[shard_index]:offsets[shard_index + 1]]
+      partition_shape = (offsets[shard_index + 1] -
+                         offsets[shard_index],) + shape[1:]
       partition_offset = (offsets[shard_index],) + (0,) * len(shape[1:])
       arg_spec = tf_inspect.getfullargspec(initial_value)
-      if (
-          "shard_info" not in arg_spec.args
-          and "shard_info" not in arg_spec.kwonlyargs
-      ):
+      if ("shard_info" not in arg_spec.args and
+          "shard_info" not in arg_spec.kwonlyargs):
         try:
           value = initial_value(
-              partition_shape=partition_shape, partition_offset=partition_offset
-          )
+              partition_shape=partition_shape,
+              partition_offset=partition_offset)
         except (TypeError, ValueError):
           # TypeError: Initializer doesn't accept kwargs
           # ValueError: Initializer doesn't accept partition kwargs
@@ -843,20 +804,16 @@ class ParameterServerStrategyV2Extended(
           # Initializer doesn't support partition: value is the full value
           # and needs to be sliced to get the partition value.
           logging.log_if(
-              logging.WARN,
-              _INEFFICIENT_INIT_WARNING % name,
-              shard_index == 0
-              and shape.num_elements() > _LARGE_VARIABLE_NUM_ELEMENTS,
-          )
-          return value[offsets[shard_index] : offsets[shard_index + 1]]
+              logging.WARN, _INEFFICIENT_INIT_WARNING % name,
+              shard_index == 0 and
+              shape.num_elements() > _LARGE_VARIABLE_NUM_ELEMENTS)
+          return value[offsets[shard_index]:offsets[shard_index + 1]]
       else:
         # For compatibility with `CheckpointInitialValueCallable`.
         return initial_value(
             shard_info=trackable.ShardInfo(
                 shape=tensor_shape.as_shape(partition_shape),
-                offset=partition_offset,
-            )
-        )
+                offset=partition_offset))
 
     var_list = []
     for i in range(num_partitions):
@@ -875,22 +832,17 @@ class ParameterServerStrategyV2Extended(
     with ops.colocate_with(None, ignore_existing=True):
       # Explicitly set CPU:0 device for PS in case create variable is called
       # inside replica_fn and worker has with GPU:0 scope.
-      with ops.device(
-          "/job:ps/task:%d/device:CPU:0" % (self._variable_count % self._num_ps)
-      ):
+      with ops.device("/job:ps/task:%d/device:CPU:0" %
+                      (self._variable_count % self._num_ps)):
         var = next_creator(**kwargs)
         log_method = (
-            logging.info
-            if os.getenv("TF_PSS_VERBOSE_VARIABLE_PLACEMENT")
+            logging.info if os.getenv("TF_PSS_VERBOSE_VARIABLE_PLACEMENT")
             else logging.debug
         )
         log_method(
             "Creating variable (name:%s, shape:%r) on "
-            "/job:ps/task:%d/device:CPU:0",
-            var.name,
-            var.shape,
-            (self._variable_count % self._num_ps),
-        )
+            "/job:ps/task:%d/device:CPU:0", var.name, var.shape,
+            (self._variable_count % self._num_ps))
         self._variable_count += 1
         return var
 
@@ -899,8 +851,7 @@ class ParameterServerStrategyV2Extended(
     with self._coordinator_creation_lock:
       if not self._container_strategy()._cluster_coordinator:  # pylint: disable=protected-access
         cluster_coordinator.ClusterCoordinator(
-            strategy=self._container_strategy()
-        )
+            strategy=self._container_strategy())
 
     # TODO(wxinyi): We should warn the user of the inefficiency of creating
     # `StaticHashTable` inside a `@tf.function`-wrapped `dataset_fn` to be
@@ -913,39 +864,32 @@ class ParameterServerStrategyV2Extended(
     # the coordinator which incurs worker-coordinator communication overhead.
 
     def lookup_creator(next_creator, *args, **kwargs):
-      if load_context.in_load_context():
-        return ps_values.RestoredDistributedTable(
-            self._container_strategy(), lambda: next_creator(*args, **kwargs)
-        )  # pylint: disable=protected-access
+      if keras_deps.get_load_context_function()():
+        return (ps_values.RestoredDistributedTable(
+            self._container_strategy(), lambda: next_creator(*args, **kwargs)))  # pylint: disable=protected-access
       else:
-        return ps_values.DistributedTable(
-            self._container_strategy(), lambda: next_creator(*args, **kwargs)
-        )  # pylint: disable=protected-access
+        return ps_values.DistributedTable(self._container_strategy(),
+                                          lambda: next_creator(*args, **kwargs))  # pylint: disable=protected-access
 
     def restored_lookup_creator(next_creator, *args, **kwargs):
-      return ps_values.RestoredDistributedTable(
-          self._container_strategy(), lambda: next_creator(*args, **kwargs)
-      )  # pylint: disable=protected-access
+      return (ps_values.RestoredDistributedTable(
+          self._container_strategy(), lambda: next_creator(*args, **kwargs)))  # pylint: disable=protected-access
 
     return [
         ops.resource_creator_scope("StaticHashTable", lookup_creator),
-        ops.resource_creator_scope(
-            "RestoredStaticHashTable", restored_lookup_creator
-        ),
+        ops.resource_creator_scope("RestoredStaticHashTable",
+                                   restored_lookup_creator)
     ]
 
   def _assert_used_with_cluster_coordinator(self):
-    if (
-        not self._used_with_coordinator
-        and not self._allow_run_without_coordinator
-    ):
+    if (not self._used_with_coordinator and
+        not self._allow_run_without_coordinator):
       raise NotImplementedError(
           "`tf.distribute.experimental.ParameterServerStrategy` must be used "
           "with `tf.distribute.experimental.coordinator.ClusterCoordinator` in "
           "a custom training loop. If you are using `Model.fit`, please supply "
           "a dataset function directly to a "
-          "`tf.keras.utils.experimental.DatasetCreator` instead."
-      )
+          "`tf.keras.utils.experimental.DatasetCreator` instead.")
 
   def _assert_being_scheduled_by_cluster_coordinator(self):
     if not self._being_scheduled and not self._allow_run_without_coordinator:
@@ -956,16 +900,14 @@ class ParameterServerStrategyV2Extended(
           "coordinator, which can be slow. To properly dispatch functions to "
           "run on workers, methods like `run` or `reduce` should be used "
           "within a function passed to `tf.distribute.experimental.coordinator."
-          "ClusterCoordinator.schedule`."
-      )
+          "ClusterCoordinator.schedule`.")
 
   # options is not used right now. But we may want to support options while
   # creating InputWorkers in future, similar to MirroredStrategy.
   def _input_workers_with_options(self, options=None):
     input_workers_devices = (("/device:CPU:0", self.worker_devices),)
     return input_lib.InputWorkers(
-        input_workers_devices, canonicalize_devices=False
-    )
+        input_workers_devices, canonicalize_devices=False)
 
   def _experimental_distribute_dataset(self, dataset, options):
     input_workers_devices = self._input_workers_with_options()
@@ -979,8 +921,7 @@ class ParameterServerStrategyV2Extended(
         self._container_strategy(),
         num_replicas_in_sync=self._num_replicas_in_sync,
         options=options,
-        build=ops.inside_function(),
-    )  # will be built by ClusterCoordinator
+        build=ops.inside_function())  # will be built by ClusterCoordinator
 
   def _distribute_datasets_from_function(self, dataset_fn, options):
     # There is no synchronization beyond a worker and thus, the number of
@@ -991,8 +932,7 @@ class ParameterServerStrategyV2Extended(
     input_context = distribute_lib.InputContext(
         num_input_pipelines=num_input_pipelines_in_sync,
         input_pipeline_id=input_pipeline_id_in_sync,
-        num_replicas_in_sync=self._num_replicas_in_sync,
-    )
+        num_replicas_in_sync=self._num_replicas_in_sync)
 
     # If this DistributedDatasetFromFunction is created outside
     # ClusterCoordinator, i,e, outside a tf.function, we don't build its
@@ -1000,12 +940,10 @@ class ParameterServerStrategyV2Extended(
     # ClusterCoordinator.create_per_worker_dataset.
     return input_util.get_distributed_datasets_from_function(
         dataset_fn,
-        self._input_workers_with_options(options),
-        [input_context],
+        self._input_workers_with_options(options), [input_context],
         self._container_strategy(),
         options=options,
-        build=ops.inside_function(),
-    )  # will be built by ClusterCoordinator
+        build=ops.inside_function())  # will be built by ClusterCoordinator
 
   @property
   def worker_devices(self):
@@ -1019,17 +957,15 @@ class ParameterServerStrategyV2Extended(
   def _call_for_each_replica(self, fn, args, kwargs):
     self._assert_being_scheduled_by_cluster_coordinator()
 
-    return mirrored_run.call_for_each_replica(
-        self._container_strategy(), fn, args, kwargs
-    )
+    return mirrored_run.call_for_each_replica(self._container_strategy(), fn,
+                                              args, kwargs)
 
   def _reduce(self, reduce_op, value):
     self._assert_being_scheduled_by_cluster_coordinator()
     dst = device_util.current() or self._default_device or "/device:CPU:0"
     destinations = device_util.canonicalize_without_job_and_task(dst)
     result = self._local_results(
-        self.reduce_to(reduce_op, value, destinations)
-    )[0]
+        self.reduce_to(reduce_op, value, destinations))[0]
     return result
 
   def _reduce_to(self, reduce_op, value, destinations, options):
@@ -1038,8 +974,7 @@ class ParameterServerStrategyV2Extended(
     def get_values(x):
       if isinstance(x, values.DistributedValues):
         return self._cross_device_ops.reduce(
-            reduce_op, x, destinations=destinations
-        )  # pylint: disable=protected-access
+            reduce_op, x, destinations=destinations)  # pylint: disable=protected-access
       return x
 
     return nest.map_structure(get_values, value)
@@ -1054,7 +989,6 @@ _INEFFICIENT_INIT_WARNING = (
     "footprint, explicitly specify `dtype` and `shape` when creating "
     "variables, and use `tf.initializers` to initialize the variable. "
     "Note that some initializers (e.g., orthogonal) don't support "
-    "memory-efficient initialization and there is not much you can do here."
-)
+    "memory-efficient initialization and there is not much you can do here.")
 
 _LARGE_VARIABLE_NUM_ELEMENTS = 1e9

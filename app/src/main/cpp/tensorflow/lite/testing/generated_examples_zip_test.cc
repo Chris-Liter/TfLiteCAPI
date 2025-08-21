@@ -12,30 +12,24 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
-#include <cctype>
-#include <cstdint>
+#include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
-#include <cstring>
 #include <fstream>
-#include <iterator>
 #include <map>
+#include <sstream>
+#include <string>
 #include <tuple>
 #include <utility>
-#include <vector>
 
 #include <gtest/gtest.h>
-#include "absl/status/status.h"
-#include "absl/strings/match.h"
 #include "re2/re2.h"
-#include "xla/tsl/platform/subprocess.h"
-#include "xla/tsl/util/command_line_flags.h"
-#include "tensorflow/lite/string_type.h"
+#include "tensorflow/core/platform/env.h"
+#include "tensorflow/core/platform/subprocess.h"
+#include "tensorflow/core/util/command_line_flags.h"
 #include "tensorflow/lite/testing/parse_testdata.h"
 #include "tensorflow/lite/testing/tflite_driver.h"
 #include "tensorflow/lite/testing/util.h"
-#include "tsl/platform/env.h"
-#include "tsl/platform/status.h"
 
 namespace tflite {
 namespace testing {
@@ -60,7 +54,7 @@ bool FLAGS_ignore_unsupported_nnapi = false;
 }  // namespace
 
 // TensorFlow system environment for file system called.
-tsl::Env* env = tsl::Env::Default();
+tensorflow::Env* env = tensorflow::Env::Default();
 
 // Already known broken tests.
 // Key is a substring of the test name and value is pair of a bug number and
@@ -72,14 +66,13 @@ using BrokenTestMap =
              std::pair</* bug_number */ string, /* always_ignore */ bool>>;
 // TODO(ahentz): make sure we clean this list up frequently.
 const BrokenTestMap& GetKnownBrokenTests() {
-  static const BrokenTestMap* const kBrokenTests = new BrokenTestMap(
-      {// TODO(b/194364155): TF and TFLite have different behaviors when output
-       // nan values in LocalResponseNorm ops.
-       {R"(^\/local_response_norm.*alpha=-3.*beta=2)", {"194364155", true}},
-       {R"(^\/local_response_norm.*alpha=(None|2).*beta=2.*bias=-0\.1.*depth_radius=(0|1).*input_shape=\[3,15,14,3\])",
-        {"194364155", true}},
-       {R"(^\/static_rnn_with_control_flow_v2.*use_sequence_length=True)",
-        {"380064373", true}}});
+  static const BrokenTestMap* const kBrokenTests = new BrokenTestMap({
+      // TODO(b/194364155): TF and TFLite have different behaviors when output
+      // nan values in LocalResponseNorm ops.
+      {R"(^\/local_response_norm.*alpha=-3.*beta=2)", {"194364155", true}},
+      {R"(^\/local_response_norm.*alpha=(None|2).*beta=2.*bias=-0\.1.*depth_radius=(0|1).*input_shape=\[3,15,14,3\])",
+       {"194364155", true}},
+  });
   return *kBrokenTests;
 }
 
@@ -147,11 +140,11 @@ class ArchiveEnvironment : public ::testing::Environment {
   }
 
   // Unarchive `archive` file into a new temporary directory  `out_dir`.
-  absl::Status UnArchive(const string& zip, const string& tar,
-                         string* out_dir) {
+  tensorflow::Status UnArchive(const string& zip, const string& tar,
+                               string* out_dir) {
     string dir;
     TF_CHECK_OK(MakeTemporaryDirectory(&dir));
-    tsl::SubProcess proc;
+    tensorflow::SubProcess proc;
     if (!zip.empty()) {
       string unzip_binary = *FLAGS_unzip_binary_path;
       TF_CHECK_OK(env->FileExists(unzip_binary));
@@ -166,33 +159,34 @@ class ArchiveEnvironment : public ::testing::Environment {
       // files, which fails)
       proc.SetProgram(tar_binary, {"tar", "xfo", tar, "-C", dir});
     }
-    proc.SetChannelAction(tsl::CHAN_STDOUT, tsl::ACTION_PIPE);
-    proc.SetChannelAction(tsl::CHAN_STDERR, tsl::ACTION_PIPE);
+    proc.SetChannelAction(tensorflow::CHAN_STDOUT, tensorflow::ACTION_PIPE);
+    proc.SetChannelAction(tensorflow::CHAN_STDERR, tensorflow::ACTION_PIPE);
     if (!proc.Start())
-      return absl::Status(absl::StatusCode::kUnknown, "unzip couldn't start");
+      return tensorflow::Status(absl::StatusCode::kUnknown,
+                                "unzip couldn't start");
     string out, err;
     int status = proc.Communicate(nullptr, &out, &err);
     if (WEXITSTATUS(status) == 0) {
       *out_dir = dir;
-      return absl::OkStatus();
+      return ::tensorflow::OkStatus();
     } else {
-      return absl::Status(absl::StatusCode::kUnknown,
-                          "unzip failed. "
-                          "stdout:\n" +
-                              out + "\nstderr:\n" + err);
+      return tensorflow::Status(absl::StatusCode::kUnknown,
+                                "unzip failed. "
+                                "stdout:\n" +
+                                    out + "\nstderr:\n" + err);
     }
   }
 
  private:
   // Make a temporary directory and return its name in `temporary`.
-  absl::Status MakeTemporaryDirectory(string* temporary) {
+  tensorflow::Status MakeTemporaryDirectory(string* temporary) {
     if (env->LocalTempFilename(temporary)) {
       TF_CHECK_OK(env->CreateDir(*temporary));
       temporary_directories_.push_back(*temporary);
-      return absl::OkStatus();
+      return ::tensorflow::OkStatus();
     }
-    return absl::Status(absl::StatusCode::kUnknown,
-                        "make temporary directory failed");
+    return tensorflow::Status(absl::StatusCode::kUnknown,
+                              "make temporary directory failed");
   }
 
   std::vector<string> temporary_directories_;
@@ -209,8 +203,8 @@ ArchiveEnvironment* archive_environment() {
 // the temporary directory where the archive file has been unarchived and
 // `test_paths` is the list of test prefixes that were in the manifest.
 // Note, it is an error for a manifest to contain no tests.
-absl::Status ReadManifest(const string& original_file, const string& dir,
-                          std::vector<string>* test_paths) {
+tensorflow::Status ReadManifest(const string& original_file, const string& dir,
+                                std::vector<string>* test_paths) {
   // Read the newline delimited list of entries in the manifest.
   std::ifstream manifest_fp(dir + "/manifest.txt");
   string manifest((std::istreambuf_iterator<char>(manifest_fp)),
@@ -227,17 +221,17 @@ absl::Status ReadManifest(const string& original_file, const string& dir,
   }
   if (!added) {
     string message = "Test had no examples: " + original_file;
-    return absl::Status(absl::StatusCode::kUnknown, message);
+    return tensorflow::Status(absl::StatusCode::kUnknown, message);
   }
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 // Get a list of tests from either zip or tar file
 std::vector<string> UnarchiveAndFindTestNames(const string& zip_file,
                                               const string& tar_file) {
   if (zip_file.empty() && tar_file.empty()) {
-    TF_CHECK_OK(absl::Status(absl::StatusCode::kUnknown,
-                             "Neither zip_file nor tar_file was given"));
+    TF_CHECK_OK(tensorflow::Status(absl::StatusCode::kUnknown,
+                                   "Neither zip_file nor tar_file was given"));
   }
   string decompress_tmp_dir;
   TF_CHECK_OK(archive_environment()->UnArchive(zip_file, tar_file,
@@ -272,7 +266,7 @@ TEST_P(OpsTest, RunZipTests) {
       FLAGS_use_nnapi ? TfLiteDriver::DelegateType::kNnapi
                       : TfLiteDriver::DelegateType::kNone);
   bool fully_quantize = false;
-  if (absl::StrContains(label, "fully_quantize=True")) {
+  if (label.find("fully_quantize=True") != std::string::npos) {
     // TODO(b/134594898): Tighten this constraint.
     test_driver.SetThreshold(0.2, 0.1);
     fully_quantize = true;
@@ -359,27 +353,32 @@ INSTANTIATE_TEST_CASE_P(tests, OpsTest,
 int main(int argc, char** argv) {
   ::testing::AddGlobalTestEnvironment(tflite::testing::archive_environment());
 
-  std::vector<tsl::Flag> flags = {
-      tsl::Flag("ignore_known_bugs", &tflite::testing::FLAGS_ignore_known_bugs,
-                "If a particular model is affected by a known bug, the "
-                "corresponding test should expect the outputs to not match."),
-      tsl::Flag("tar_file_path", tflite::testing::FLAGS_tar_file_path,
-                "Required (or zip_file_path): Location of the test tar file."),
-      tsl::Flag("zip_file_path", tflite::testing::FLAGS_zip_file_path,
-                "Required (or tar_file_path): Location of the test zip file."),
-      tsl::Flag("unzip_binary_path", tflite::testing::FLAGS_unzip_binary_path,
-                "Location of a suitable unzip binary."),
-      tsl::Flag("tar_binary_path", tflite::testing::FLAGS_tar_binary_path,
-                "Location of a suitable tar binary."),
-      tsl::Flag("use_nnapi", &tflite::testing::FLAGS_use_nnapi,
-                "Whether to enable the NNAPI delegate"),
-      tsl::Flag("ignore_unsupported_nnapi",
-                &tflite::testing::FLAGS_ignore_unsupported_nnapi,
-                "Don't fail tests just because delegation to NNAPI "
-                "is not possible")};
-  bool success = tsl::Flags::Parse(&argc, argv, flags);
+  std::vector<tensorflow::Flag> flags = {
+      tensorflow::Flag(
+          "ignore_known_bugs", &tflite::testing::FLAGS_ignore_known_bugs,
+          "If a particular model is affected by a known bug, the "
+          "corresponding test should expect the outputs to not match."),
+      tensorflow::Flag(
+          "tar_file_path", tflite::testing::FLAGS_tar_file_path,
+          "Required (or zip_file_path): Location of the test tar file."),
+      tensorflow::Flag(
+          "zip_file_path", tflite::testing::FLAGS_zip_file_path,
+          "Required (or tar_file_path): Location of the test zip file."),
+      tensorflow::Flag("unzip_binary_path",
+                       tflite::testing::FLAGS_unzip_binary_path,
+                       "Location of a suitable unzip binary."),
+      tensorflow::Flag("tar_binary_path",
+                       tflite::testing::FLAGS_tar_binary_path,
+                       "Location of a suitable tar binary."),
+      tensorflow::Flag("use_nnapi", &tflite::testing::FLAGS_use_nnapi,
+                       "Whether to enable the NNAPI delegate"),
+      tensorflow::Flag("ignore_unsupported_nnapi",
+                       &tflite::testing::FLAGS_ignore_unsupported_nnapi,
+                       "Don't fail tests just because delegation to NNAPI "
+                       "is not possible")};
+  bool success = tensorflow::Flags::Parse(&argc, argv, flags);
   if (!success || (argc == 2 && !strcmp(argv[1], "--helpfull"))) {
-    fprintf(stderr, "%s", tsl::Flags::Usage(argv[0], flags).c_str());
+    fprintf(stderr, "%s", tensorflow::Flags::Usage(argv[0], flags).c_str());
     return 1;
   }
 

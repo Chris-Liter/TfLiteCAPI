@@ -15,32 +15,27 @@ limitations under the License.
 
 // XLA TensorArray operators.
 
-#include <cstdint>
+#include <limits>
 #include <vector>
 
-#include "absl/log/check.h"
-#include "absl/status/status.h"
-#include "absl/strings/str_cat.h"
-#include "absl/types/span.h"
 #include "tensorflow/compiler/tf2xla/kernels/gather_op_helpers.h"
 #include "tensorflow/compiler/tf2xla/shape_util.h"
+#include "tensorflow/compiler/tf2xla/type_util.h"
 #include "tensorflow/compiler/tf2xla/xla_helpers.h"
 #include "tensorflow/compiler/tf2xla/xla_op_kernel.h"
 #include "tensorflow/compiler/tf2xla/xla_op_registry.h"
 #include "tensorflow/compiler/tf2xla/xla_resource.h"
-#include "xla/hlo/builder/xla_builder.h"
-#include "xla/status_macros.h"
+#include "tensorflow/compiler/xla/client/xla_builder.h"
+#include "tensorflow/compiler/xla/literal.h"
+#include "tensorflow/core/framework/bounds_check.h"
 #include "tensorflow/core/framework/op_kernel.h"
-#include "tensorflow/core/framework/op_requires.h"
+#include "tensorflow/core/framework/partial_tensor_shape.h"
+#include "tensorflow/core/framework/register_types.h"
 #include "tensorflow/core/framework/tensor.h"
-#include "tensorflow/core/framework/tensor_shape.h"
 #include "tensorflow/core/framework/tensor_types.h"
 #include "tensorflow/core/framework/types.h"
-#include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/lib/core/status.h"
-#include "tensorflow/core/platform/errors.h"
 #include "tensorflow/core/platform/types.h"
-#include "tsl/platform/errors.h"
 
 namespace tensorflow {
 namespace {
@@ -52,9 +47,9 @@ namespace {
 // the TensorArray with elements of `elem_shape`. For both initialized and
 // uninitialized TensorArrays, checks that the tensor has a type compatible with
 // 'dtype' and shape compatible with 'elem_shape'.
-absl::Status MaybeInitializeTensorArray(xla::XlaBuilder* builder,
-                                        XlaResource* resource, DataType dtype,
-                                        const TensorShape& elem_shape) {
+Status MaybeInitializeTensorArray(xla::XlaBuilder* builder,
+                                  XlaResource* resource, DataType dtype,
+                                  const TensorShape& elem_shape) {
   if (resource->kind() != XlaResource::kTensorArray) {
     return errors::InvalidArgument("Unexpected non-TensorArray resource");
   }
@@ -89,14 +84,14 @@ absl::Status MaybeInitializeTensorArray(xla::XlaBuilder* builder,
           shape.DebugString());
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Checks that the TensorArray 'resource' has been initialized, and has type
 // 'dtype'. Sets 'shape' to the shape
-absl::Status CheckTensorArrayIsInitialized(const string& op_name,
-                                           const XlaResource* resource,
-                                           DataType dtype) {
+Status CheckTensorArrayIsInitialized(const string& op_name,
+                                     const XlaResource* resource,
+                                     DataType dtype) {
   if (resource->kind() != XlaResource::kTensorArray) {
     return errors::InvalidArgument(
         "Unexpected non-TensorArray resource passed to ", op_name);
@@ -111,14 +106,14 @@ absl::Status CheckTensorArrayIsInitialized(const string& op_name,
         " but op has dtype ", DataTypeString(dtype), ".");
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status GetTensorArrayShape(const XlaResource* resource,
-                                 xla::XlaBuilder* builder, TensorShape* shape) {
+Status GetTensorArrayShape(const XlaResource* resource,
+                           xla::XlaBuilder* builder, TensorShape* shape) {
   *shape = resource->shape();
   shape->InsertDim(0, resource->max_array_size());
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Like XlaBuilder::DynamicUpdateSlice, but adds 'update' to the
@@ -186,8 +181,7 @@ class TensorArrayOp : public XlaOpKernel {
   DataType dtype_;
   string tensor_array_name_;
 
-  TensorArrayOp(const TensorArrayOp&) = delete;
-  void operator=(const TensorArrayOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(TensorArrayOp);
 };
 
 REGISTER_XLA_OP(Name("TensorArrayV3").CompileTimeConstantInput("size"),
@@ -242,8 +236,7 @@ class TensorArrayWriteOp : public XlaOpKernel {
  private:
   DataType dtype_;
 
-  TensorArrayWriteOp(const TensorArrayWriteOp&) = delete;
-  void operator=(const TensorArrayWriteOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(TensorArrayWriteOp);
 };
 
 REGISTER_XLA_OP(Name("TensorArrayWriteV3"), TensorArrayWriteOp);
@@ -287,8 +280,7 @@ class TensorArrayReadOp : public XlaOpKernel {
  private:
   DataType dtype_;
 
-  TensorArrayReadOp(const TensorArrayReadOp&) = delete;
-  void operator=(const TensorArrayReadOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(TensorArrayReadOp);
 };
 
 REGISTER_XLA_OP(Name("TensorArrayReadV3"), TensorArrayReadOp);
@@ -321,7 +313,7 @@ class TensorArrayGatherOp : public XlaOpKernel {
     // Look for the case where the gather takes a simple slice from the
     // tensor array (0, 1, 2, 3, 4, ..., N)
     std::vector<int64_t> const_indices;
-    absl::Status status = ctx->ConstantInputAsIntVector(1, &const_indices);
+    Status status = ctx->ConstantInputAsIntVector(1, &const_indices);
     if (status.ok()) {
       bool gather_is_dense_slice = true;
       for (auto i = 0; i < const_indices.size(); i++) {
@@ -355,8 +347,7 @@ class TensorArrayGatherOp : public XlaOpKernel {
  private:
   DataType dtype_;
 
-  TensorArrayGatherOp(const TensorArrayGatherOp&) = delete;
-  void operator=(const TensorArrayGatherOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(TensorArrayGatherOp);
 };
 
 REGISTER_XLA_OP(Name("TensorArrayGatherV3"), TensorArrayGatherOp);
@@ -393,7 +384,7 @@ class TensorArrayScatterOp : public XlaOpKernel {
     // tensor array implementation allows for this to be a straight addition.
     bool scatter_all_elements_in_order = false;
     std::vector<int64_t> const_indices;
-    absl::Status status = ctx->ConstantInputAsIntVector(1, &const_indices);
+    Status status = ctx->ConstantInputAsIntVector(1, &const_indices);
     if (status.ok() && num_indices == value_shape.dim_size(0)) {
       scatter_all_elements_in_order = true;
       for (auto i = 0; i < num_indices; i++) {
@@ -443,8 +434,7 @@ class TensorArrayScatterOp : public XlaOpKernel {
  private:
   DataType dtype_;
 
-  TensorArrayScatterOp(const TensorArrayScatterOp&) = delete;
-  void operator=(const TensorArrayScatterOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(TensorArrayScatterOp);
 };
 
 REGISTER_XLA_OP(Name("TensorArrayScatterV3"), TensorArrayScatterOp);
@@ -484,8 +474,7 @@ class TensorArrayConcatOp : public XlaOpKernel {
  private:
   DataType dtype_;
 
-  TensorArrayConcatOp(const TensorArrayConcatOp&) = delete;
-  void operator=(const TensorArrayConcatOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(TensorArrayConcatOp);
 };
 
 REGISTER_XLA_OP(Name("TensorArrayConcatV3"), TensorArrayConcatOp);
@@ -555,8 +544,7 @@ class TensorArraySplitOp : public XlaOpKernel {
  private:
   DataType dtype_;
 
-  TensorArraySplitOp(const TensorArraySplitOp&) = delete;
-  void operator=(const TensorArraySplitOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(TensorArraySplitOp);
 };
 
 REGISTER_XLA_OP(Name("TensorArraySplitV3").CompileTimeConstantInput("lengths"),
@@ -575,8 +563,7 @@ class TensorArraySizeOp : public XlaOpKernel {
   }
 
  private:
-  TensorArraySizeOp(const TensorArraySizeOp&) = delete;
-  void operator=(const TensorArraySizeOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(TensorArraySizeOp);
 };
 
 REGISTER_XLA_OP(Name("TensorArraySizeV3"), TensorArraySizeOp);
@@ -611,8 +598,7 @@ class TensorArrayGradOp : public XlaOpKernel {
  private:
   string source_;
 
-  TensorArrayGradOp(const TensorArrayGradOp&) = delete;
-  void operator=(const TensorArrayGradOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(TensorArrayGradOp);
 };
 
 REGISTER_XLA_OP(Name("TensorArrayGradV3"), TensorArrayGradOp);
@@ -626,8 +612,7 @@ class TensorArrayCloseOp : public XlaOpKernel {
   }
 
  private:
-  TensorArrayCloseOp(const TensorArrayCloseOp&) = delete;
-  void operator=(const TensorArrayCloseOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(TensorArrayCloseOp);
 };
 
 REGISTER_XLA_OP(Name("TensorArrayCloseV3"), TensorArrayCloseOp);

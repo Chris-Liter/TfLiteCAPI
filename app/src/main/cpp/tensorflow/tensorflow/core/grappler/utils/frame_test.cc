@@ -64,7 +64,7 @@ TYPED_TEST_SUITE(FrameViewTest, GraphTypes);
 
 template <typename T>
 void InferFromGraph(FrameView* frame_view, GraphDef* graph, bool valid) {
-  absl::Status status;
+  Status status;
   T graph_view(graph, &status);
   TF_ASSERT_OK(status);
   status = frame_view->InferFromGraphView(graph_view);
@@ -78,7 +78,7 @@ void InferFromGraph(FrameView* frame_view, GraphDef* graph, bool valid) {
 template <>
 void InferFromGraph<GraphDef>(FrameView* frame_view, GraphDef* graph,
                               bool valid) {
-  absl::Status status = frame_view->InferFromGraph(*graph);
+  Status status = frame_view->InferFromGraph(*graph);
   if (valid) {
     TF_ASSERT_OK(status);
   } else {

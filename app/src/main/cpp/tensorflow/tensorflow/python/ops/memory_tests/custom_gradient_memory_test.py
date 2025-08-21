@@ -15,10 +15,9 @@
 """Memory tests for tensorflow.ops.custom_gradient."""
 
 import functools
-import unittest
 
 from absl.testing import parameterized
-from xla.service import hlo_pb2
+from tensorflow.compiler.xla.service import hlo_pb2
 from tensorflow.python.distribute.cluster_resolver import tpu_cluster_resolver
 from tensorflow.python.eager import backprop
 from tensorflow.python.eager import def_function
@@ -111,7 +110,6 @@ class RecomputeGradMemoryTest(test.TestCase, parameterized.TestCase):
     res_recompute = run(f_recompute)
     self.assertAllClose(res_no_recompute, res_recompute)
 
-  @unittest.skip("b/335476600")
   @test_util.run_v2_only
   def testRecomputeGradXla(self):
     device_type = self._get_device_type()

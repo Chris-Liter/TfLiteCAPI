@@ -14,28 +14,20 @@ limitations under the License.
 ==============================================================================*/
 
 #include <algorithm>
-#include <cstdint>
 #include <tuple>
 #include <utility>
 #include <vector>
 
-#include "absl/algorithm/container.h"
-#include "Eigen/Core"  // from @eigen_archive
 #include "tensorflow/compiler/tf2xla/mlir_xla_op_kernel.h"
 #include "tensorflow/compiler/tf2xla/xla_helpers.h"
 #include "tensorflow/compiler/tf2xla/xla_op_kernel.h"
 #include "tensorflow/compiler/tf2xla/xla_op_registry.h"
-#include "xla/hlo/builder/lib/constants.h"
-#include "xla/hlo/builder/lib/matrix.h"
-#include "xla/hlo/builder/xla_builder.h"
-#include "xla/util.h"
-#include "xla/xla_data.pb.h"
+#include "tensorflow/compiler/xla/client/lib/constants.h"
+#include "tensorflow/compiler/xla/client/lib/matrix.h"
+#include "tensorflow/compiler/xla/client/xla_builder.h"
+#include "tensorflow/compiler/xla/primitive_util.h"
 #include "tensorflow/core/framework/op_kernel.h"
-#include "tensorflow/core/framework/op_requires.h"
-#include "tensorflow/core/framework/tensor_shape.h"
-#include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/lib/core/errors.h"
-#include "tensorflow/core/platform/types.h"
 
 namespace tensorflow {
 namespace {
@@ -343,7 +335,7 @@ class MatrixDiagOp : public XlaOpKernel {
   static constexpr int kNumV1Inputs = 1;
 };
 
-REGISTER_XLA_OP(Name("MatrixDiag"), MatrixDiagOp);
+REGISTER_XLA_OP(Name("MatrixDiag"), MlirXlaOpKernel);
 REGISTER_XLA_OP(Name("MatrixDiagV2")
                     .CompileTimeConstantInput("k")
                     .CompileTimeConstantInput("num_rows")
@@ -548,8 +540,7 @@ class MatrixSetDiagOp : public XlaOpKernel {
   bool left_align_superdiagonal_ = true;
   bool left_align_subdiagonal_ = true;
   static constexpr int kNumV1Inputs = 2;
-  MatrixSetDiagOp(const MatrixSetDiagOp&) = delete;
-  void operator=(const MatrixSetDiagOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(MatrixSetDiagOp);
 };
 
 REGISTER_XLA_OP(Name("MatrixSetDiag"), MatrixSetDiagOp);

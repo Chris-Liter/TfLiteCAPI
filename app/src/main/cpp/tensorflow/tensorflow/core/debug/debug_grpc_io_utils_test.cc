@@ -13,8 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include <memory>
-
 #include "tensorflow/core/debug/debug_graph_utils.h"
 #include "tensorflow/core/debug/debug_grpc_testlib.h"
 #include "tensorflow/core/debug/debug_io_utils.h"
@@ -26,6 +24,7 @@ limitations under the License.
 #include "tensorflow/core/lib/strings/stringprintf.h"
 #include "tensorflow/core/platform/env.h"
 #include "tensorflow/core/platform/test.h"
+#include "tensorflow/core/platform/tracing.h"
 
 namespace tensorflow {
 
@@ -49,10 +48,10 @@ class GrpcDebugTest : public ::testing::Test {
                             int64_t server_start_delay_micros) {
     server_data->port = testing::PickUnusedPortOrDie();
     server_data->url = strings::StrCat("grpc://localhost:", server_data->port);
-    server_data->server = std::make_unique<test::TestEventListenerImpl>();
+    server_data->server.reset(new test::TestEventListenerImpl());
 
-    server_data->thread_pool =
-        std::make_unique<thread::ThreadPool>(Env::Default(), "test_server", 1);
+    server_data->thread_pool.reset(
+        new thread::ThreadPool(Env::Default(), "test_server", 1));
     server_data->thread_pool->Schedule(
         [server_data, server_start_delay_micros]() {
           Env::Default()->SleepForMicroseconds(server_start_delay_micros);
@@ -89,7 +88,7 @@ TEST_F(GrpcDebugTest, ConnectionTimeoutWorks) {
       strings::StrCat("grpc://localhost:", testing::PickUnusedPortOrDie());
   Tensor tensor(DT_FLOAT, TensorShape({1, 1}));
   tensor.flat<float>()(0) = 42.0;
-  absl::Status publish_status = DebugIO::PublishDebugTensor(
+  Status publish_status = DebugIO::PublishDebugTensor(
       DebugNodeKey("/job:localhost/replica:0/task:0/cpu:0", "foo_tensor", 0,
                    "DebugIdentity"),
       tensor, Env::Default()->NowMicros(), {kInvalidGrpcUrl});
@@ -112,7 +111,7 @@ TEST_F(GrpcDebugTest, ConnectionToDelayedStartingServerWorks) {
   tensor.flat<float>()(0) = 42.0;
   const DebugNodeKey kDebugNodeKey("/job:localhost/replica:0/task:0/cpu:0",
                                    "foo_tensor", 0, "DebugIdentity");
-  absl::Status publish_status = DebugIO::PublishDebugTensor(
+  Status publish_status = DebugIO::PublishDebugTensor(
       kDebugNodeKey, tensor, Env::Default()->NowMicros(), {server_data.url});
   ASSERT_TRUE(publish_status.ok());
   TF_ASSERT_OK(DebugIO::CloseDebugURL(server_data.url));
@@ -151,7 +150,7 @@ TEST_F(GrpcDebugTest, SendDebugTensorWithLargeStringAtIndex0ViaGrpcTest) {
   tensor.flat<tstring>()(0) = string(5000 * 1024, 'A');
   const DebugNodeKey kDebugNodeKey("/job:localhost/replica:0/task:0/cpu:0",
                                    "foo_tensor", 0, "DebugIdentity");
-  const absl::Status status = DebugIO::PublishDebugTensor(
+  const Status status = DebugIO::PublishDebugTensor(
       kDebugNodeKey, tensor, Env::Default()->NowMicros(), {server_data_.url});
   ASSERT_FALSE(status.ok());
   ASSERT_NE(status.message().find("string value at index 0 from debug "
@@ -167,7 +166,7 @@ TEST_F(GrpcDebugTest, SendDebugTensorWithLargeStringAtIndex1ViaGrpcTest) {
   tensor.flat<tstring>()(1) = string(5000 * 1024, 'A');
   const DebugNodeKey kDebugNodeKey("/job:localhost/replica:0/task:0/cpu:0",
                                    "foo_tensor", 0, "DebugIdentity");
-  const absl::Status status = DebugIO::PublishDebugTensor(
+  const Status status = DebugIO::PublishDebugTensor(
       kDebugNodeKey, tensor, Env::Default()->NowMicros(), {server_data_.url});
   ASSERT_FALSE(status.ok());
   ASSERT_NE(status.message().find("string value at index 1 from debug "
@@ -194,7 +193,7 @@ TEST_F(GrpcDebugTest, SendMultipleDebugTensorsSynchronizedViaGrpcTest) {
   mutex mu;
   Notification all_done;
   int tensor_count TF_GUARDED_BY(mu) = 0;
-  std::vector<absl::Status> statuses TF_GUARDED_BY(mu);
+  std::vector<Status> statuses TF_GUARDED_BY(mu);
 
   const std::vector<string> urls({server_data_.url});
 
@@ -210,7 +209,7 @@ TEST_F(GrpcDebugTest, SendMultipleDebugTensorsSynchronizedViaGrpcTest) {
 
     // Different concurrent tasks will send different tensors.
     const uint64 wall_time = Env::Default()->NowMicros();
-    absl::Status publish_status = DebugIO::PublishDebugTensor(
+    Status publish_status = DebugIO::PublishDebugTensor(
         DebugNodeKey("/job:localhost/replica:0/task:0/cpu:0",
                      strings::StrCat("synchronized_node_", this_count), 0,
                      "DebugIdentity"),
@@ -235,11 +234,11 @@ TEST_F(GrpcDebugTest, SendMultipleDebugTensorsSynchronizedViaGrpcTest) {
   delete tp;
 
   // Close the debug gRPC stream.
-  absl::Status close_status = DebugIO::CloseDebugURL(server_data_.url);
+  Status close_status = DebugIO::CloseDebugURL(server_data_.url);
   ASSERT_TRUE(close_status.ok());
 
   // Check all statuses from the PublishDebugTensor calls().
-  for (const absl::Status& status : statuses) {
+  for (const Status& status : statuses) {
     TF_ASSERT_OK(status);
   }
 
@@ -286,7 +285,7 @@ TEST_F(GrpcDebugTest, SendDebugTensorsThroughMultipleRoundsUsingGrpcGating) {
         kDebugNodeKey);
 
     // Close the debug gRPC stream.
-    absl::Status close_status = DebugIO::CloseDebugURL(server_data_.url);
+    Status close_status = DebugIO::CloseDebugURL(server_data_.url);
     ASSERT_TRUE(close_status.ok());
 
     // Check dumped files according to the expected gating results.
@@ -336,7 +335,7 @@ TEST_F(GrpcDebugTest, SendDebugTensorsThroughMultipleRoundsUnderReadWriteMode) {
         kDebugNodeKey);
 
     // Close the debug gRPC stream.
-    absl::Status close_status = DebugIO::CloseDebugURL(server_data_.url);
+    Status close_status = DebugIO::CloseDebugURL(server_data_.url);
     ASSERT_TRUE(close_status.ok());
 
     // Check dumped files according to the expected gating results.

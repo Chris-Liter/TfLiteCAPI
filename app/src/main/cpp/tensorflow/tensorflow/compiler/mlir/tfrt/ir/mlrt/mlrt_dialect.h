@@ -37,7 +37,6 @@ class FutureType
     : public mlir::Type::TypeBase<FutureType, mlir::Type, mlir::TypeStorage> {
  public:
   using Base::Base;
-  static constexpr mlir::StringLiteral name = "mlrt.compiler.future";
 };
 
 // The MLIR type represents a C++ mlrt::Promise.
@@ -45,7 +44,6 @@ class PromiseType
     : public mlir::Type::TypeBase<PromiseType, mlir::Type, mlir::TypeStorage> {
  public:
   using Base::Base;
-  static constexpr mlir::StringLiteral name = "mlrt.compiler.promise";
 };
 
 // The MLIR type represents a C++ mlrt::AsyncHandle.
@@ -53,7 +51,6 @@ class AsyncHandleType : public mlir::Type::TypeBase<AsyncHandleType, mlir::Type,
                                                     mlir::TypeStorage> {
  public:
   using Base::Base;
-  static constexpr mlir::StringLiteral name = "mlrt.compiler.async_handle";
 };
 
 }  // namespace compiler

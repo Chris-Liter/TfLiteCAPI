@@ -248,7 +248,9 @@ absl::Status ReserveGraphTensors(const CreateGpuModelInfo& create_info,
           tensor_desc.UpdateToSupportedStorageType(gpu_info, shape));
       if (gpu_info.IsApiMetal() &&
           storage_type == TensorStorageType::TEXTURE_2D) {
-        if (!(gpu_info.IsApple() && gpu_info.apple_info.IsFamilyApple1())) {
+        const bool a7_gen_gpu =
+            gpu_info.IsApple() && gpu_info.apple_info.IsA7GenerationGpu();
+        if (!a7_gen_gpu) {
           tensor_desc.SetUseBufferForWriteOnlyTexture2d(true);
         }
       }
@@ -292,7 +294,7 @@ absl::Status ConvertOperations(const GpuInfo& gpu_info,
     auto op_type = OperationTypeFromString(node.operation.type);
     if (op_type == OperationType::CONSTANT) {
       auto attr =
-          std::any_cast<ConstTensorAttributes>(node.operation.attributes);
+          absl::any_cast<ConstTensorAttributes>(node.operation.attributes);
       auto outputs = graph.FindOutputs(node.id);
       gpu_model->const_tensors[outputs[0]->id] =
           tensor_reserver->Get(outputs[0]->id);

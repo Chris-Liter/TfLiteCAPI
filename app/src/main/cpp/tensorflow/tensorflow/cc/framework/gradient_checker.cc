@@ -104,7 +104,7 @@ SET_JACOBIAN_STRIDE(complex64, 2);
 SET_JACOBIAN_STRIDE(complex128, 2);
 
 template <typename X_T, typename Y_T, typename JAC_T>
-absl::Status ComputeTheoreticalJacobianTranspose(
+Status ComputeTheoreticalJacobianTranspose(
     const Scope& scope, const OutputList& xs,
     const std::vector<TensorShape>& x_shapes,
     const std::vector<Tensor>& x_datas, const OutputList& ys,
@@ -183,12 +183,12 @@ absl::Status ComputeTheoreticalJacobianTranspose(
       }
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status EvaluateGraph(ClientSession* session, const OutputList& xs,
-                           const OutputList& ys, std::vector<Tensor>* x_datas,
-                           std::vector<Tensor>* y_datas) {
+Status EvaluateGraph(ClientSession* session, const OutputList& xs,
+                     const OutputList& ys, std::vector<Tensor>* x_datas,
+                     std::vector<Tensor>* y_datas) {
   // Create the feed list.
   ClientSession::FeedType feed_list;
   for (int i = 0; i < x_datas->size(); i++) {
@@ -208,15 +208,17 @@ absl::Status EvaluateGraph(ClientSession* session, const OutputList& xs,
       }
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 template <typename X_T, typename Y_T, typename JAC_T>
-absl::Status ComputeNumericJacobianTranspose(
-    const Scope& scope, const OutputList& xs,
-    const std::vector<TensorShape>& x_shapes, const OutputList& ys,
-    const std::vector<TensorShape>& y_shapes, const JAC_T delta,
-    std::vector<Tensor>* x_datas, std::vector<Tensor>* jacobian_ts) {
+Status ComputeNumericJacobianTranspose(const Scope& scope, const OutputList& xs,
+                                       const std::vector<TensorShape>& x_shapes,
+                                       const OutputList& ys,
+                                       const std::vector<TensorShape>& y_shapes,
+                                       const JAC_T delta,
+                                       std::vector<Tensor>* x_datas,
+                                       std::vector<Tensor>* jacobian_ts) {
   size_t y_num = y_shapes.size();
   size_t x_num = x_shapes.size();
   // x_stride and y_stride are used to calculate the correct jacobian row and
@@ -270,7 +272,7 @@ absl::Status ComputeNumericJacobianTranspose(
       }
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // The Jacobian is always a real-valued matrix.
@@ -330,11 +332,12 @@ void InitJacobians(const OutputList& xs,
 }
 
 template <typename X_T, typename Y_T, typename JAC_T>
-absl::Status ComputeGradientErrorInternal(
-    const Scope& scope, const OutputList& xs,
-    const std::vector<TensorShape>& x_shapes, const OutputList& ys,
-    const std::vector<TensorShape>& y_shapes, std::vector<Tensor>* x_datas,
-    JAC_T* max_error) {
+Status ComputeGradientErrorInternal(const Scope& scope, const OutputList& xs,
+                                    const std::vector<TensorShape>& x_shapes,
+                                    const OutputList& ys,
+                                    const std::vector<TensorShape>& y_shapes,
+                                    std::vector<Tensor>* x_datas,
+                                    JAC_T* max_error) {
   // Initialize theoretical Jacobians to zeros.
   std::vector<Tensor> jacobian_ts;
   InitJacobians<X_T, Y_T, JAC_T>(xs, x_shapes, y_shapes, &jacobian_ts);
@@ -363,23 +366,23 @@ absl::Status ComputeGradientErrorInternal(
         // (Note that std::max may ignore NaN arguments.)
         if (std::isnan(cur_error)) {
           *max_error = cur_error;
-          return absl::OkStatus();
+          return OkStatus();
         }
         *max_error = std::max(*max_error, cur_error);
       }
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace
 
 template <typename X_T, typename Y_T, typename JAC_T>
-absl::Status ComputeGradientError(const Scope& scope, const OutputList& xs,
-                                  const std::vector<TensorShape>& x_shapes,
-                                  const OutputList& ys,
-                                  const std::vector<TensorShape>& y_shapes,
-                                  JAC_T* max_error) {
+Status ComputeGradientError(const Scope& scope, const OutputList& xs,
+                            const std::vector<TensorShape>& x_shapes,
+                            const OutputList& ys,
+                            const std::vector<TensorShape>& y_shapes,
+                            JAC_T* max_error) {
   if (xs.size() != x_shapes.size()) {
     return errors::InvalidArgument("xs(size ", xs.size(),
                                    ") and x_shapes(size ", x_shapes.size(),
@@ -403,10 +406,9 @@ absl::Status ComputeGradientError(const Scope& scope, const OutputList& xs,
 }
 
 template <typename X_T, typename Y_T, typename JAC_T>
-absl::Status ComputeGradientError(const Scope& scope, const Output& x,
-                                  const Tensor& x_init_value, const Output& y,
-                                  const TensorShape& y_shape,
-                                  JAC_T* max_error) {
+Status ComputeGradientError(const Scope& scope, const Output& x,
+                            const Tensor& x_init_value, const Output& y,
+                            const TensorShape& y_shape, JAC_T* max_error) {
   // Initialize 'x_data' from 'x_init_value'.
   std::vector<Tensor> x_datas(1, Tensor(x_init_value));
   // Compute gradient error.

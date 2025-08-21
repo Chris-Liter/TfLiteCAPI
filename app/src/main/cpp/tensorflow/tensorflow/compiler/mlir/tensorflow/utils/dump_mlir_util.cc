@@ -28,11 +28,11 @@ limitations under the License.
 #include "llvm/Support/raw_ostream.h"
 #include "mlir/IR/Operation.h"  // from @llvm-project
 #include "mlir/Pass/Pass.h"  // from @llvm-project
-#include "xla/tsl/lib/io/buffered_file.h"
 #include "tensorflow/core/platform/crash_analysis.h"
 #include "tensorflow/core/platform/env.h"
 #include "tensorflow/core/platform/logging.h"
 #include "tensorflow/core/platform/path.h"
+#include "tensorflow/tsl/lib/io/buffered_file.h"
 
 using llvm::raw_ostream;
 
@@ -114,7 +114,7 @@ struct WritableFileRawStream : public llvm::raw_ostream {
   std::unique_ptr<WritableFile> file;
 };
 
-struct CrashReproducerStream : public mlir::ReproducerStream {
+struct CrashReproducerStream : public mlir::PassManager::ReproducerStream {
   CrashReproducerStream(llvm::StringRef name,
                         std::unique_ptr<llvm::raw_ostream> file)
       : name(name), ostream(std::move(file)) {}
@@ -128,7 +128,8 @@ struct CrashReproducerStream : public mlir::ReproducerStream {
 };
 
 // MLIR crash reproducer which reports failures to the crash analysis system.
-struct CrashAnalysisCrashReproducerStream : public mlir::ReproducerStream {
+struct CrashAnalysisCrashReproducerStream
+    : public mlir::PassManager::ReproducerStream {
  public:
   CrashAnalysisCrashReproducerStream()
       : internal_str(""), string_stream(internal_str) {}
@@ -150,10 +151,9 @@ struct CrashAnalysisCrashReproducerStream : public mlir::ReproducerStream {
 
 }  // namespace
 
-absl::Status CreateFileForDumping(llvm::StringRef name,
-                                  std::unique_ptr<raw_ostream>* os,
-                                  std::string* filepath,
-                                  llvm::StringRef dirname) {
+Status CreateFileForDumping(llvm::StringRef name,
+                            std::unique_ptr<raw_ostream>* os,
+                            std::string* filepath, llvm::StringRef dirname) {
   std::string dir;
   if (!dirname.empty())
     dir = std::string(dirname);
@@ -161,24 +161,24 @@ absl::Status CreateFileForDumping(llvm::StringRef name,
     dir = GetDumpDirFromEnvVar();
 
   if (dir.empty()) {
-    return absl::Status(absl::StatusCode::kInvalidArgument,
-                        "(TF_DUMP_GRAPH_PREFIX not specified)");
+    return Status(absl::StatusCode::kInvalidArgument,
+                  "(TF_DUMP_GRAPH_PREFIX not specified)");
   }
 
   if (dir == kCrashReproducerStdErr) {
     *os = std::make_unique<LogInfoRawStream>();
     *filepath =
         llvm::formatv("(stderr; requested filename: '{0}')", name).str();
-    return absl::Status();
+    return Status();
   }
 
   // Get a valid file path to dump with.
   Env* env = Env::Default();
-  absl::Status status = env->RecursivelyCreateDir(dir);
+  Status status = env->RecursivelyCreateDir(dir);
   if (!status.ok()) {
     LOG(WARNING) << "Failed to create '" << dir
                  << "' directory for dumping: " << status;
-    return absl::Status(absl::StatusCode::kUnavailable, "(unavailable)");
+    return Status(absl::StatusCode::kUnavailable, "(unavailable)");
   }
   *filepath = io::JoinPath(dir, MakeUniqueFilename(std::string(name)));
 
@@ -187,11 +187,11 @@ absl::Status CreateFileForDumping(llvm::StringRef name,
   status = env->NewWritableFile(*filepath, &file);
   if (!status.ok()) {
     LOG(WARNING) << "Failed to create file '" << filepath << "': " << status;
-    return absl::Status(absl::StatusCode::kUnavailable, "(unavailable)");
+    return Status(absl::StatusCode::kUnavailable, "(unavailable)");
   }
   file = std::make_unique<tsl::BufferedWritableFile>(std::move(file));
   *os = std::make_unique<WritableFileRawStream>(std::move(file));
-  return absl::Status();
+  return Status();
 }
 
 // Prints the pass pipeline of `pass_manager` to `os`.
@@ -215,7 +215,7 @@ std::string DumpMlirOpToFile(llvm::StringRef name, mlir::Operation* op,
                              const mlir::PassManager* pass_manager) {
   std::unique_ptr<raw_ostream> os;
   std::string filepath;
-  absl::Status result = CreateFileForDumping(name, &os, &filepath, dirname);
+  Status result = CreateFileForDumping(name, &os, &filepath, dirname);
   if (!result.ok()) return std::string(result.message());
 
   LOG(INFO) << "Dumping MLIR operation '" << op->getName().getStringRef().str()
@@ -249,7 +249,7 @@ std::string DumpRawStringToFile(llvm::StringRef name, llvm::StringRef content,
                                 llvm::StringRef dirname) {
   std::unique_ptr<raw_ostream> os;
   std::string filepath;
-  absl::Status result = CreateFileForDumping(name, &os, &filepath, dirname);
+  Status result = CreateFileForDumping(name, &os, &filepath, dirname);
   if (!result.ok()) return std::string(result.message());
 
   (*os) << content;
@@ -304,8 +304,9 @@ void SetCrashReproducer(mlir::PassManager& pm, llvm::StringRef dir_path) {
     }
   }
 
-  mlir::ReproducerStreamFactory factory =
-      [path](std::string& error) -> std::unique_ptr<mlir::ReproducerStream> {
+  mlir::PassManager::ReproducerStreamFactory factory =
+      [path](std::string& error)
+      -> std::unique_ptr<mlir::PassManager::ReproducerStream> {
     if (path == kCrashReproducerStdErr)
       return std::make_unique<CrashReproducerStream>(
           "(stderr)", std::make_unique<LogInfoRawStream>());
@@ -315,8 +316,7 @@ void SetCrashReproducer(mlir::PassManager& pm, llvm::StringRef dir_path) {
 
     // Try to open the file and generate a raw_ostream.
     std::unique_ptr<WritableFile> file;
-    absl::Status status =
-        tensorflow::Env::Default()->NewWritableFile(path, &file);
+    Status status = tensorflow::Env::Default()->NewWritableFile(path, &file);
     file = std::make_unique<tsl::BufferedWritableFile>(std::move(file));
 
     if (!status.ok()) {

@@ -40,16 +40,15 @@ namespace functor {
 
 template <>
 struct ReshapeSparseTensorFunctor<CPUDevice> {
-  absl::Status operator()(
-      OpKernelContext *context, const TensorShape &input_shape,
-      const TensorShape &output_shape,
-      typename TTypes<int64_t>::ConstMatrix input_indices,
-      typename TTypes<int64_t>::Matrix output_indices) const {
+  Status operator()(OpKernelContext *context, const TensorShape &input_shape,
+                    const TensorShape &output_shape,
+                    typename TTypes<int64_t>::ConstMatrix input_indices,
+                    typename TTypes<int64_t>::Matrix output_indices) const {
     (void)context;  // Unused (only used in GPU implementation)
     const int64_t input_rank = input_shape.dims();
     const int64_t output_rank = output_shape.dims();
     const int64_t nnz = input_indices.dimension(0);
-    absl::InlinedVector<int64_t, 8> input_strides(input_rank);
+    gtl::InlinedVector<int64_t, 8> input_strides(input_rank);
     if (input_rank > 0) {
       input_strides[input_rank - 1] = 1;
       for (int d = input_rank - 2; d >= 0; --d) {
@@ -57,7 +56,7 @@ struct ReshapeSparseTensorFunctor<CPUDevice> {
       }
     }
 
-    absl::InlinedVector<int64_t, 8> output_strides(output_rank);
+    gtl::InlinedVector<int64_t, 8> output_strides(output_rank);
     if (output_rank > 0) {
       output_strides[output_rank - 1] = 1;
       for (int d = output_rank - 2; d >= 0; --d) {
@@ -76,7 +75,7 @@ struct ReshapeSparseTensorFunctor<CPUDevice> {
         id %= output_strides[j];
       }
     }
-    return absl::OkStatus();
+    return OkStatus();
   }
 };
 

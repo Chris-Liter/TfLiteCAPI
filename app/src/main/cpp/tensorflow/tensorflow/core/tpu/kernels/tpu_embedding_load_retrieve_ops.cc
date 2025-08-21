@@ -26,10 +26,10 @@ limitations under the License.
 #include "absl/cleanup/cleanup.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
-#include "xla/stream_executor/tpu/c_api_conversions.h"
-#include "xla/stream_executor/tpu/c_api_decl.h"
-#include "xla/stream_executor/tpu/status_helper.h"
-#include "xla/stream_executor/tpu/tpu_api.h"
+#include "tensorflow/compiler/xla/stream_executor/tpu/c_api_conversions.h"
+#include "tensorflow/compiler/xla/stream_executor/tpu/c_api_decl.h"
+#include "tensorflow/compiler/xla/stream_executor/tpu/status_helper.h"
+#include "tensorflow/compiler/xla/stream_executor/tpu/tpu_api.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor_shape.pb.h"
 #include "tensorflow/core/platform/types.h"
@@ -44,9 +44,10 @@ using tensorflow::tpu::TpuEmbeddingShapeUtil;
 namespace tensorflow {
 
 // Computes (and VLOGs) the expected shapes of the embedding table shards.
-absl::Status ComputeExpectedTableShardShapes(
-    const TPUEmbeddingConfiguration& config, int shard_id, int num_shards,
-    const string& op_name, std::vector<TensorShape>* table_shapes) {
+Status ComputeExpectedTableShardShapes(const TPUEmbeddingConfiguration& config,
+                                       int shard_id, int num_shards,
+                                       const string& op_name,
+                                       std::vector<TensorShape>* table_shapes) {
   std::vector<TensorShapeProto> shape_protos;
   const int num_tables = config.table_descriptor_size();
   TF_RETURN_IF_ERROR(TpuEmbeddingShapeUtil::ComputeTableShapes(
@@ -66,7 +67,7 @@ absl::Status ComputeExpectedTableShardShapes(
             << " on shard: " << shard_id << " (of " << num_shards << ").";
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Logs min/max/avg for the specified state_variable array.
@@ -140,7 +141,7 @@ void LoadAllTPUEmbeddingParametersOp::GetStateVariables(
   for (int table_id = 0; table_id < num_tables; ++table_id) {
     const auto& table_descriptor = config_.table_descriptor(table_id);
     std::vector<tpu::StateVariableSpecification> state_variable_specs;
-    absl::Status status = tpu::GetOptimizationAlgorithmStateVariables(
+    Status status = tpu::GetOptimizationAlgorithmStateVariables(
         table_descriptor.optimization_parameters(), &state_variable_specs);
     OP_REQUIRES(ctx, status.ok(),
                 errors::InvalidArgument(
@@ -289,7 +290,7 @@ void RetrieveAllTPUEmbeddingParametersOp::GetStateVariables(
     const auto& table_descriptor = config_.table_descriptor(table_id);
 
     std::vector<tpu::StateVariableSpecification> state_variable_specs;
-    absl::Status status = tpu::GetOptimizationAlgorithmStateVariables(
+    Status status = tpu::GetOptimizationAlgorithmStateVariables(
         table_descriptor.optimization_parameters(), &state_variable_specs);
     OP_REQUIRES(
         ctx, status.ok(),

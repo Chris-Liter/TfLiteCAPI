@@ -22,9 +22,6 @@ limitations under the License.
 #include <unordered_map>
 #include <vector>
 
-#include "absl/status/status.h"
-#include "absl/types/span.h"
-#include "tensorflow/c/eager/abstract_tensor_handle.h"
 #include "tensorflow/c/eager/immediate_execution_context.h"
 #include "tensorflow/c/eager/immediate_execution_operation.h"
 #include "tensorflow/c/eager/immediate_execution_tensor_handle.h"
@@ -32,7 +29,6 @@ limitations under the License.
 #include "tensorflow/c/experimental/saved_model/core/function_metadata.h"
 #include "tensorflow/c/experimental/saved_model/core/revived_types/flat_tensor_function.h"
 #include "tensorflow/core/framework/function.pb.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/core/protobuf/saved_object_graph.pb.h"
 
 namespace tensorflow {
@@ -55,15 +51,15 @@ class TFConcreteFunction : public ConcreteFunction {
   //  ctx      - A handle to the Tensorflow runtime. This MUST be non-null and
   //             outlive TFConcreteFunction.
   //  out      - The output TFConcreteFunction.
-  static absl::Status Create(
-      const FunctionDef* function_def,
-      std::vector<ImmediateExecutionTensorHandle*> captures,
-      FunctionMetadata metadata, ImmediateExecutionContext* ctx,
-      std::unique_ptr<TFConcreteFunction>* out);
+  static Status Create(const FunctionDef* function_def,
+                       std::vector<ImmediateExecutionTensorHandle*> captures,
+                       FunctionMetadata metadata,
+                       ImmediateExecutionContext* ctx,
+                       std::unique_ptr<TFConcreteFunction>* out);
 
   // This method returns the "Call" Op used to execute the function.
-  absl::Status MakeCallOp(absl::Span<AbstractTensorHandle* const> inputs,
-                          ImmediateOpPtr* out) const override;
+  Status MakeCallOp(absl::Span<AbstractTensorHandle* const> inputs,
+                    ImmediateOpPtr* out) const override;
 
   const FunctionMetadata& GetFunctionMetadata() const override;
 

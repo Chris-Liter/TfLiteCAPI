@@ -332,7 +332,7 @@ TF_Buffer* TFE_GetServerDef(const char* text_proto, TF_Status* status) {
         "Invalid text proto for ServerDef: ", text_proto);
     return nullptr;
   }
-  status->status = absl::Status();
+  status->status = tensorflow::Status();
   TF_Buffer* ret = TF_NewBuffer();
   TF_CHECK_OK(MessageToBuffer(server_def, ret));
   return ret;
@@ -501,7 +501,7 @@ TFE_TensorHandle* TFE_NewTensorHandleFromScalar(TF_DataType data_type,
   tensorflow::Tensor tensor(dtype, tensorflow::TensorShape({}));
   std::memcpy(tensorflow::TensorCApi::Buffer(tensor)->data(), data, len);
 
-  status->status = absl::OkStatus();
+  status->status = ::tensorflow::OkStatus();
   return tensorflow::wrap(tensorflow::TensorHandle::CreateLocalHandle(tensor));
 }
 
@@ -595,11 +595,10 @@ void TF_DeleteShapeAndTypeListArray(TF_ShapeAndTypeList** shape_list_array,
 }
 
 namespace tensorflow {
-absl::Status TF_TensorToTensor(const TF_Tensor* src, Tensor* dst);
+Status TF_TensorToTensor(const TF_Tensor* src, Tensor* dst);
 
 // Helpers for loadding a TensorFlow PluggableDevice plugin (a .so file).
-absl::Status LoadPluggableDeviceLibrary(const char* library_filename,
-                                        void** result);
+Status LoadPluggableDeviceLibrary(const char* library_filename, void** result);
 }  // namespace tensorflow
 
 void TFE_InferShapes(TFE_Op* tfe_op, TF_ShapeAndTypeList* input_shapes,

@@ -37,8 +37,8 @@ namespace graph_transforms {
 
 // Sparsify Tensor of shape [N, 1]. Return the indices and values vectors for
 // non-zero tensor content.
-absl::Status SparsifyWeights(const Tensor& tensor, Tensor* indices_tensor,
-                             Tensor* values_tensor) {
+Status SparsifyWeights(const Tensor& tensor, Tensor* indices_tensor,
+                       Tensor* values_tensor) {
   if (tensor.dims() != 2 || tensor.dim_size(1) != 1) {
     return tensorflow::errors::FailedPrecondition(
         "Transform only applicable to subgraph with 'Const' with "
@@ -75,7 +75,7 @@ absl::Status SparsifyWeights(const Tensor& tensor, Tensor* indices_tensor,
   std::copy_n(values.begin(), values.size(),
               values_tensor->flat<float>().data());
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 void CreateConstNode(const Tensor& tensor, const string& name,
@@ -94,9 +94,9 @@ string GetMonolithicTensorKey(const string& tensor_slice_name) {
   return absl::StrJoin(names, "/");
 }
 
-absl::Status ObtainTensorSlice(const GraphDef& input_graph_def,
-                               const string& target_name,
-                               string* shape_slice_string) {
+Status ObtainTensorSlice(const GraphDef& input_graph_def,
+                         const string& target_name,
+                         string* shape_slice_string) {
   string restore_node_name;
   for (const auto& node : input_graph_def.node()) {
     std::vector<string> node_name_parts = Split(node.name(), "/");
@@ -146,13 +146,13 @@ absl::Status ObtainTensorSlice(const GraphDef& input_graph_def,
       const auto& shape_and_slices_value =
           shape_and_slices_tensor.flat<tstring>();
       *shape_slice_string = shape_and_slices_value(offset);
-      return absl::OkStatus();
+      return OkStatus();
     }
   }
   return errors::Internal("Unable to find slice for variable: ", target_name);
 }
 
-absl::Status ReadTensorFromCheckpoint(
+Status ReadTensorFromCheckpoint(
     const string& tensor_name, const std::unique_ptr<BundleReader>& ckpt_reader,
     const string& shape_and_slice, Tensor* tensor) {
   if (ckpt_reader) {
@@ -174,27 +174,25 @@ absl::Status ReadTensorFromCheckpoint(
       TF_RETURN_IF_ERROR(
           ckpt_reader->Lookup(GetMonolithicTensorKey(tensor_name), tensor));
     }
-    return absl::OkStatus();
+    return OkStatus();
   }
   return errors::Internal("Checkpoint reader was not initialized. ");
 }
 
-absl::Status InitializeCheckpointReader(
-    const TransformFuncContext& context,
-    std::unique_ptr<BundleReader>* ckpt_reader) {
+Status InitializeCheckpointReader(const TransformFuncContext& context,
+                                  std::unique_ptr<BundleReader>* ckpt_reader) {
   if (context.params.count("input_checkpoint")) {
     const string input_checkpoint = context.params.at("input_checkpoint")[0];
-    *ckpt_reader =
-        std::make_unique<BundleReader>(Env::Default(), input_checkpoint);
+    ckpt_reader->reset(new BundleReader(Env::Default(), input_checkpoint));
     TF_RETURN_IF_ERROR((*ckpt_reader)->status());
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status ObtainVariableInfo(
+Status ObtainVariableInfo(
     const GraphDef& input_graph_def,
-    std::unique_ptr<std::unordered_map<string, string>>* shapes_and_slices) {
-  *shapes_and_slices = std::make_unique<std::unordered_map<string, string>>();
+    std::unique_ptr<std::unordered_map<string, string> >* shapes_and_slices) {
+  shapes_and_slices->reset(new std::unordered_map<string, string>());
   for (const auto& node : input_graph_def.node()) {
     if ((node.op() == "Variable") || (node.op() == "VariableV2")) {
       string s;
@@ -202,28 +200,28 @@ absl::Status ObtainVariableInfo(
       (**shapes_and_slices)[node.name()] = s;
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status RemoveInputAtIndex(NodeDef* n, int index) {
+Status RemoveInputAtIndex(NodeDef* n, int index) {
   for (int i = index; i < n->input_size() - 1; i++) {
     n->mutable_input()->SwapElements(i, i + 1);
   }
   n->mutable_input()->RemoveLast();
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status RemoveNodeAtIndex(GraphDef* g, int index) {
+Status RemoveNodeAtIndex(GraphDef* g, int index) {
   for (int i = index; i < g->node_size() - 1; i++) {
     g->mutable_node()->SwapElements(i, i + 1);
   }
   g->mutable_node()->RemoveLast();
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status SparsifyGatherInternal(
+Status SparsifyGatherInternal(
     const GraphDef& input_graph_def,
-    const std::unique_ptr<std::unordered_map<string, string>>&
+    const std::unique_ptr<std::unordered_map<string, string> >&
         shapes_and_slices,
     const TransformFuncContext& context, const OpTypePattern& pattern,
     const std::unique_ptr<BundleReader>& ckpt_reader,
@@ -446,7 +444,7 @@ absl::Status SparsifyGatherInternal(
           new_nodes->push_back(dim_idx_node);
           new_nodes->push_back(expand_dims_node);
 
-          return absl::OkStatus();
+          return OkStatus();
         },
         {true}, &replaced_graph_def));
 
@@ -556,12 +554,12 @@ absl::Status SparsifyGatherInternal(
     current_graph_def = replaced_graph_def;
   } while (any_match_found);
   *output_graph_def = current_graph_def;
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status SparsifyGather(const GraphDef& input_graph_def,
-                            const TransformFuncContext& context,
-                            GraphDef* output_graph_def) {
+Status SparsifyGather(const GraphDef& input_graph_def,
+                      const TransformFuncContext& context,
+                      GraphDef* output_graph_def) {
   // clang-format off
   const OpTypePattern gather_pattern =
     {"Gather",
@@ -610,7 +608,7 @@ absl::Status SparsifyGather(const GraphDef& input_graph_def,
                                             context, gather_v2_pattern,
                                             ckpt_reader, output_graph_def));
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 REGISTER_GRAPH_TRANSFORM("sparsify_gather", SparsifyGather);

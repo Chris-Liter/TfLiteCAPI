@@ -46,22 +46,22 @@ class FlatMapDatasetParams : public DatasetParams {
     return other_arguments_;
   }
 
-  absl::Status GetInputNames(std::vector<string>* input_names) const override {
+  Status GetInputNames(std::vector<string>* input_names) const override {
     input_names->emplace_back(FlatMapDatasetOp::kInputDataset);
     for (int i = 0; i < other_arguments_.size(); ++i) {
       input_names->emplace_back(
           absl::StrCat(FlatMapDatasetOp::kOtherArguments, "_", i));
     }
-    return absl::OkStatus();
+    return OkStatus();
   }
 
-  absl::Status GetAttributes(AttributeVector* attr_vector) const override {
+  Status GetAttributes(AttributeVector* attr_vector) const override {
     *attr_vector = {{"f", func_},
                     {"Targuments", type_arguments_},
                     {"output_shapes", output_shapes_},
                     {"output_types", output_dtypes_},
                     {"metadata", ""}};
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   string dataset_type() const override {

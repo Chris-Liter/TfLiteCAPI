@@ -23,10 +23,8 @@ limitations under the License.
 #include <vector>
 
 #include "absl/log/check.h"
-#include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
-#include "absl/strings/string_view.h"
 #include "riegeli/base/object.h"  // from @riegeli
 #include "riegeli/bytes/fd_reader.h"  // from @riegeli
 #include "riegeli/records/record_reader.h"  // from @riegeli
@@ -34,17 +32,17 @@ limitations under the License.
 #include "tensorflow/core/platform/file_system_helper.h"
 #include "tensorflow/tools/proto_splitter/cc/util.h"
 #include "tensorflow/tools/proto_splitter/chunk.pb.h"
-#include "tsl/platform/errors.h"
-#include "tsl/platform/protobuf.h"
-#include "tsl/platform/statusor.h"
+#include "tensorflow/tsl/platform/errors.h"
+#include "tensorflow/tsl/platform/protobuf.h"
+#include "tensorflow/tsl/platform/statusor.h"
 
 namespace tensorflow::tools::proto_splitter {
 
-using ::tensorflow::proto_splitter::ChunkedField;
-using ::tensorflow::proto_splitter::ChunkedMessage;
-using ::tensorflow::proto_splitter::ChunkInfo;
-using ::tensorflow::proto_splitter::ChunkMetadata;
-using ::tensorflow::proto_splitter::FieldIndex;
+using ::proto_splitter::ChunkedField;
+using ::proto_splitter::ChunkedMessage;
+using ::proto_splitter::ChunkInfo;
+using ::proto_splitter::ChunkMetadata;
+using ::proto_splitter::FieldIndex;
 using tools::proto_splitter::GetChunkMetadata;
 using tools::proto_splitter::GetRiegeliReader;
 using tools::proto_splitter::OnlyContainsPb;
@@ -197,7 +195,7 @@ absl::Status Merger::ReadFields(
             uint64_t index2 = tag2.index();
             if (index1 != index2) return index1 < index2;
           } else if (tag1.has_map_key() && tag2.has_map_key()) {
-            return false;
+            return true;
           } else {
             sort_status = absl::FailedPreconditionError("Field tag mismatch");
             return false;

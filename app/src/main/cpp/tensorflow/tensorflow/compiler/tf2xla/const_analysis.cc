@@ -21,7 +21,7 @@ limitations under the License.
 #include "absl/algorithm/container.h"
 #include "tensorflow/compiler/tf2xla/tf2xla_util.h"
 #include "tensorflow/compiler/tf2xla/xla_op_registry.h"
-#include "xla/status_macros.h"
+#include "tensorflow/compiler/xla/status_macros.h"
 #include "tensorflow/core/common_runtime/function.h"
 #include "tensorflow/core/framework/attr_value.pb.h"
 #include "tensorflow/core/framework/function.h"
@@ -33,23 +33,21 @@ namespace tensorflow {
 
 namespace {
 
-absl::Status GetFunctionBody(FunctionLibraryRuntime* flib_runtime,
-                             const NodeDef& node,
-                             absl::string_view func_attr_name,
-                             const FunctionBody** fbody) {
+Status GetFunctionBody(FunctionLibraryRuntime* flib_runtime,
+                       const NodeDef& node, StringPiece func_attr_name,
+                       const FunctionBody** fbody) {
   NameAttrList name_attr_list;
   TF_RETURN_IF_ERROR(GetNodeAttr(node, func_attr_name, &name_attr_list));
   FunctionLibraryRuntime::Handle func_handle;
   TF_RETURN_IF_ERROR(flib_runtime->Instantiate(
       name_attr_list.name(), AttrSlice(&name_attr_list.attr()), &func_handle));
   *fbody = flib_runtime->GetFunctionBody(func_handle);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status GetFunctionBodies(FunctionLibraryRuntime* flib_runtime,
-                               const NodeDef& node,
-                               absl::string_view func_list_attr_name,
-                               std::vector<const FunctionBody*>* fbodies) {
+Status GetFunctionBodies(FunctionLibraryRuntime* flib_runtime,
+                         const NodeDef& node, StringPiece func_list_attr_name,
+                         std::vector<const FunctionBody*>* fbodies) {
   std::vector<NameAttrList> name_attr_lists;
   TF_RETURN_IF_ERROR(GetNodeAttr(node, func_list_attr_name, &name_attr_lists));
   for (const NameAttrList& name_attr_list : name_attr_lists) {
@@ -59,16 +57,15 @@ absl::Status GetFunctionBodies(FunctionLibraryRuntime* flib_runtime,
         &func_handle));
     fbodies->push_back(flib_runtime->GetFunctionBody(func_handle));
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status CondConstInputIndices(
+Status CondConstInputIndices(
     absl::Span<const FunctionBody* const> branch_bodies,
     std::vector<int>* const_input_idxs, FunctionLibraryRuntime* flib_runtime) {
   TF_RET_CHECK(!branch_bodies.empty());
   TF_RET_CHECK(branch_bodies[0] != nullptr);
-  int num_inputs =
-      branch_bodies[0]->record->fdef().signature().input_arg_size();
+  int num_inputs = branch_bodies[0]->fdef.signature().input_arg_size();
   // Stores indices of the "branch function" inputs that are expected to be
   // compile time constants.
   std::vector<bool> compile_time_const_arg_indices(num_inputs);
@@ -86,14 +83,13 @@ absl::Status CondConstInputIndices(
       const_input_idxs->push_back(i + 1);
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status GetCompileTimeConstInputs(const NodeDef& node,
-                                       const OpKernel* op_kernel,
-                                       const OpDef* op_def,
-                                       std::vector<int>* const_input_idxs,
-                                       FunctionLibraryRuntime* flib_runtime) {
+Status GetCompileTimeConstInputs(const NodeDef& node, const OpKernel* op_kernel,
+                                 const OpDef* op_def,
+                                 std::vector<int>* const_input_idxs,
+                                 FunctionLibraryRuntime* flib_runtime) {
   DCHECK(op_def != nullptr || op_kernel != nullptr);
   if (node.op() == "While" || node.op() == "StatelessWhile") {
     // For While nodes, recurse into the body and cond graphs.
@@ -103,7 +99,7 @@ absl::Status GetCompileTimeConstInputs(const NodeDef& node,
     TF_RETURN_IF_ERROR(GetFunctionBody(flib_runtime, node, "body", &fbody));
     TF_RET_CHECK(fcond);
     TF_RET_CHECK(fbody);
-    int num_inputs = fbody->record->fdef().signature().input_arg_size();
+    int num_inputs = fbody->fdef.signature().input_arg_size();
 
     // Stores which of the loop inputs are expected to be compile time
     // constants.
@@ -136,7 +132,7 @@ absl::Status GetCompileTimeConstInputs(const NodeDef& node,
         }
       }
     }
-    return absl::OkStatus();
+    return OkStatus();
   } else if (node.op() == "If" || node.op() == "StatelessIf") {
     const FunctionBody* fthen = nullptr;
     const FunctionBody* felse = nullptr;
@@ -155,7 +151,7 @@ absl::Status GetCompileTimeConstInputs(const NodeDef& node,
              node.op() == "StatefulPartitionedCall") {
     const FunctionBody* fbody;
     TF_RETURN_IF_ERROR(GetFunctionBody(flib_runtime, node, "f", &fbody));
-    int num_inputs = fbody->record->fdef().signature().input_arg_size();
+    int num_inputs = fbody->fdef.signature().input_arg_size();
     std::vector<bool> compile_time_const_arg_indices(num_inputs);
     TF_RETURN_IF_ERROR(BackwardsConstAnalysis(
         *(fbody->graph), &compile_time_const_arg_indices,
@@ -165,7 +161,7 @@ absl::Status GetCompileTimeConstInputs(const NodeDef& node,
         const_input_idxs->push_back(i);
       }
     }
-    return absl::OkStatus();
+    return OkStatus();
   } else if (op_def != nullptr) {
     return XlaOpRegistry::CompileTimeConstantInputs(node, *op_def,
                                                     const_input_idxs);
@@ -175,9 +171,9 @@ absl::Status GetCompileTimeConstInputs(const NodeDef& node,
   }
 }
 
-absl::Status GetCompileTimeConstInputs(const Node* node,
-                                       std::vector<int>* const_input_idxs,
-                                       FunctionLibraryRuntime* flib_runtime) {
+Status GetCompileTimeConstInputs(const Node* node,
+                                 std::vector<int>* const_input_idxs,
+                                 FunctionLibraryRuntime* flib_runtime) {
   return GetCompileTimeConstInputs(node->def(), /*op_kernel=*/nullptr,
                                    &node->op_def(), const_input_idxs,
                                    flib_runtime);
@@ -187,7 +183,7 @@ absl::Status GetCompileTimeConstInputs(const Node* node,
 
 // Backwards dataflow analysis that finds arguments to a graph that must be
 // compile-time constants.
-absl::Status BackwardsConstAnalysis(
+Status BackwardsConstAnalysis(
     const Graph& g, std::vector<bool>* compile_time_const_arg_indices,
     std::vector<bool>* compile_time_const_nodes,
     FunctionLibraryRuntime* flib_runtime,
@@ -196,7 +192,7 @@ absl::Status BackwardsConstAnalysis(
       !edge_filter_input) {
     VLOG(5) << "Using cached argument indices on graph " << &g;
     *compile_time_const_arg_indices = g.GetConstArgIndicesCache().value();
-    return absl::OkStatus();
+    return OkStatus();
   }
   auto edge_filter = [&](const Edge& e) {
     return edge_filter_input ? edge_filter_input(e) : true;
@@ -210,7 +206,7 @@ absl::Status BackwardsConstAnalysis(
     compile_time_const_nodes = &compile_time_const_nodes_impl;
   }
 
-  absl::Status status;
+  Status status;
   auto visit = [&](Node* node) {
     if (!status.ok()) return;
 
@@ -297,9 +293,9 @@ absl::Status BackwardsConstAnalysis(
   return status;
 }
 
-absl::Status GetCompileTimeConstInputs(const OpKernel* op_kernel,
-                                       std::vector<int>* const_input_idxs,
-                                       FunctionLibraryRuntime* flib_runtime) {
+Status GetCompileTimeConstInputs(const OpKernel* op_kernel,
+                                 std::vector<int>* const_input_idxs,
+                                 FunctionLibraryRuntime* flib_runtime) {
   return GetCompileTimeConstInputs(op_kernel->def(), op_kernel,
                                    /*op_def=*/nullptr, const_input_idxs,
                                    flib_runtime);

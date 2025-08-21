@@ -20,9 +20,6 @@ limitations under the License.
 #include <string>
 #include <vector>
 
-#include "absl/container/flat_hash_set.h"
-#include "tensorflow/core/platform/types.h"
-#include "tensorflow/dtensor/cc/dstatus.h"
 #include "tensorflow/dtensor/cc/tensor_layout.h"
 
 namespace tensorflow {

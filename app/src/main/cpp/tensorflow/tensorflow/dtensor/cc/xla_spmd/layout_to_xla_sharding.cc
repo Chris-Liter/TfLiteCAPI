@@ -21,10 +21,7 @@ limitations under the License.
 #include "absl/container/flat_hash_map.h"
 #include "absl/types/span.h"
 #include "llvm/ADT/STLExtras.h"
-#include "xla/status_macros.h"
-#include "xla/xla_data.pb.h"
-#include "tensorflow/core/platform/types.h"
-#include "tensorflow/dtensor/cc/dstatus.h"
+#include "tensorflow/compiler/xla/status_macros.h"
 #include "tensorflow/dtensor/cc/tensor_layout.h"
 
 namespace tensorflow {

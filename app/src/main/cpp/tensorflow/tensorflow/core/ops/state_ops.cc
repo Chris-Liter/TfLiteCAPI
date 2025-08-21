@@ -51,7 +51,7 @@ REGISTER_OP("Variable")
       ShapeHandle out;
       TF_RETURN_IF_ERROR(c->MakeShapeFromPartialTensorShape(shape, &out));
       c->set_output(0, out);
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 REGISTER_OP("IsVariableInitialized")
@@ -92,7 +92,7 @@ REGISTER_OP("Assign")
       }
 
       c->set_output(0, c->input(1));
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 REGISTER_OP("AssignAdd")
@@ -113,7 +113,7 @@ REGISTER_OP("AssignSub")
 
 namespace {
 
-absl::Status ScatterUpdateShape(InferenceContext* c) {
+Status ScatterUpdateShape(InferenceContext* c) {
   ShapeHandle var_shape = c->input(0);
   ShapeHandle indices_shape = c->input(1);
 
@@ -124,14 +124,14 @@ absl::Status ScatterUpdateShape(InferenceContext* c) {
   TF_RETURN_IF_ERROR(c->Concatenate(indices_shape, var_subshape, &concat));
   TF_RETURN_IF_ERROR(
       InferenceContext::Rank(c->input(2)) == 0
-          ? absl::OkStatus()
+          ? OkStatus()
           : c->Merge(c->input(2), concat, &unused_updates_shape));
 
   c->set_output(0, var_shape);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status ScatterNdUpdateShape(InferenceContext* c) {
+Status ScatterNdUpdateShape(InferenceContext* c) {
   ShapeHandle input_shape = c->input(0);
   if (c->input_handle_shapes_and_types(0) != nullptr) {
     const auto& shape_and_type = *(c->input_handle_shapes_and_types(0));
@@ -227,7 +227,6 @@ REGISTER_OP("ScatterNdUpdate")
     .Attr("T: type")
     .Attr("Tindices: {int32, int64}")
     .Attr("use_locking: bool = true")
-    .Attr("bad_indices_policy: string = ''")
     .SetShapeFn(ScatterNdUpdateShape);
 
 REGISTER_OP("ResourceScatterNdUpdate")
@@ -237,7 +236,6 @@ REGISTER_OP("ResourceScatterNdUpdate")
     .Attr("T: type")
     .Attr("Tindices: {int32, int64}")
     .Attr("use_locking: bool = true")
-    .Attr("bad_indices_policy: string = ''")
     .SetShapeFn(ScatterNdUpdateShape);
 
 REGISTER_OP("ResourceScatterNdAdd")
@@ -247,7 +245,6 @@ REGISTER_OP("ResourceScatterNdAdd")
     .Attr("T: type")
     .Attr("Tindices: {int32, int64}")
     .Attr("use_locking: bool = true")
-    .Attr("bad_indices_policy: string = ''")
     .SetShapeFn(ScatterNdUpdateShape);
 
 REGISTER_OP("ResourceScatterNdSub")
@@ -257,7 +254,6 @@ REGISTER_OP("ResourceScatterNdSub")
     .Attr("T: type")
     .Attr("Tindices: {int32, int64}")
     .Attr("use_locking: bool = true")
-    .Attr("bad_indices_policy: string = ''")
     .SetShapeFn(ScatterNdUpdateShape);
 
 REGISTER_OP("ResourceScatterNdMin")
@@ -267,7 +263,6 @@ REGISTER_OP("ResourceScatterNdMin")
     .Attr("T: type")
     .Attr("Tindices: {int32, int64}")
     .Attr("use_locking: bool = true")
-    .Attr("bad_indices_policy: string = ''")
     .SetShapeFn(ScatterNdUpdateShape);
 
 REGISTER_OP("ResourceScatterNdMax")
@@ -277,7 +272,6 @@ REGISTER_OP("ResourceScatterNdMax")
     .Attr("T: type")
     .Attr("Tindices: {int32, int64}")
     .Attr("use_locking: bool = true")
-    .Attr("bad_indices_policy: string = ''")
     .SetShapeFn(ScatterNdUpdateShape);
 
 REGISTER_OP("ScatterNdAdd")
@@ -288,7 +282,6 @@ REGISTER_OP("ScatterNdAdd")
     .Attr("T: numbertype")
     .Attr("Tindices: {int32, int64}")
     .Attr("use_locking: bool = false")
-    .Attr("bad_indices_policy: string = ''")
     .SetShapeFn(ScatterNdUpdateShape);
 
 REGISTER_OP("ScatterNdSub")
@@ -299,7 +292,6 @@ REGISTER_OP("ScatterNdSub")
     .Attr("T: numbertype")
     .Attr("Tindices: {int32, int64}")
     .Attr("use_locking: bool = false")
-    .Attr("bad_indices_policy: string = ''")
     .SetShapeFn(ScatterNdUpdateShape);
 
 REGISTER_OP("ScatterNdMax")
@@ -310,7 +302,6 @@ REGISTER_OP("ScatterNdMax")
     .Attr("T: numbertype")
     .Attr("Tindices: {int32, int64}")
     .Attr("use_locking: bool = false")
-    .Attr("bad_indices_policy: string = ''")
     .SetShapeFn(ScatterNdUpdateShape);
 
 REGISTER_OP("ScatterNdMin")
@@ -321,7 +312,6 @@ REGISTER_OP("ScatterNdMin")
     .Attr("T: numbertype")
     .Attr("Tindices: {int32, int64}")
     .Attr("use_locking: bool = false")
-    .Attr("bad_indices_policy: string = ''")
     .SetShapeFn(ScatterNdUpdateShape);
 
 REGISTER_OP("CountUpTo")
@@ -333,7 +323,7 @@ REGISTER_OP("CountUpTo")
       ShapeHandle output;
       TF_RETURN_IF_ERROR(c->WithRank(c->input(0), 0, &output));
       c->set_output(0, output);
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 REGISTER_OP("ResourceCountUpTo")
@@ -357,7 +347,7 @@ REGISTER_OP("ResourceCountUpTo")
       ShapeHandle output;
       TF_RETURN_IF_ERROR(c->WithRank(shape_and_type.shape, 0, &output));
       c->set_output(0, output);
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 }  // namespace tensorflow

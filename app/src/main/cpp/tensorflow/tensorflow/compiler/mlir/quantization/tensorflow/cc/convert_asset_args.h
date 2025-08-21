@@ -17,10 +17,10 @@ limitations under the License.
 
 #include "mlir/IR/BuiltinOps.h"  // from @llvm-project
 #include "mlir/Support/LLVM.h"  // from @llvm-project
-#include "mlir/Support/LogicalResult.h"  // from @llvm-project
 #include "tensorflow/core/protobuf/meta_graph.pb.h"
 
-namespace mlir::quant {
+namespace mlir {
+namespace quant {
 
 // Converts arguments of the @main function that are bound to
 // `tf_saved_model::AssetOp`s into regular tensor args. Returns `AsestFileDef`s
@@ -35,6 +35,7 @@ namespace mlir::quant {
 FailureOr<SmallVector<tensorflow::AssetFileDef>> ConvertAssetArgs(
     ModuleOp module_op);
 
-}  // namespace mlir::quant
+}  // namespace quant
+}  // namespace mlir
 
 #endif  // TENSORFLOW_COMPILER_MLIR_QUANTIZATION_TENSORFLOW_CC_CONVERT_ASSET_ARGS_H_

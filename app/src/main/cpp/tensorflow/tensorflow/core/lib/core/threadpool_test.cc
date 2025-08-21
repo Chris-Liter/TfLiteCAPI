@@ -16,7 +16,6 @@ limitations under the License.
 #include "tensorflow/core/lib/core/threadpool.h"
 
 #include <atomic>
-#include <optional>
 
 #include "absl/synchronization/barrier.h"
 #include "absl/synchronization/blocking_counter.h"
@@ -77,7 +76,7 @@ void RunWithFixedBlockSize(int64_t block_size, int64_t total,
       total,
       ThreadPool::SchedulingParams(
           ThreadPool::SchedulingStrategy::kFixedBlockSize /* strategy */,
-          std::nullopt /* cost_per_unit */, block_size /* block_size */),
+          absl::nullopt /* cost_per_unit */, block_size /* block_size */),
       [=, &mu, &num_shards, &num_done_work, &work](int64_t start, int64_t end) {
         VLOG(1) << "Shard [" << start << "," << end << ")";
         EXPECT_GE(start, 0);
@@ -221,7 +220,7 @@ void RunFixedBlockSizeShardingWithWorkerId(int64_t block_size, int64_t total,
       total,
       ThreadPool::SchedulingParams(
           ThreadPool::SchedulingStrategy::kFixedBlockSize /* strategy */,
-          std::nullopt /* cost_per_unit */, block_size /* block_size */),
+          absl::nullopt /* cost_per_unit */, block_size /* block_size */),
       [=, &mu, &num_done_work, &work, &threads_running](int64_t start,
                                                         int64_t end, int id) {
         VLOG(1) << "Shard [" << start << "," << end << ")";
@@ -302,7 +301,7 @@ TEST(ThreadPool, ParallelForWithAdaptiveSchedulingStrategy) {
         kWorkItems,
         ThreadPool::SchedulingParams(
             ThreadPool::SchedulingStrategy::kAdaptive /* strategy */,
-            kHugeCost /* cost_per_unit */, std::nullopt /* block_size */),
+            kHugeCost /* cost_per_unit */, absl::nullopt /* block_size */),
         [&outer_context, &work](int64_t begin, int64_t end) {
           Context inner_context(ContextKind::kThread);
           ASSERT_EQ(outer_context, inner_context);

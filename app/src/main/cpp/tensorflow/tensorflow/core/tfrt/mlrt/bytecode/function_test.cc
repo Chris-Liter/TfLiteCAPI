@@ -16,8 +16,6 @@ limitations under the License.
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include "tensorflow/core/tfrt/mlrt/bytecode/bytecode.h"
-#include "tensorflow/core/tfrt/mlrt/bytecode/kernel.h"
 
 namespace mlrt {
 namespace bc {

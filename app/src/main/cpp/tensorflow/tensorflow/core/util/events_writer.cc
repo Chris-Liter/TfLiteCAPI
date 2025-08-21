@@ -42,14 +42,14 @@ EventsWriter::~EventsWriter() {
   Close().IgnoreError();  // Autoclose in destructor.
 }
 
-absl::Status EventsWriter::Init() { return InitWithSuffix(""); }
+Status EventsWriter::Init() { return InitWithSuffix(""); }
 
-absl::Status EventsWriter::InitWithSuffix(const string& suffix) {
+Status EventsWriter::InitWithSuffix(const string& suffix) {
   file_suffix_ = suffix;
   return InitIfNeeded();
 }
 
-absl::Status EventsWriter::InitIfNeeded() {
+Status EventsWriter::InitIfNeeded() {
   if (recordio_writer_ != nullptr) {
     CHECK(!filename_.empty());
     if (!FileStillExists().ok()) {
@@ -60,7 +60,7 @@ absl::Status EventsWriter::InitIfNeeded() {
       }
     } else {
       // No-op: File is present and writer is initialized.
-      return absl::OkStatus();
+      return OkStatus();
     }
   }
 
@@ -96,7 +96,7 @@ absl::Status EventsWriter::InitIfNeeded() {
     WriteEvent(event);
     TF_RETURN_WITH_CONTEXT_IF_ERROR(Flush(), "Flushing first event.");
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 string EventsWriter::FileName() {
@@ -125,8 +125,8 @@ void EventsWriter::WriteEvent(const Event& event) {
   WriteSerializedEvent(record);
 }
 
-absl::Status EventsWriter::Flush() {
-  if (num_outstanding_events_ == 0) return absl::OkStatus();
+Status EventsWriter::Flush() {
+  if (num_outstanding_events_ == 0) return OkStatus();
   CHECK(recordio_file_ != nullptr) << "Unexpected NULL file";
 
   TF_RETURN_WITH_CONTEXT_IF_ERROR(recordio_writer_->Flush(), "Failed to flush ",
@@ -137,13 +137,13 @@ absl::Status EventsWriter::Flush() {
                                   filename_);
   VLOG(1) << "Wrote " << num_outstanding_events_ << " events to disk.";
   num_outstanding_events_ = 0;
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status EventsWriter::Close() {
-  absl::Status status = Flush();
+Status EventsWriter::Close() {
+  Status status = Flush();
   if (recordio_file_ != nullptr) {
-    absl::Status close_status = recordio_file_->Close();
+    Status close_status = recordio_file_->Close();
     if (!close_status.ok()) {
       status = close_status;
     }
@@ -154,9 +154,9 @@ absl::Status EventsWriter::Close() {
   return status;
 }
 
-absl::Status EventsWriter::FileStillExists() {
+Status EventsWriter::FileStillExists() {
   if (env_->FileExists(filename_).ok()) {
-    return absl::OkStatus();
+    return OkStatus();
   }
   // This can happen even with non-null recordio_writer_ if some other
   // process has removed the file.

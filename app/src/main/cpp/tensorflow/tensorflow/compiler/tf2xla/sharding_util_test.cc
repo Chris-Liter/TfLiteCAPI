@@ -83,8 +83,7 @@ TEST_P(ShardingWithMetadataTest, GetShardingFromNode) {
 
   auto test_sharding_metadata =
       [&check_metadata](
-          const std::function<absl::StatusOr<std::optional<xla::OpSharding>>()>&
-              fn) {
+          const std::function<StatusOr<std::optional<xla::OpSharding>>()>& fn) {
         auto status_or_sharding = fn();
         TF_ASSERT_OK(status_or_sharding.status());
         ASSERT_TRUE(status_or_sharding.value().has_value());
@@ -115,7 +114,7 @@ TEST_P(ShardingWithMetadataTest, GetShardingFromNode) {
 
   {
     Graph graph(OpRegistry::Global());
-    absl::Status status;
+    Status status;
     Node* node = graph.AddNode(node_def, &status);
     TF_ASSERT_OK(status);
 

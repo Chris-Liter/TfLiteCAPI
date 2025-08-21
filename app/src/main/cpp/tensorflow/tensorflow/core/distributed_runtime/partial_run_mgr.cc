@@ -35,10 +35,9 @@ bool PartialRunMgr::FindOrCreate(int step_id,
   return true;
 }
 
-void PartialRunMgr::ExecutorDone(int step_id,
-                                 const absl::Status& executor_status) {
+void PartialRunMgr::ExecutorDone(int step_id, const Status& executor_status) {
   StatusCallback done;
-  absl::Status callback_status;
+  Status callback_status;
   {
     mutex_lock l(mu_);
     auto run_it = step_id_to_partial_run_.find(step_id);
@@ -64,8 +63,8 @@ void PartialRunMgr::ExecutorDone(int step_id,
 }
 
 void PartialRunMgr::PartialRunDone(int step_id, StatusCallback done,
-                                   const absl::Status& status) {
-  absl::Status callback_status;
+                                   const Status& status) {
+  Status callback_status;
   {
     mutex_lock l(mu_);
     auto run_it = step_id_to_partial_run_.find(step_id);

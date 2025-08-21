@@ -14,28 +14,10 @@ limitations under the License.
 ==============================================================================*/
 #include "tensorflow/core/kernels/data/window_dataset_op.h"
 
-#include "absl/log/check.h"
-#include "absl/status/status.h"
 #include "tensorflow/core/data/name_utils.h"
 #include "tensorflow/core/framework/dataset.h"
-#include "tensorflow/core/framework/dataset_options.pb.h"
-#include "tensorflow/core/framework/model.h"
-#include "tensorflow/core/framework/op_kernel.h"
-#include "tensorflow/core/framework/op_requires.h"
-#include "tensorflow/core/framework/tensor.h"
-#include "tensorflow/core/framework/tensor_shape.h"
-#include "tensorflow/core/framework/types.h"
-#include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/kernels/data/window_dataset.h"
-#include "tensorflow/core/platform/errors.h"
-#include "tensorflow/core/platform/mutex.h"
-#include "tensorflow/core/platform/status.h"
-#include "tensorflow/core/platform/strcat.h"
 #include "tensorflow/core/platform/stringprintf.h"
-#include "tensorflow/core/platform/tstring.h"
-#include "tensorflow/core/platform/types.h"
-#include "tsl/platform/errors.h"
-#include "tsl/platform/thread_annotations.h"
 
 namespace tensorflow {
 namespace data {
@@ -123,20 +105,19 @@ class WindowDatasetOp::Dataset : public DatasetBase {
     return cardinality;
   }
 
-  absl::Status InputDatasets(
-      std::vector<const DatasetBase*>* inputs) const override {
+  Status InputDatasets(std::vector<const DatasetBase*>* inputs) const override {
     inputs->push_back(input_);
-    return absl::OkStatus();
+    return OkStatus();
   }
 
-  absl::Status CheckExternalState() const override {
+  Status CheckExternalState() const override {
     return input_->CheckExternalState();
   }
 
  protected:
-  absl::Status AsGraphDefInternal(SerializationContext* ctx,
-                                  DatasetGraphDefBuilder* b,
-                                  Node** output) const override {
+  Status AsGraphDefInternal(SerializationContext* ctx,
+                            DatasetGraphDefBuilder* b,
+                            Node** output) const override {
     Node* input_graph_node = nullptr;
     TF_RETURN_IF_ERROR(b->AddInputDataset(ctx, input_, &input_graph_node));
     Node* window_size_node = nullptr;
@@ -152,7 +133,7 @@ class WindowDatasetOp::Dataset : public DatasetBase {
                       {input_graph_node, window_size_node, window_shift_node,
                        window_stride_node, drop_remainder_node},
                       output));
-    return absl::OkStatus();
+    return OkStatus();
   }
 
  private:
@@ -161,18 +142,18 @@ class WindowDatasetOp::Dataset : public DatasetBase {
     explicit Iterator(const Params& params)
         : DatasetIterator<Dataset>(params) {}
 
-    absl::Status Initialize(IteratorContext* ctx) override {
+    Status Initialize(IteratorContext* ctx) override {
       return dataset()->input_->MakeIterator(ctx, this, prefix(), &input_impl_);
     }
 
-    absl::Status GetNextInternal(IteratorContext* ctx,
-                                 std::vector<Tensor>* out_tensors,
-                                 bool* end_of_sequence) override {
+    Status GetNextInternal(IteratorContext* ctx,
+                           std::vector<Tensor>* out_tensors,
+                           bool* end_of_sequence) override {
       const int64_t window_size = dataset()->window_size_;
       const int64_t window_shift = dataset()->window_shift_;
       const int64_t window_stride = dataset()->window_stride_;
       std::vector<std::vector<Tensor>> window_elements;
-      absl::Status status = absl::OkStatus();
+      Status status = OkStatus();
       {
         const size_t target_size = TargetBufferSize(window_size, window_stride);
 
@@ -181,7 +162,7 @@ class WindowDatasetOp::Dataset : public DatasetBase {
             (buffer_.empty() ||
              (dataset()->drop_remainder_ && buffer_.size() < target_size))) {
           *end_of_sequence = true;
-          return absl::OkStatus();
+          return OkStatus();
         }
 
         // Add elements to the buffer.
@@ -190,7 +171,7 @@ class WindowDatasetOp::Dataset : public DatasetBase {
           for (size_t i = buffer_.size(); i < target_size && !*end_of_sequence;
                ++i) {
             std::vector<Tensor> element;
-            absl::Status status =
+            Status status =
                 input_impl_->GetNext(ctx, &element, end_of_sequence);
             if (!*end_of_sequence) {
               RecordBufferEnqueue(ctx, element);
@@ -206,7 +187,7 @@ class WindowDatasetOp::Dataset : public DatasetBase {
         if (buffer_.empty() ||
             (dataset()->drop_remainder_ && buffer_.size() < target_size)) {
           DCHECK(*end_of_sequence);
-          return absl::OkStatus();
+          return OkStatus();
         }
 
         int num_elements = 1 + (buffer_.size() - 1) / window_stride;
@@ -271,7 +252,7 @@ class WindowDatasetOp::Dataset : public DatasetBase {
         TF_RETURN_IF_ERROR(
             StoreDatasetInVariantTensor(window_dataset, &out_tensors->back()));
       }
-      return absl::OkStatus();
+      return OkStatus();
     }
 
    protected:
@@ -281,8 +262,8 @@ class WindowDatasetOp::Dataset : public DatasetBase {
                                        dataset()->window_shift_);
     }
 
-    absl::Status SaveInternal(SerializationContext* ctx,
-                              IteratorStateWriter* writer) override {
+    Status SaveInternal(SerializationContext* ctx,
+                        IteratorStateWriter* writer) override {
       mutex_lock l(mu_);
       if (!input_impl_) {
         TF_RETURN_IF_ERROR(writer->WriteScalar(prefix(), kInputImplEmpty, ""));
@@ -303,11 +284,11 @@ class WindowDatasetOp::Dataset : public DatasetBase {
               buffer_[i].result[j]));
         }
       }
-      return absl::OkStatus();
+      return OkStatus();
     }
 
-    absl::Status RestoreInternal(IteratorContext* ctx,
-                                 IteratorStateReader* reader) override {
+    Status RestoreInternal(IteratorContext* ctx,
+                           IteratorStateReader* reader) override {
       mutex_lock l(mu_);
       if (!reader->Contains(prefix(), kInputImplEmpty)) {
         TF_RETURN_IF_ERROR(RestoreInput(ctx, reader, input_impl_));
@@ -333,7 +314,7 @@ class WindowDatasetOp::Dataset : public DatasetBase {
                                  &buffer_[i].result[j]));
         }
       }
-      return absl::OkStatus();
+      return OkStatus();
     }
 
     TraceMeMetadata GetTraceMeMetadata() const override {
@@ -343,15 +324,15 @@ class WindowDatasetOp::Dataset : public DatasetBase {
    private:
     struct InvocationResult {
       InvocationResult() = default;
-      InvocationResult(std::vector<Tensor>&& result, const absl::Status& status)
+      InvocationResult(std::vector<Tensor>&& result, const Status& status)
           : result(result), status(status) {}
 
       std::vector<Tensor> result;
-      absl::Status status;
+      Status status;
     };
 
-    absl::Status WriteStatusLocked(IteratorStateWriter* writer, size_t index,
-                                   const absl::Status& status)
+    Status WriteStatusLocked(IteratorStateWriter* writer, size_t index,
+                             const Status& status)
         TF_EXCLUSIVE_LOCKS_REQUIRED(mu_) {
       TF_RETURN_IF_ERROR(writer->WriteScalar(
           prefix(), CodeKey(index), static_cast<int64_t>(status.code())));
@@ -359,12 +340,11 @@ class WindowDatasetOp::Dataset : public DatasetBase {
         TF_RETURN_IF_ERROR(writer->WriteScalar(prefix(), ErrorMessageKey(index),
                                                std::string(status.message())));
       }
-      return absl::OkStatus();
+      return OkStatus();
     }
 
-    absl::Status ReadStatusLocked(IteratorStateReader* reader, size_t index,
-                                  absl::Status* status)
-        TF_EXCLUSIVE_LOCKS_REQUIRED(mu_) {
+    Status ReadStatusLocked(IteratorStateReader* reader, size_t index,
+                            Status* status) TF_EXCLUSIVE_LOCKS_REQUIRED(mu_) {
       int64_t code_int;
       TF_RETURN_IF_ERROR(
           reader->ReadScalar(prefix(), CodeKey(index), &code_int));
@@ -374,11 +354,11 @@ class WindowDatasetOp::Dataset : public DatasetBase {
         tstring error_message;
         TF_RETURN_IF_ERROR(reader->ReadScalar(prefix(), ErrorMessageKey(index),
                                               &error_message));
-        *status = absl::Status(code, error_message);
+        *status = Status(code, error_message);
       } else {
-        *status = absl::OkStatus();
+        *status = OkStatus();
       }
-      return absl::OkStatus();
+      return OkStatus();
     }
 
     string CodeKey(size_t index) {

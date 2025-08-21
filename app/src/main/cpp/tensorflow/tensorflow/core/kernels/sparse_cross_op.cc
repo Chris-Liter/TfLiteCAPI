@@ -20,7 +20,7 @@ limitations under the License.
 #include <string>
 #include <vector>
 
-#include "unsupported/Eigen/CXX11/Tensor"  // from @eigen_archive
+#include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 #include "tensorflow/core/framework/kernel_def_builder.h"
 #include "tensorflow/core/framework/op_def_builder.h"
 #include "tensorflow/core/framework/op_kernel.h"
@@ -475,11 +475,11 @@ int64_t CalculateBatchSize(const OpInputList& shapes_list_in,
 }
 
 // Validates input tensors.
-absl::Status ValidateInput(const OpInputList& indices_list_in,
-                           const OpInputList& values_list_in,
-                           const OpInputList& shapes_list_in,
-                           const OpInputList& dense_list_in,
-                           const DataType& internal_type) {
+Status ValidateInput(const OpInputList& indices_list_in,
+                     const OpInputList& values_list_in,
+                     const OpInputList& shapes_list_in,
+                     const OpInputList& dense_list_in,
+                     const DataType& internal_type) {
   const auto size = indices_list_in.size();
   // Only perform internal_type check for SparseCrossOp.
   // Check if the internal_type is not invalid before doing so.
@@ -591,7 +591,7 @@ absl::Status ValidateInput(const OpInputList& indices_list_in,
     }
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Extracts data about the features and populates feature data.
@@ -599,7 +599,7 @@ void ExtractFeatureData(
     const OpInputList& indices_list_in, int64_t batch_size,
     std::vector<std::vector<int64_t>>* feature_counts,
     std::vector<std::vector<int64_t>>* feature_start_indices) {
-  absl::InlinedVector<int64_t, 8UL> current_row(indices_list_in.size(), 0);
+  gtl::InlinedVector<int64_t, 8> current_row(indices_list_in.size(), 0);
   for (int b = 0; b < batch_size; b++) {
     for (int i = 0; i < indices_list_in.size(); i++) {
       const auto indices = indices_list_in[i].matrix<int64_t>();
@@ -705,7 +705,7 @@ GenerateKeyedColumnsFromInput(const OpInputList& indices_list_in,
 // It also output_start_indices which contains the start indices for each
 // input in the output SparseTensor.
 template <typename InternalType>
-absl::Status CreateOutputTensors(
+Status CreateOutputTensors(
     const std::vector<std::unique_ptr<ColumnInterface<InternalType>>>& columns,
     int64_t batch_size, OpKernelContext* context, Tensor** indices_out,
     Tensor** values_out, Tensor** shape_out,
@@ -733,7 +733,7 @@ absl::Status CreateOutputTensors(
   shape_vec(0) = batch_size;
   shape_vec(1) = max_cross_count;
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 template <bool HASHED_OUTPUT, typename InternalType>
@@ -911,7 +911,7 @@ class SparseCrossHashedOp : public OpKernel {
     const auto salt = salt_t->flat<int64_t>();
     OP_REQUIRES_OK(
         context, salt.size() == 2
-                     ? absl::Status()
+                     ? Status()
                      : errors::InvalidArgument(
                            "Input \"salt\" must have length 2 but has length ",
                            salt.size()));

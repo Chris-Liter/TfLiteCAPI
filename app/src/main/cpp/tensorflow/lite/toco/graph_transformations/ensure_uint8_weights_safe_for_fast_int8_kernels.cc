@@ -17,13 +17,10 @@ limitations under the License.
 #include <unordered_map>
 #include <vector>
 
-#include "absl/status/status.h"
-#include "tensorflow/core/platform/logging.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/lite/toco/graph_transformations/graph_transformations.h"
 #include "tensorflow/lite/toco/model.h"
-#include "tensorflow/lite/toco/runtime/types.h"
 #include "tensorflow/lite/toco/tooling_util.h"
+#include "tensorflow/core/platform/logging.h"
 
 namespace toco {
 
@@ -111,9 +108,8 @@ namespace toco {
 // we can foresee these 'fast int8 kernels' to remain important to have into
 // the 2020s.
 //
-absl::Status EnsureUint8WeightsSafeForFastInt8Kernels::Run(Model* model,
-                                                           std::size_t op_index,
-                                                           bool* modified) {
+::tensorflow::Status EnsureUint8WeightsSafeForFastInt8Kernels::Run(
+    Model* model, std::size_t op_index, bool* modified) {
   *modified = false;
   const auto& op = *model->operators[op_index];
   int weights_index = 0;
@@ -153,16 +149,16 @@ absl::Status EnsureUint8WeightsSafeForFastInt8Kernels::Run(Model* model,
       // That's why at the moment we only handle operators that use a GEMM
       // (Conv, fully-connected --- note that LSTM merely wraps a
       // fully-connected operator).
-      return absl::OkStatus();
+      return ::tensorflow::OkStatus();
   }
 
   const std::string& name = op.inputs[weights_index];
   auto& array = model->GetArray(name);
   if (!array.buffer) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   if (array.data_type != ArrayDataType::kUint8) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   auto& buffer_data = array.GetMutableBuffer<ArrayDataType::kUint8>().data;
 
@@ -218,7 +214,7 @@ absl::Status EnsureUint8WeightsSafeForFastInt8Kernels::Run(Model* model,
   }
 
   *modified = changed;
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 }  // namespace toco

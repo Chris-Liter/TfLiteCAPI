@@ -17,32 +17,31 @@ limitations under the License.
 #include <unordered_map>
 #include <vector>
 
-#include "absl/status/status.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/lite/toco/graph_transformations/graph_transformations.h"
 #include "tensorflow/lite/toco/graph_transformations/remove_trivial_passthrough.h"
 #include "tensorflow/lite/toco/model.h"
 #include "tensorflow/lite/toco/tooling_util.h"
+#include "tensorflow/core/platform/logging.h"
 
 namespace toco {
 
-absl::Status DropFakeQuant::Run(Model* model, std::size_t op_index,
-                                bool* modified) {
+::tensorflow::Status DropFakeQuant::Run(Model* model, std::size_t op_index,
+                                        bool* modified) {
   *modified = false;
   const auto fakequant_it = model->operators.begin() + op_index;
   auto* fakequant_base_op = fakequant_it->get();
   if (fakequant_base_op->type != OperatorType::kFakeQuant) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   auto* fakequant_op = static_cast<FakeQuantOperator*>(fakequant_base_op);
 
   if (!fakequant_op->minmax) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   const auto& output_array = model->GetArray(fakequant_op->outputs[0]);
   if (!output_array.minmax) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   // Drop min/max inputs
@@ -54,7 +53,7 @@ absl::Status DropFakeQuant::Run(Model* model, std::size_t op_index,
   fakequant_op->inputs.resize(1);
 
   *modified = RemoveTrivialPassthroughOp(this, model, op_index);
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 }  // namespace toco

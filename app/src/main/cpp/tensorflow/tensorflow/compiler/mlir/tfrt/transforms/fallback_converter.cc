@@ -16,17 +16,6 @@ limitations under the License.
 
 #include <optional>
 
-#include "mlir/IR/Builders.h"  // from @llvm-project
-#include "mlir/IR/BuiltinAttributes.h"  // from @llvm-project
-#include "mlir/IR/BuiltinTypes.h"  // from @llvm-project
-#include "mlir/IR/Location.h"  // from @llvm-project
-#include "mlir/IR/MLIRContext.h"  // from @llvm-project
-#include "mlir/IR/Operation.h"  // from @llvm-project
-#include "mlir/IR/Types.h"  // from @llvm-project
-#include "mlir/IR/Value.h"  // from @llvm-project
-#include "mlir/IR/ValueRange.h"  // from @llvm-project
-#include "mlir/Support/LLVM.h"  // from @llvm-project
-#include "mlir/Transforms/DialectConversion.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_types.h"
 #include "tensorflow/compiler/mlir/tfrt/ir/tfrt_fallback.h"
 #include "tensorflow/compiler/mlir/tfrt/ir/tfrt_fallback_async.h"
@@ -42,7 +31,7 @@ FallbackConverter::FallbackConverter(mlir::MLIRContext *context)
   addConversion([](tfrt::fallback::TFTensorType type) { return type; });
   addConversion([=](mlir::TensorType type) -> std::optional<mlir::Type> {
     // Ref types are not supported in both compiler and runtime.
-    if (mlir::isa<mlir::TF::TensorFlowRefType>(type.getElementType())) {
+    if (type.getElementType().isa<mlir::TF::TensorFlowRefType>()) {
       return std::nullopt;
     }
 
@@ -57,13 +46,13 @@ FallbackConverter::FallbackConverter(mlir::MLIRContext *context)
 mlir::Value ConvertCoreRTTensorHandleToFallbackTensor(
     mlir::Location loc, llvm::StringRef device, mlir::Value value,
     mlir::ConversionPatternRewriter &rewriter) {
-  if (mlir::isa<tfrt::fallback::TFTensorType>(value.getType())) return value;
+  if (value.getType().isa<tfrt::fallback::TFTensorType>()) return value;
 
-  if (!mlir::isa<tfrt::corert::TensorHandleType>(value.getType())) return {};
+  if (!value.getType().isa<tfrt::corert::TensorHandleType>()) return {};
 
   mlir::OpBuilder::InsertionGuard guard(rewriter);
 
-  if (device.ends_with("CPU:0") && !device.starts_with("/job:")) {
+  if (device.endswith("CPU:0") && !device.startswith("/job:")) {
     // Canonicalize CPU device name. This is needed as corert library only uses
     // the default CPU device name (i.e.
     // "/job:localhost/replica:0/task:0/device:CPU:0") and cannot recoganize
@@ -93,9 +82,9 @@ mlir::Value ConvertCoreRTTensorHandleToFallbackTensor(
 mlir::Value ConvertFallbackTensorToCoreRTTensorHandle(
     mlir::Location loc, mlir::Value value,
     mlir::ConversionPatternRewriter &rewriter) {
-  if (mlir::isa<tfrt::corert::TensorHandleType>(value.getType())) return value;
+  if (value.getType().isa<tfrt::corert::TensorHandleType>()) return value;
 
-  if (!mlir::isa<tfrt::fallback::TFTensorType>(value.getType())) return {};
+  if (!value.getType().isa<tfrt::fallback::TFTensorType>()) return {};
 
   // Use CPU device by default if no device is specified.
   llvm::StringRef device = GetDefaultCpuDeviceName();
@@ -106,7 +95,7 @@ mlir::Value ConvertFallbackTensorToCoreRTTensorHandle(
       // defining op (it should be defined in TF OpKernel). If HostMemory
       // annotation is set for an output tensor, we should use CPU device here.
       // TODO(b/200896904): Support HostMemory annotation.
-      if (!device_attr.getValue().ends_with("TPU_SYSTEM:0")) {
+      if (!device_attr.getValue().endswith("TPU_SYSTEM:0")) {
         device = device_attr.getValue();
       }
     }
@@ -145,7 +134,7 @@ mlir::LogicalResult ConvertFallbackOperands(
     llvm::SmallVectorImpl<mlir::Value> *new_operands,
     mlir::ConversionPatternRewriter &rewriter) {
   for (auto operand : operands) {
-    if (!mlir::isa<tfrt::fallback::TFTensorType>(operand.getType())) {
+    if (!operand.getType().isa<tfrt::fallback::TFTensorType>()) {
       auto new_operand = ConvertCoreRTTensorHandleToFallbackTensor(
           op->getLoc(), device, operand, rewriter);
       if (!new_operand)

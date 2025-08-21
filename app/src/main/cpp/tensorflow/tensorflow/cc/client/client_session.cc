@@ -35,7 +35,7 @@ class ClientSession::Impl {
       : session_(session), graph_(std::move(graph)) {}
 
   static SessionOptions MakeDefaultSessionOptions(const string& target);
-  absl::Status MaybeExtendGraph() const;
+  Status MaybeExtendGraph() const;
 
   std::unique_ptr<Session> session_;
   std::shared_ptr<Graph> graph_;
@@ -52,7 +52,7 @@ ClientSession::ClientSession(const Scope& scope) : ClientSession(scope, "") {}
 ClientSession::ClientSession(const Scope& scope,
                              const SessionOptions& session_options) {
   Session* new_session;
-  absl::Status status = NewSession(session_options, &new_session);
+  Status status = NewSession(session_options, &new_session);
   TF_CHECK_OK(status) << status;
   impl_.reset(new Impl(new_session, scope.graph_as_shared_ptr()));
   CHECK_NOTNULL(impl()->session_.get());
@@ -71,26 +71,26 @@ SessionOptions ClientSession::Impl::MakeDefaultSessionOptions(
   return options;
 }
 
-absl::Status ClientSession::Run(const std::vector<Output>& fetch_outputs,
-                                std::vector<Tensor>* outputs) const {
+Status ClientSession::Run(const std::vector<Output>& fetch_outputs,
+                          std::vector<Tensor>* outputs) const {
   return Run(FeedType{}, fetch_outputs, {}, outputs);
 }
 
-absl::Status ClientSession::Run(const FeedType& inputs,
-                                const std::vector<Output>& fetch_outputs,
-                                std::vector<Tensor>* outputs) const {
+Status ClientSession::Run(const FeedType& inputs,
+                          const std::vector<Output>& fetch_outputs,
+                          std::vector<Tensor>* outputs) const {
   return Run(inputs, fetch_outputs, {}, outputs);
 }
 
-absl::Status ClientSession::Run(const FeedType& inputs,
-                                const std::vector<Output>& fetch_outputs,
-                                const std::vector<Operation>& run_outputs,
-                                std::vector<Tensor>* outputs) const {
+Status ClientSession::Run(const FeedType& inputs,
+                          const std::vector<Output>& fetch_outputs,
+                          const std::vector<Operation>& run_outputs,
+                          std::vector<Tensor>* outputs) const {
   return Run(RunOptions(), inputs, fetch_outputs, run_outputs, outputs,
              nullptr);
 }
 
-absl::Status ClientSession::Impl::MaybeExtendGraph() const {
+Status ClientSession::Impl::MaybeExtendGraph() const {
   mutex_lock l(mu_);
   int num_nodes = graph_->num_node_ids();
   if (num_nodes > last_num_graph_nodes_) {
@@ -99,15 +99,14 @@ absl::Status ClientSession::Impl::MaybeExtendGraph() const {
     last_num_graph_nodes_ = num_nodes;
     return session_->Extend(graph_def);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status ClientSession::Run(const RunOptions& run_options,
-                                const FeedType& inputs,
-                                const std::vector<Output>& fetch_outputs,
-                                const std::vector<Operation>& run_outputs,
-                                std::vector<Tensor>* outputs,
-                                RunMetadata* run_metadata) const {
+Status ClientSession::Run(const RunOptions& run_options, const FeedType& inputs,
+                          const std::vector<Output>& fetch_outputs,
+                          const std::vector<Operation>& run_outputs,
+                          std::vector<Tensor>* outputs,
+                          RunMetadata* run_metadata) const {
   std::vector<std::pair<string, Tensor>> feeds;
   feeds.reserve(inputs.size());
   for (auto const& feed : inputs) {
@@ -132,7 +131,7 @@ absl::Status ClientSession::Run(const RunOptions& run_options,
                                target_node_names, outputs, run_metadata);
 }
 
-absl::Status ClientSession::Run(
+Status ClientSession::Run(
     const RunOptions& run_options, const FeedType& inputs,
     const std::vector<Output>& fetch_outputs,
     const std::vector<Operation>& run_outputs, std::vector<Tensor>* outputs,
@@ -159,29 +158,30 @@ absl::Status ClientSession::Run(
                                threadpool_options);
 }
 
-absl::Status ClientSession::MakeCallable(
-    const CallableOptions& callable_options, CallableHandle* out_handle) {
+Status ClientSession::MakeCallable(const CallableOptions& callable_options,
+                                   CallableHandle* out_handle) {
   TF_RETURN_IF_ERROR(impl()->MaybeExtendGraph());
   return impl()->session_->MakeCallable(callable_options, out_handle);
 }
 
-absl::Status ClientSession::RunCallable(CallableHandle handle,
-                                        const std::vector<Tensor>& feed_tensors,
-                                        std::vector<Tensor>* fetch_tensors,
-                                        RunMetadata* run_metadata) {
+Status ClientSession::RunCallable(CallableHandle handle,
+                                  const std::vector<Tensor>& feed_tensors,
+                                  std::vector<Tensor>* fetch_tensors,
+                                  RunMetadata* run_metadata) {
   return impl()->session_->RunCallable(handle, feed_tensors, fetch_tensors,
                                        run_metadata);
 }
 
-absl::Status ClientSession::RunCallable(
-    CallableHandle handle, const std::vector<Tensor>& feed_tensors,
-    std::vector<Tensor>* fetch_tensors, RunMetadata* run_metadata,
-    const thread::ThreadPoolOptions& options) {
+Status ClientSession::RunCallable(CallableHandle handle,
+                                  const std::vector<Tensor>& feed_tensors,
+                                  std::vector<Tensor>* fetch_tensors,
+                                  RunMetadata* run_metadata,
+                                  const thread::ThreadPoolOptions& options) {
   return impl()->session_->RunCallable(handle, feed_tensors, fetch_tensors,
                                        run_metadata, options);
 }
 
-absl::Status ClientSession::ReleaseCallable(CallableHandle handle) {
+Status ClientSession::ReleaseCallable(CallableHandle handle) {
   return impl()->session_->ReleaseCallable(handle);
 }
 

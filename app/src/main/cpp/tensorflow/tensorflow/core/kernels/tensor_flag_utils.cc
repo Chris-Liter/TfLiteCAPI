@@ -21,26 +21,25 @@ limitations under the License.
 namespace tensorflow {
 namespace tensor_flag_utils {
 
-absl::Status ValidateSparseMatrixShardingConfig(const Tensor& config) {
+Status ValidateSparseMatrixShardingConfig(const Tensor& config) {
   if (TensorShapeUtils::IsScalar(config.shape())) {
     const float scalar_config = config.template scalar<float>()();
     if (0 < scalar_config && scalar_config <= 1.0) {
-      return absl::OkStatus();
+      return OkStatus();
     }
-    return absl::Status(
+    return Status(
         absl::StatusCode::kInvalidArgument,
         absl::StrCat("Expected config to be in range (0, 1] but instead found ",
                      scalar_config));
   }
   if (!TensorShapeUtils::IsMatrix(config.shape())) {
-    return absl::Status(
-        absl::StatusCode::kInvalidArgument,
-        absl::StrCat("Expected config to be either scalar or matrix "
-                     "but instead found tensor of rank ",
-                     config.dims()));
+    return Status(absl::StatusCode::kInvalidArgument,
+                  absl::StrCat("Expected config to be either scalar or matrix "
+                               "but instead found tensor of rank ",
+                               config.dims()));
   }
   if (config.dim_size(1) != 3) {
-    return absl::Status(
+    return Status(
         absl::StatusCode::kInvalidArgument,
         absl::StrCat(
             "Expected config matrix to have dim(1) = 3 but instead found ",
@@ -70,7 +69,7 @@ absl::Status ValidateSparseMatrixShardingConfig(const Tensor& config) {
           config_matrix(i, 2), " in row ", i);
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 template <typename MatrixType, typename K>
@@ -86,26 +85,25 @@ MatrixType FindConfigValueForKey(
   return config_mat(last_row_index, 2);
 }
 
-absl::Status ValidateScalarQuantityShardingConfig(const Tensor& config) {
+Status ValidateScalarQuantityShardingConfig(const Tensor& config) {
   if (TensorShapeUtils::IsScalar(config.shape())) {
     const float scalar_config = config.template scalar<float>()();
     if (0 < scalar_config && scalar_config <= 1.0) {
-      return absl::OkStatus();
+      return OkStatus();
     }
-    return absl::Status(
+    return Status(
         absl::StatusCode::kInvalidArgument,
         absl::StrCat("Expected config to be in range (0, 1] but instead found ",
                      scalar_config));
   }
   if (!TensorShapeUtils::IsMatrix(config.shape())) {
-    return absl::Status(
-        absl::StatusCode::kInvalidArgument,
-        absl::StrCat("Expected config to be either scalar or matrix "
-                     "but instead found tensor of rank ",
-                     config.dims()));
+    return Status(absl::StatusCode::kInvalidArgument,
+                  absl::StrCat("Expected config to be either scalar or matrix "
+                               "but instead found tensor of rank ",
+                               config.dims()));
   }
   if (config.dim_size(1) != 2) {
-    return absl::Status(
+    return Status(
         absl::StatusCode::kInvalidArgument,
         absl::StrCat(
             "Expected config matrix to have dim(1) = 2 but instead found ",
@@ -128,7 +126,7 @@ absl::Status ValidateScalarQuantityShardingConfig(const Tensor& config) {
           config_matrix(i, 1), " in row ", i);
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 template <typename MatrixType, typename K>

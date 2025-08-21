@@ -17,11 +17,10 @@ limitations under the License.
 
 #include <optional>
 #include <string>
-#include <utility>
 #include <vector>
 
 #include "absl/strings/string_view.h"
-#include "xla/service/hlo.pb.h"
+#include "tensorflow/compiler/xla/service/hlo.pb.h"
 #include "tensorflow/core/platform/errors.h"
 #include "tensorflow/core/platform/logging.h"
 #include "tensorflow/core/platform/protobuf.h"
@@ -31,14 +30,13 @@ limitations under the License.
 #include "tensorflow/core/profiler/convert/repository.h"
 #include "tensorflow/core/profiler/convert/tool_options.h"
 #include "tensorflow/core/profiler/convert/xplane_to_hlo.h"
-#include "tensorflow/core/profiler/protobuf/memory_viewer_preprocess.pb.h"
 
 namespace tensorflow {
 namespace profiler {
 
 namespace {
 
-absl::StatusOr<PreprocessResult> GetMemoryViewerPreprocessResult(
+StatusOr<std::string> ConvertHloProtoToMemoryViewer(
     const xla::HloProto& hlo_proto) {
   static constexpr int kSmallBufferSize = 16 * 1024;  // 16KB
   static constexpr int kMemorySpaceColor = 0;         // HBM
@@ -49,15 +47,6 @@ absl::StatusOr<PreprocessResult> GetMemoryViewerPreprocessResult(
     return errors::Internal(
         "Failed to convert HLO proto to memory viewer result: ",
         result_or.status().message());
-  }
-  return result_or;
-}
-
-absl::StatusOr<std::string> ConvertHloProtoToMemoryViewer(
-    const xla::HloProto& hlo_proto) {
-  auto result_or = GetMemoryViewerPreprocessResult(hlo_proto);
-  if (!result_or.ok()) {
-    return result_or.status();
   }
 
   std::string json_output;
@@ -75,17 +64,7 @@ absl::StatusOr<std::string> ConvertHloProtoToMemoryViewer(
   return json_output;
 }
 
-absl::StatusOr<std::string> ConvertHloProtoToAllocationTimeline(
-    const xla::HloProto& hlo_proto) {
-  auto result_or = GetMemoryViewerPreprocessResult(hlo_proto);
-  if (!result_or.ok()) {
-    return result_or.status();
-  }
-
-  return WrapDotInHtml(std::move(result_or.value().allocation_timeline()));
-}
-
-absl::StatusOr<std::string> ConvertHloProtoToGraphViewer(
+StatusOr<std::string> ConvertHloProtoToGraphViewer(
     const xla::HloProto& hlo_proto, const ToolOptions& options) {
   TF_ASSIGN_OR_RETURN(GraphViewerParams params,
                       ParseGraphViewerParams(options));
@@ -101,7 +80,7 @@ absl::StatusOr<std::string> ConvertHloProtoToGraphViewer(
 
 }  // namespace
 
-absl::StatusOr<std::string> ConvertHloProtoToToolData(
+StatusOr<std::string> ConvertHloProtoToToolData(
     const SessionSnapshot& session_snapshot, const absl::string_view tool_name,
     const ToolOptions& options) {
   // <options> must provide a hlo module_name field to identify the HLO module.
@@ -119,9 +98,6 @@ absl::StatusOr<std::string> ConvertHloProtoToToolData(
 
   // Convert from HLO proto to tools data.
   if (tool_name == "memory_viewer") {
-    if (GetParamWithDefault(options, "view_memory_allocation_timeline", 0)) {
-      return ConvertHloProtoToAllocationTimeline(hlo_proto);
-    }
     return ConvertHloProtoToMemoryViewer(hlo_proto);
   } else if (tool_name == "graph_viewer") {
     return ConvertHloProtoToGraphViewer(hlo_proto, options);

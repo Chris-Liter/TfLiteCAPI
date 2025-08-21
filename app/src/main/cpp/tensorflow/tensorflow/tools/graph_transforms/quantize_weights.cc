@@ -31,9 +31,9 @@ namespace graph_transforms {
 // Converts any large float constants into eight-bit equivalents, with a
 // Dequantize op so that subsequent nodes can still access the results in a
 // float form.
-absl::Status QuantizeWeights(const GraphDef& input_graph_def,
-                             const TransformFuncContext& context,
-                             GraphDef* output_graph_def) {
+Status QuantizeWeights(const GraphDef& input_graph_def,
+                       const TransformFuncContext& context,
+                       GraphDef* output_graph_def) {
   int32_t minimum_size;
   TF_RETURN_IF_ERROR(
       context.GetOneInt32Parameter("minimum_size", 1024, &minimum_size));
@@ -63,7 +63,7 @@ absl::Status QuantizeWeights(const GraphDef& input_graph_def,
         // same node with no changes.
         if ((old_dtype != DT_FLOAT) || (num_elements < minimum_size)) {
           new_nodes->push_back(old_const_node);
-          return absl::OkStatus();
+          return OkStatus();
         }
         const float* old_values = old_tensor.flat<float>().data();
         float min = std::numeric_limits<float>::max();
@@ -133,11 +133,11 @@ absl::Status QuantizeWeights(const GraphDef& input_graph_def,
         AddNodeInput(max_node.name(), &dequantize_node);
         new_nodes->push_back(dequantize_node);
 
-        return absl::OkStatus();
+        return OkStatus();
       },
       {}, output_graph_def));
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 REGISTER_GRAPH_TRANSFORM("quantize_weights", QuantizeWeights);

@@ -22,16 +22,15 @@ limitations under the License.
 namespace tensorflow {
 namespace device_utils {
 
-absl::Status ValidateDeviceType(absl::string_view type) {
+Status ValidateDeviceType(StringPiece type) {
   static const LazyRE2 kTfDeviceTypeRegEx = {"[A-Z][A-Z_]*"};
   bool matches = RE2::FullMatch(type, *kTfDeviceTypeRegEx);
   if (!matches) {
-    return absl::Status(
-        absl::StatusCode::kFailedPrecondition,
-        strings::StrCat("Device name/type '", type, "' must match ",
-                        kTfDeviceTypeRegEx->pattern(), "."));
+    return Status(absl::StatusCode::kFailedPrecondition,
+                  strings::StrCat("Device name/type '", type, "' must match ",
+                                  kTfDeviceTypeRegEx->pattern(), "."));
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace device_utils

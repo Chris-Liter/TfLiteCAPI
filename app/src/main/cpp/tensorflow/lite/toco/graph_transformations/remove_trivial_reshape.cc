@@ -18,13 +18,11 @@ limitations under the License.
 #include <unordered_map>
 #include <vector>
 
-#include "absl/status/status.h"
-#include "tensorflow/core/platform/logging.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/lite/toco/graph_transformations/graph_transformations.h"
 #include "tensorflow/lite/toco/graph_transformations/remove_trivial_passthrough.h"
 #include "tensorflow/lite/toco/model.h"
 #include "tensorflow/lite/toco/tooling_util.h"
+#include "tensorflow/core/platform/logging.h"
 
 namespace toco {
 
@@ -90,19 +88,19 @@ bool IsReshapeTrivial(const Model& model, const Operator& op,
   const auto reshape_it = model->operators.begin() + op_index;
   auto* reshape_op = reshape_it->get();
   if (reshape_op->type != OperatorType::kReshape) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   if (!IsReshapeTrivial(*model, *reshape_op, this)) {
     AddMessageF("%s is not trivial", LogName(*reshape_op));
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   AddMessageF("Removing trivial %s", LogName(*reshape_op));
 
   CHECK_EQ(reshape_op->inputs.size(), 2);
   *modified = RemoveTrivialPassthroughOp(this, model, op_index);
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 }  // namespace toco

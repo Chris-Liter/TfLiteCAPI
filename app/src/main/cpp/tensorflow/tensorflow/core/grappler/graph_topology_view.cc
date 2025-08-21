@@ -38,7 +38,7 @@ inline void SortAndRemoveDuplicates(T* v) {
 
 }  // namespace
 
-absl::Status GraphTopologyView::InitializeFromGraph(
+Status GraphTopologyView::InitializeFromGraph(
     const GraphDef& graph,
     const absl::Span<const GraphView::Edge> ephemeral_edges,
     bool ignore_control_edges) {
@@ -137,23 +137,23 @@ absl::Status GraphTopologyView::InitializeFromGraph(
     SortAndRemoveDuplicates(&fanouts_[node_idx]);
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status GraphTopologyView::InitializeFromGraph(
+Status GraphTopologyView::InitializeFromGraph(
     const GraphDef& graph,
     const absl::Span<const GraphView::Edge> ephemeral_edges) {
   return InitializeFromGraph(graph, ephemeral_edges,
                              /*ignore_control_edges=*/false);
 }
 
-absl::Status GraphTopologyView::InitializeFromGraph(const GraphDef& graph,
-                                                    bool ignore_control_edges) {
+Status GraphTopologyView::InitializeFromGraph(const GraphDef& graph,
+                                              bool ignore_control_edges) {
   return InitializeFromGraph(graph, absl::Span<GraphView::Edge>(),
                              ignore_control_edges);
 }
 
-absl::Status GraphTopologyView::InitializeFromGraph(const GraphDef& graph) {
+Status GraphTopologyView::InitializeFromGraph(const GraphDef& graph) {
   return InitializeFromGraph(graph, absl::Span<GraphView::Edge>(),
                              /*ignore_control_edges*/ false);
 }

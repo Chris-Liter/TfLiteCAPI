@@ -14,9 +14,6 @@ limitations under the License.
 ==============================================================================*/
 #include "tensorflow/lite/schema/builtin_ops_header/generator.h"
 
-#include <cctype>
-#include <iostream>
-#include <ostream>
 #include <string>
 
 #include "tensorflow/lite/schema/schema_generated.h"

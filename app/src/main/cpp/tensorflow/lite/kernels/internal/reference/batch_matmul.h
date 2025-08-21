@@ -111,8 +111,7 @@ inline void BatchMatMul(const RuntimeShape& lhs_shape, const int8_t* lhs_data,
                         const float* scaling_factors,
                         const int32_t* input_offset, int32_t* row_sums,
                         const RuntimeShape& output_shape, float* output_data,
-                        bool* compute_row_sums,
-                        const float* per_channel_scales) {
+                        bool* compute_row_sums) {
   const RuntimeShape extended_lhs_shape =
       RuntimeShape::ExtendedShape(5, lhs_shape);
   const RuntimeShape extended_rhs_shape =
@@ -189,11 +188,7 @@ inline void BatchMatMul(const RuntimeShape& lhs_shape, const int8_t* lhs_data,
             int32_t row_sum = woff_ptr2[i];
             total -= row_sum * batch_offset;
             int idx = lhs_rows * j + i;
-            float scale = batch_scaling_factor;
-            if (per_channel_scales) {
-              scale *= per_channel_scales[i];
-            }
-            out_ptr[idx] += scale * total;
+            out_ptr[idx] += batch_scaling_factor * total;
           }
         }
       }

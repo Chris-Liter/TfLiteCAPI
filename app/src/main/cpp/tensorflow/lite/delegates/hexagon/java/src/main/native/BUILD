@@ -21,7 +21,6 @@ cc_library(
         "notap",
     ],
     deps = [
-        "//tensorflow/lite/c:c_api_types",
         "//tensorflow/lite/delegates/hexagon:hexagon_delegate",
         "//tensorflow/lite/java/jni",
     ],

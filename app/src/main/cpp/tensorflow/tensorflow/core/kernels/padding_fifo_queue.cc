@@ -41,8 +41,8 @@ PaddingFIFOQueue::PaddingFIFOQueue(
                 ConvertShapesPartialDimensionsToZero(component_shapes), name),
       partial_shapes_(component_shapes) {}
 
-absl::Status PaddingFIFOQueue::Initialize() {
-  absl::Status s = FIFOQueue::Initialize();
+Status PaddingFIFOQueue::Initialize() {
+  Status s = FIFOQueue::Initialize();
   if (!s.ok()) return s;
 
   if (component_dtypes_.size() != partial_shapes_.size()) {
@@ -52,18 +52,18 @@ absl::Status PaddingFIFOQueue::Initialize() {
         " shapes.");
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 /* static */
-absl::Status PaddingFIFOQueue::GetElementComponent(
+Status PaddingFIFOQueue::GetElementComponent(
     const PaddingFIFOQueue::Tuple& tuple, int component, OpKernelContext* ctx,
     Tensor* out_tensor) {
   TensorShape element_shape(tuple[component].shape());
   TF_RETURN_IF_ERROR(
       ctx->allocate_temp(tuple[component].dtype(), element_shape, out_tensor));
   *out_tensor = tuple[component];
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 void PaddingFIFOQueue::TryDequeueMany(int num_elements, OpKernelContext* ctx,
@@ -108,8 +108,8 @@ void PaddingFIFOQueue::TryDequeueMany(int num_elements, OpKernelContext* ctx,
                 for (int64_t i = attempt->tuples.size() - 1; i >= 0; --i) {
                   for (int j = 0; j < num_components(); ++j) {
                     Tensor element;
-                    absl::Status s = GetElementComponent(
-                        attempt->tuples[i], j, attempt->context, &element);
+                    Status s = GetElementComponent(attempt->tuples[i], j,
+                                                   attempt->context, &element);
                     if (!s.ok()) {
                       attempt->context->SetStatus(
                           errors::DataLoss("Failed to restore element from "
@@ -233,7 +233,7 @@ void PaddingFIFOQueue::TryDequeueMany(int num_elements, OpKernelContext* ctx,
   }
 }
 
-absl::Status PaddingFIFOQueue::ValidateTuple(const Tuple& tuple) {
+Status PaddingFIFOQueue::ValidateTuple(const Tuple& tuple) {
   TF_RETURN_IF_ERROR(ValidateTupleCommon(tuple));
   for (size_t i = 0; i < tuple.size(); ++i) {
     if (!partial_shapes_[i].IsCompatibleWith(tuple[i].shape())) {
@@ -243,10 +243,10 @@ absl::Status PaddingFIFOQueue::ValidateTuple(const Tuple& tuple) {
                                      tuple[i].shape().DebugString());
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status PaddingFIFOQueue::ValidateManyTuple(const Tuple& tuple) {
+Status PaddingFIFOQueue::ValidateManyTuple(const Tuple& tuple) {
   TF_RETURN_IF_ERROR(ValidateTupleCommon(tuple));
   const int64_t batch_size = tuple[0].dim_size(0);
   for (size_t i = 0; i < tuple.size(); ++i) {
@@ -260,10 +260,10 @@ absl::Status PaddingFIFOQueue::ValidateManyTuple(const Tuple& tuple) {
                                      tuple[i].shape().DebugString());
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status PaddingFIFOQueue::CompatibleNodeDefShapes(
+Status PaddingFIFOQueue::CompatibleNodeDefShapes(
     const NodeDef& node_def) const {
   std::vector<PartialTensorShape> requested_shapes;
   TF_RETURN_IF_ERROR(GetNodeAttr(node_def, "shapes", &requested_shapes));
@@ -275,11 +275,11 @@ absl::Status PaddingFIFOQueue::CompatibleNodeDefShapes(
         " but requested component shapes were ",
         PartialTensorShapeUtils::PartialShapeListString(requested_shapes));
   } else {
-    return absl::OkStatus();
+    return OkStatus();
   }
 }
 
-absl::Status PaddingFIFOQueue::MatchesNodeDef(const NodeDef& node_def) {
+Status PaddingFIFOQueue::MatchesNodeDef(const NodeDef& node_def) {
   if (!MatchesNodeDefOp(node_def, "PaddingFIFOQueue").ok() &&
       !MatchesNodeDefOp(node_def, "PaddingFIFOQueueV2").ok()) {
     return errors::InvalidArgument("Expected PaddingFIFOQueue, found ",
@@ -288,11 +288,11 @@ absl::Status PaddingFIFOQueue::MatchesNodeDef(const NodeDef& node_def) {
   TF_RETURN_IF_ERROR(MatchesNodeDefCapacity(node_def, capacity_));
   TF_RETURN_IF_ERROR(MatchesNodeDefTypes(node_def));
   TF_RETURN_IF_ERROR(CompatibleNodeDefShapes(node_def));
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-static absl::Status ValidateElementToLargerSlice(const Tensor& element,
-                                                 Tensor* parent) {
+static Status ValidateElementToLargerSlice(const Tensor& element,
+                                           Tensor* parent) {
   DCHECK_NE(parent->dim_size(0), 0);
   if (element.NumElements() > (parent->NumElements() / parent->dim_size(0))) {
     TensorShape chip_shape = parent->shape();
@@ -303,18 +303,18 @@ static absl::Status ValidateElementToLargerSlice(const Tensor& element,
         "Shapes are: [element]: ", element.shape().DebugString(),
         ", [parent slice]: ", chip_shape.DebugString());
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 template <typename T, int NDIMS>
-absl::Status HandleElementToLargerSlice(const Tensor& element, Tensor* parent,
-                                        int index) {
-  absl::Status s = ValidateElementToLargerSlice(element, parent);
+Status HandleElementToLargerSlice(const Tensor& element, Tensor* parent,
+                                  int index) {
+  Status s = ValidateElementToLargerSlice(element, parent);
   if (!s.ok()) {
     return s;
   }
   if (element.NumElements() == 0) {
-    return absl::OkStatus();
+    return OkStatus();
   }
   auto element_t = element.tensor<T, NDIMS>();
   auto parent_t = parent->tensor<T, NDIMS + 1>();
@@ -326,14 +326,14 @@ absl::Status HandleElementToLargerSlice(const Tensor& element, Tensor* parent,
     slice_size[i] = element_t.dimension(i - 1);
   }
   parent_t.slice(slice_indices, slice_size) = element_t.reshape(slice_size);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 namespace {
 
 template <int NDIMS>
-absl::Status HandleElementToLargerSliceWithRank(const Tensor& element,
-                                                Tensor* parent, int index) {
+Status HandleElementToLargerSliceWithRank(const Tensor& element, Tensor* parent,
+                                          int index) {
 #define HANDLE_TYPE(T)                                                   \
   case DataTypeToEnum<T>::value: {                                       \
     return HandleElementToLargerSlice<T, NDIMS>(element, parent, index); \
@@ -351,9 +351,8 @@ absl::Status HandleElementToLargerSliceWithRank(const Tensor& element,
 
 }  // namespace
 
-absl::Status PaddingFIFOQueue::CopyElementToLargerSlice(const Tensor& element,
-                                                        Tensor* parent,
-                                                        int index) {
+Status PaddingFIFOQueue::CopyElementToLargerSlice(const Tensor& element,
+                                                  Tensor* parent, int index) {
   if (parent->dims() != element.dims() + 1) {
     return errors::Internal(
         "Mismatched ranks.  Element's rank is: ", element.dims(),
@@ -382,7 +381,7 @@ absl::Status PaddingFIFOQueue::CopyElementToLargerSlice(const Tensor& element,
 }
 
 // Static method
-absl::Status PaddingFIFOQueue::SetElementZero(Tensor* element) {
+Status PaddingFIFOQueue::SetElementZero(Tensor* element) {
 #define HANDLE_TYPE(T)                                \
   if (element->dtype() == DataTypeToEnum<T>::value) { \
     element->flat<T>().setConstant(T());              \
@@ -395,7 +394,7 @@ absl::Status PaddingFIFOQueue::SetElementZero(Tensor* element) {
 }
 
 std::vector<TensorShape> PaddingFIFOQueue::ConvertShapesPartialDimensionsToZero(
-    const absl::Span<const PartialTensorShape> partial_shapes) {
+    const gtl::ArraySlice<PartialTensorShape>& partial_shapes) {
   std::vector<TensorShape> shapes(partial_shapes.size());
   for (size_t i = 0; i < shapes.size(); ++i) {
     const PartialTensorShape& partial = partial_shapes[i];

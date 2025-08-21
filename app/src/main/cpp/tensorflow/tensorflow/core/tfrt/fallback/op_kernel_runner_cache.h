@@ -51,11 +51,10 @@ class OpKernelRunnerCache {
  public:
   OpKernelRunnerCache() = default;
 
-  absl::StatusOr<OpKernelRunner*> GetOrCreate(
+  StatusOr<OpKernelRunner*> GetOrCreate(
       tfrt::Location loc, absl::string_view op_name,
       absl::string_view device_name, int num_args,
-      const std::function<absl::Status(tensorflow::AttrValueMap*)>&
-          attr_builder,
+      const std::function<Status(tensorflow::AttrValueMap*)>& attr_builder,
       const tensorflow::DeviceMgr& device_manager,
       const tensorflow::ProcessFunctionLibraryRuntime&
           process_function_library_runtime);

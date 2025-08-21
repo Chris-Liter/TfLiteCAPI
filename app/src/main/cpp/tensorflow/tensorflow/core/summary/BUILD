@@ -1,13 +1,13 @@
 # Description:
 #   C++ implementation code for the summary writing APIs.
 
+load("//tensorflow/core/platform:rules_cc.bzl", "cc_library")
 load(
     "//tensorflow:tensorflow.bzl",
     "tf_cc_binary",
     "tf_cc_test",
     "tf_copts",
 )
-load("//tensorflow/core/platform:rules_cc.bzl", "cc_library")
 
 package(
     # copybara:uncomment default_applicable_licenses = ["//tensorflow:license"],
@@ -23,7 +23,6 @@ cc_library(
     deps = [
         "//tensorflow/core:lib",
         "//tensorflow/core/lib/db:sqlite",
-        "@com_google_absl//absl/status",
     ],
 )
 
@@ -51,11 +50,6 @@ cc_library(
         "//tensorflow/core:protos_all_cc",
         "//tensorflow/core/kernels:summary_interface",
         "//tensorflow/core/lib/db:sqlite",
-        "@com_google_absl//absl/log",
-        "@com_google_absl//absl/log:check",
-        "@com_google_absl//absl/status",
-        "@local_xla//xla/tsl/protobuf:error_codes_proto_impl_cc",
-        "@local_xla//xla/tsl/protobuf:histogram_proto_cc",
     ],
 )
 
@@ -71,9 +65,6 @@ tf_cc_test(
         "//tensorflow/core:test",
         "//tensorflow/core:test_main",
         "//tensorflow/core/lib/db:sqlite",
-        "@com_google_absl//absl/log",
-        "@com_google_absl//absl/status",
-        "@local_xla//xla/tsl/protobuf:histogram_proto_cc",
     ],
 )
 
@@ -89,9 +80,7 @@ cc_library(
         "//tensorflow/core:lib_internal",
         "//tensorflow/core:protos_all_cc",
         "//tensorflow/core/kernels:summary_interface",
-        "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
-        "@local_xla//xla/tsl/protobuf:error_codes_proto_impl_cc",
     ],
 )
 
@@ -108,8 +97,6 @@ tf_cc_test(
         "//tensorflow/core:protos_all_cc",
         "//tensorflow/core:test",
         "//tensorflow/core:test_main",
-        "@com_google_absl//absl/log:check",
-        "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
     ],
 )
@@ -126,7 +113,6 @@ cc_library(
         "//tensorflow/core:lib_internal",
         "//tensorflow/core:protos_all_cc",
         "//tensorflow/core/lib/png:png_io",
-        "@com_google_absl//absl/status",
     ],
 )
 
@@ -142,9 +128,6 @@ tf_cc_binary(
         "//tensorflow/core:lib",
         "//tensorflow/core:protos_all_cc",
         "//tensorflow/core/lib/db:sqlite",
-        "@com_google_absl//absl/log",
-        "@com_google_absl//absl/status",
-        "@local_xla//xla/tsl/protobuf:error_codes_proto_impl_cc",
     ],
 )
 
@@ -156,6 +139,5 @@ tf_cc_binary(
         "//tensorflow/core:framework_internal",
         "//tensorflow/core:lib",
         "//tensorflow/core/lib/db:sqlite",
-        "@com_google_absl//absl/log",
     ],
 )

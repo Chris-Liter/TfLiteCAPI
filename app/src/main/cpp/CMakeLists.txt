@@ -8,22 +8,24 @@ if (NOT ANDROID_ABI)
     message(FATAL_ERROR "ANDROID_ABI not defined! Please specify target architecture: armeabi-v7a, arm64-v8a, x86, or x86_64.")
 endif() # Configura el nivel de API nativo de Android set(ANDROID_NATIVE_API_LEVEL 21)
 
+
 # Configuraciones de OpenCV
 set(OpenCV_STATIC ON)
-set(OpenCV_DIR /home/jorgelituma/Librerias/OpenCV-android-sdk/sdk/native/jni)
+set(OpenCV_DIR /home/jorge/Libs/OpenCV-android-sdk/sdk/native/jni)
 find_package(OpenCV REQUIRED)
-include_directories(${OpenCV_DIR}/include)
+include_directories(/home/jorge/Libs/OpenCV-android-sdk/sdk/native/jni/include)
 
 # Configuración de TensorFlow Lite
 #set(TFLITE_INCLUDE_DIR "/home/jorgelituma/Librerias/intento90/tensorflow")
 #set(TFLITE_INCLUDE_DIR "/home/jorgelituma/AndroidStudioProjects/TfLiteCAPI/app/src/main/cpp/tensorflow")
-set(TFLITE_INCLUDE_DIR "/home/jorgelituma/Librerias/intento90/tensorflow")
-set(TFLITE_LIB_DIR "/home/jorgelituma/AndroidStudioProjects/TfLiteCAPI/app/src/main/jniLibs/${ANDROID_ABI}")
+set(TFLITE_INCLUDE_DIR /home/jorge/Libs/tensorflow/tensorflow)
+set(TFLITE_INCLUDE_DIR /home/jorge/Libs/tensorflow)
+set(TFLITE_LIB_DIR "/home/jorge/StudioProjects/TfLiteCAPI/app/src/main/jniLibs/${ANDROID_ABI}")
 include_directories(${TFLITE_INCLUDE_DIR})
 
-#set(ENABLE_INTERNAL_FLATBUFFERS OFF)
+#set(ENABLE_INTERNAL_FLATBUFFERS ON)
 #set(FLATBUFFERS_INCLUDE_DIR "/home/jorgelituma/AndroidStudioProjects/TfLiteCAPI/app/src/main/cpp/flatbuffers")
-set(FLATBUFFERS_INCLUDE_DIR "/usr/local/include")
+set(FLATBUFFERS_INCLUDE_DIR /home/jorge/Libs/flatbuffers/include)
 include_directories(${FLATBUFFERS_INCLUDE_DIR})
 
 
@@ -53,5 +55,8 @@ target_link_libraries(tflitecapi
         ${OpenCV_LIBS}
         ${jnigraphics-lib}
         ${log-lib}
+#        -latomic
+#        -lpthread
+#        -ldl
 )
 

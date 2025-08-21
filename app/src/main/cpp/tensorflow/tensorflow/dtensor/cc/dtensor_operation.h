@@ -45,7 +45,7 @@ struct DTensorOperation {
       return false;
     }
     const OpDef* op_def = nullptr;
-    absl::Status status = OpRegistry::Global()->LookUpOpDef(name, &op_def);
+    Status status = OpRegistry::Global()->LookUpOpDef(name, &op_def);
     DCHECK(status.ok());  // Not found. This really shouldn't happen.
     if (!status.ok()) {
       return false;

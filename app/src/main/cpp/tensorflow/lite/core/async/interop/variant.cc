@@ -15,6 +15,7 @@ limitations under the License.
 #include "tensorflow/lite/core/async/interop/variant.h"
 
 #include <cstring>
+#include <utility>
 
 namespace tflite {
 namespace interop {
@@ -36,8 +37,6 @@ bool Variant::operator==(const Variant& other) const {
       return val.s == other.val.s;
     case kString:
       return (val.c == other.val.c) || (strcmp(val.c, other.val.c) == 0);
-    case kBool:
-      return val.b == other.val.b;
   }
 }
 

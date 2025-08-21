@@ -14,16 +14,11 @@ limitations under the License.
 ==============================================================================*/
 #include "tensorflow/core/tpu/kernels/tpu_execute_op.h"
 
-#include <cstdint>
 #include <memory>
-#include <string>
 #include <utility>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
-#include "absl/status/status.h"
-#include "absl/status/statusor.h"
-#include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "tensorflow/compiler/jit/variable_info.h"
 #include "tensorflow/compiler/jit/variable_info_util.h"
@@ -31,38 +26,21 @@ limitations under the License.
 #include "tensorflow/compiler/jit/xla_tensor.h"
 #include "tensorflow/compiler/tf2xla/shape_util.h"
 #include "tensorflow/compiler/tf2xla/tf2xla_util.h"
-#include "xla/debug_options_flags.h"
-#include "xla/literal.h"
-#include "xla/service/backend.h"
-#include "xla/service/computation_placer.h"
-#include "xla/service/dump.h"
-#include "xla/service/executable.h"
-#include "xla/service/maybe_owning_device_memory.h"
-#include "xla/service/shaped_buffer.h"
-#include "xla/service/transfer_manager.h"
-#include "xla/shape.h"
-#include "xla/shape_tree.h"
-#include "xla/shape_util.h"
-#include "xla/status_macros.h"
-#include "xla/stream_executor/device_memory.h"
-#include "xla/stream_executor/device_memory_allocator.h"
-#include "xla/stream_executor/event.h"
-#include "xla/stream_executor/stream.h"
-#include "xla/stream_executor/tpu/tpu_node_context.h"
-#include "xla/xla_data.pb.h"
+#include "tensorflow/compiler/xla/debug_options_flags.h"
+#include "tensorflow/compiler/xla/service/dump.h"
+#include "tensorflow/compiler/xla/service/executable.h"
+#include "tensorflow/compiler/xla/service/maybe_owning_device_memory.h"
+#include "tensorflow/compiler/xla/shape_util.h"
+#include "tensorflow/compiler/xla/statusor.h"
+#include "tensorflow/compiler/xla/stream_executor/device_memory_allocator.h"
+#include "tensorflow/compiler/xla/stream_executor/tpu/tpu_node_context.h"
+#include "tensorflow/compiler/xla/xla_data.pb.h"
 #include "tensorflow/core/framework/node_def_util.h"
 #include "tensorflow/core/framework/op_kernel.h"
-#include "tensorflow/core/framework/op_requires.h"
-#include "tensorflow/core/framework/resource_handle.h"
 #include "tensorflow/core/framework/resource_mgr.h"
 #include "tensorflow/core/framework/resource_var.h"
 #include "tensorflow/core/framework/tensor.h"
-#include "tensorflow/core/framework/tensor_shape.h"
-#include "tensorflow/core/framework/types.pb.h"
-#include "tensorflow/core/platform/refcount.h"
-#include "tensorflow/core/platform/status.h"
-#include "tensorflow/core/platform/tstring.h"
-#include "tensorflow/core/platform/types.h"
+#include "tensorflow/core/lib/core/errors.h"
 #include "tensorflow/core/profiler/lib/traceme.h"
 #include "tensorflow/core/tpu/kernels/tpu_compilation_cache_entry.h"
 #include "tensorflow/core/tpu/kernels/tpu_compilation_cache_interface.h"
@@ -73,11 +51,6 @@ limitations under the License.
 #include "tensorflow/core/tpu/tpu_configuration.h"
 #include "tensorflow/core/tpu/tpu_defs.h"
 #include "tensorflow/core/tpu/tpu_execute.h"
-#include "tsl/platform/casts.h"
-#include "tsl/platform/errors.h"
-#include "tsl/platform/logging.h"  // IWYU pragma: keep
-#include "tsl/platform/macros.h"
-#include "tsl/platform/statusor.h"
 
 namespace tensorflow {
 namespace {
@@ -87,15 +60,15 @@ using ::tensorflow::tpu::TpuNodeContext;
 
 // Looks up the input `key` in the compilation cache, populating
 // `*rendezvous_key_base` and `*entry`.
-absl::Status GetComputationCacheEntry(
-    OpKernelContext* context, std::string* rendezvous_key_base,
+Status GetComputationCacheEntry(
+    OpKernelContext* context, string* rendezvous_key_base,
     std::unique_ptr<CompilationCacheEntryRef>* entry) {
   const Tensor* key;
   TF_RETURN_IF_ERROR(context->input("key", &key));
-  tsl::profiler::TraceMe trace_me("TpuExecuteOp::LookupProto", /*level=*/2);
+  profiler::TraceMe trace_me("TpuExecuteOp::LookupProto", /*level=*/2);
   if (!TensorShapeUtils::IsVector(key->shape()) ||
       key->shape().dim_size(0) != 3) {
-    return absl::InvalidArgumentError(
+    return errors::InvalidArgument(
         "Key argument to TPUExecute must be a 3-element vector");
   }
 
@@ -107,7 +80,7 @@ absl::Status GetComputationCacheEntry(
   core::ScopedUnref lookup_unref(proto_lookup);
   TF_RETURN_IF_ERROR(proto_lookup->Lookup(key->vec<tstring>()(0), entry));
   *rendezvous_key_base = key->vec<tstring>()(1);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 struct VariableUpdateMap {
@@ -124,15 +97,14 @@ struct VariableUpdateMap {
 
 // Creates a VariableUpdateMap from both the compilation and the fused variable
 // reads/updates.
-absl::StatusOr<VariableUpdateMap> BuildVariableUpdateMap(
+xla::StatusOr<VariableUpdateMap> BuildVariableUpdateMap(
     absl::Span<const TPUExecutableInfoProto::UpdateIndexPair* const>
         compiled_variable_updates,
     absl::Span<int const> fused_device_var_reads_in_computation_inputs,
     const std::vector<int>& fused_device_var_updates_in_computation_outputs,
     int64_t computation_output_count) {
   VariableUpdateMap map;
-  auto add_pair = [&](int input, int output,
-                      bool from_compilation) -> absl::Status {
+  auto add_pair = [&](int input, int output, bool from_compilation) -> Status {
     TF_RET_CHECK(map.input_to_output.emplace(input, output).second)
         << "Duplicate variable input index: " << input;
     if (output >= 0) {
@@ -141,7 +113,7 @@ absl::StatusOr<VariableUpdateMap> BuildVariableUpdateMap(
                        .second)
           << "Duplicate variable output index: " << output;
     }
-    return absl::OkStatus();
+    return OkStatus();
   };
 
   // First add the updates produced by the compilation. Not all variables are
@@ -215,19 +187,19 @@ struct InputBuffers {
 };
 
 // Builds an InputBuffers object that describes the inputs to the computation.
-absl::StatusOr<std::unique_ptr<InputBuffers>> BuildComputationInputs(
+xla::StatusOr<std::unique_ptr<InputBuffers>> BuildComputationInputs(
     OpKernelContext* context, const xla::Shape& input_host_shape,
     const VariableUpdateMap& variable_updates, xla::Backend* backend,
     int device_ordinal, se::Stream* stream) {
-  tsl::profiler::TraceMe trace_me("BuildComputationInputs", /*level=*/2);
+  profiler::TraceMe trace_me("BuildComputationInputs", /*level=*/2);
   OpInputList arg_list;
   TF_RETURN_IF_ERROR(context->input_list("args", &arg_list));
 
   if (arg_list.size() != xla::ShapeUtil::TupleElementCount(input_host_shape)) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Number of parameters (", arg_list.size(),
-                     ") does not match input shape: ",
-                     xla::ShapeUtil::TupleElementCount(input_host_shape)));
+    return errors::InvalidArgument(
+        "Number of parameters (", arg_list.size(),
+        ") does not match input shape: ",
+        xla::ShapeUtil::TupleElementCount(input_host_shape));
   }
 
   auto validate_shape = [&](int i, const Tensor& tensor) {
@@ -239,27 +211,27 @@ absl::StatusOr<std::unique_ptr<InputBuffers>> BuildComputationInputs(
     if (xla_tensor == nullptr) {
       // FromTensor failed; tensor must be empty.
       if (!xla::ShapeUtil::IsZeroElementArray(expected)) {
-        return absl::InvalidArgumentError(absl::StrCat(
+        return errors::InvalidArgument(
             "Run-time shape mismatch for TPUExecute argument[", i, "] (",
             context->op_kernel().requested_input(i), "). Expected ",
             expected.DebugString(),
             "; got empty tensor. If you are running "
             "with TF2 TPU, make sure you set `drop_remainder=False` when "
             "calling `dataset.batch` on the `tf.data.Dataset` so dynamic batch "
-            "size can be handled"));
+            "size can be handled");
       }
     } else {
       // Compare host shapes, easier than getting the expected device shape.
       const xla::Shape& xla_shape = xla_tensor->shaped_buffer().on_host_shape();
       if (!xla::ShapeUtil::Compatible(expected, xla_shape)) {
-        return absl::InvalidArgumentError(absl::StrCat(
+        return errors::InvalidArgument(
             "Run-time shape mismatch for TPUExecute argument[", i, "] (",
             context->op_kernel().requested_input(i), "). Expected ",
-            expected.DebugString(), "; got ", xla_shape.DebugString()));
+            expected.DebugString(), "; got ", xla_shape.DebugString());
       }
     }
 
-    return absl::OkStatus();
+    return OkStatus();
   };
 
   // Iterate over the inputs, validating the shapes of non-variable inputs,
@@ -268,7 +240,6 @@ absl::StatusOr<std::unique_ptr<InputBuffers>> BuildComputationInputs(
   std::vector<VariableInfo> variables;
   std::vector<int> variable_index(arg_list.size(), -1);
   variables.reserve(arg_list.size());
-  ResourceHandle handle;
   for (int i = 0; i < arg_list.size(); ++i) {
     // Arguments are assumed to be variables if they have a resource type.
     // (Non-variable resources are not supported.)
@@ -276,7 +247,7 @@ absl::StatusOr<std::unique_ptr<InputBuffers>> BuildComputationInputs(
       variable_index[i] = variables.size();
       // TODO(phawkins): we may be looking up many variables here; it would be
       // better if we did not repeatedly acquire the resource manager's lock.
-      TF_RETURN_IF_ERROR(HandleFromInput(context, i, &handle));
+      const ResourceHandle& handle = HandleFromInput(context, i);
       Var* variable;
       TF_RETURN_IF_ERROR(LookupResource(context, handle, &variable));
       variables.push_back(VariableInfo(i, handle.name(), variable));
@@ -334,7 +305,7 @@ absl::StatusOr<std::unique_ptr<InputBuffers>> BuildComputationInputs(
   // Assigns the buffers of 'tensor' as computation input 'i'. Allocates fresh
   // buffers for zero-element tensors where required.
   auto assign_input = [&](int i, const Tensor& tensor,
-                          bool may_reuse) -> absl::Status {
+                          bool may_reuse) -> xla::Status {
     XlaTensor* xla_tensor = XlaTensor::FromTensor(&tensor);
 
     // Size 0 tensors have no backing XlaTensor, but may still need to have
@@ -355,7 +326,7 @@ absl::StatusOr<std::unique_ptr<InputBuffers>> BuildComputationInputs(
                                &xla_tensor->shaped_buffer());
       xla_tensor->WaitForDefinitionEventOnStream(stream);
     }
-    return absl::OkStatus();
+    return OkStatus();
   };
 
   for (int i = 0; i < arg_list.size(); ++i) {
@@ -391,7 +362,7 @@ struct OutputBuffers {
     buffers.buffers().ForEachElement(
         [&](const xla::ShapeIndex& index, const se::DeviceMemoryBase& buffer) {
           if (owned_buffers.element(index) && !buffer.is_null()) {
-            absl::Status status =
+            Status status =
                 memory_allocator->Deallocate(buffers.device_ordinal(), buffer);
             if (!status.ok()) {
               LOG(ERROR) << "Error deallocating buffer " << status;
@@ -414,7 +385,7 @@ struct OutputBuffers {
 // any output buffers that do not have corresponding output tensors. The latter
 // may happen for zero-element tensors of type int64 or complex64 which still
 // require a tuple buffer but do not have a corresponding XlaTensor.
-absl::StatusOr<std::unique_ptr<OutputBuffers>> AllocateOutputTensors(
+xla::StatusOr<std::unique_ptr<OutputBuffers>> AllocateOutputTensors(
     OpKernelContext* context, xla::ScopedShapedBuffer scoped_buffers,
     absl::Span<const TensorShapeProto* const> output_tensor_shape_protos,
     const VariableUpdateMap& variable_updates, TpuNodeContext* node_context,
@@ -422,14 +393,14 @@ absl::StatusOr<std::unique_ptr<OutputBuffers>> AllocateOutputTensors(
     const std::shared_ptr<se::Event>& definition_event) {
   VLOG(4) << "Output buffers: " << scoped_buffers.ToString();
 
-  tsl::profiler::TraceMe trace_me("AllocateOutputTensors", /*level=*/2);
+  profiler::TraceMe trace_me("AllocateOutputTensors", /*level=*/2);
   // Shapes of the outputs, in TensorShape form.
   const int64_t sub_elements =
       xla::ShapeUtil::TupleElementCount(scoped_buffers.on_host_shape());
   if (sub_elements != output_tensor_shape_protos.size()) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Mismatched numbers of output shapes: ", sub_elements,
-                     " vs. ", output_tensor_shape_protos.size()));
+    return errors::InvalidArgument(
+        "Mismatched numbers of output shapes: ", sub_elements, " vs. ",
+        output_tensor_shape_protos.size());
   }
 
   xla::TransferManager* const transfer_manager =
@@ -445,9 +416,9 @@ absl::StatusOr<std::unique_ptr<OutputBuffers>> AllocateOutputTensors(
         xla::ShapeUtil::GetSubshape(scoped_buffers.on_host_shape(), {i});
     if (!xla_shape.IsArray() ||
         xla::ShapeUtil::ElementsIn(xla_shape) != shape.num_elements()) {
-      return absl::InvalidArgumentError(absl::StrCat(
+      return errors::InvalidArgument(
           "Mismatched number of elements in output shape: ",
-          xla::ShapeUtil::HumanString(xla_shape), " vs ", shape.DebugString()));
+          xla::ShapeUtil::HumanString(xla_shape), " vs ", shape.DebugString());
     }
     output_tensor_shapes.push_back(shape);
   }
@@ -620,7 +591,7 @@ AsyncOpKernel* TPUExecuteOp::AsAsync() {
 }
 
 void TPUExecuteOp::Compute(OpKernelContext* context) {
-  absl::Status s = DoWork(context);
+  Status s = DoWork(context);
   // NOTE: We can't use `OP_REQUIRES_OK()` here because that macro includes
   // a dynamic check that we are not in an AsyncOpKernel.
   if (TF_PREDICT_FALSE(!s.ok())) {
@@ -635,7 +606,7 @@ void TPUExecuteOp::ComputeAsync(OpKernelContext* context, DoneCallback done) {
   done();
 }
 
-absl::Status TPUExecuteOp::DoWork(OpKernelContext* context) {
+Status TPUExecuteOp::DoWork(OpKernelContext* context) {
   VLOG(1) << "Cloud TPU: TPUExecuteOp::Compute";
 
   const XlaDevice::Metadata* metadata;
@@ -647,17 +618,17 @@ absl::Status TPUExecuteOp::DoWork(OpKernelContext* context) {
   TF_ASSIGN_OR_RETURN(std::unique_ptr<TpuNodeContext> node_context,
                       TpuNodeContext::Create(device_ordinal));
 
-  tsl::profiler::TraceMe trace_me(
+  profiler::TraceMe trace_me(
       [device_ordinal, context] {
-        return tsl::profiler::TraceMeEncode(
+        return profiler::TraceMeEncode(
             "TpuExecuteOp", {{"device_ordinal", device_ordinal},
                              {"id", context->step_id()},
                              {"iter_num", context->frame_iter().iter_id}});
       },
       /*level=*/2);
-  tsl::profiler::TraceMe trace_me_init("TPUExecuteOp::Init", /*level=*/2);
+  profiler::TraceMe trace_me_init("TPUExecuteOp::Init", /*level=*/2);
 
-  std::string rendezvous_key_base;
+  string rendezvous_key_base;
   std::unique_ptr<CompilationCacheEntryRef> entry_ref;
   TF_RETURN_IF_ERROR(
       GetComputationCacheEntry(context, &rendezvous_key_base, &entry_ref));
@@ -712,7 +683,7 @@ absl::Status TPUExecuteOp::DoWork(OpKernelContext* context) {
                                                      shaped_buffer)) {
     TF_RETURN_IF_ERROR(transfer_manager->WriteRootTupleIndexTable(
         transfer_stream_ptr.get(), shaped_buffer));
-    TF_RETURN_IF_ERROR(stream->WaitFor(transfer_stream_ptr.get()));
+    stream->ThenWaitFor(transfer_stream_ptr.get());
   } else {
     TF_RETURN_IF_ERROR(
         transfer_manager->WriteRootTupleIndexTable(stream, shaped_buffer));
@@ -728,7 +699,7 @@ absl::Status TPUExecuteOp::DoWork(OpKernelContext* context) {
         std::make_shared<xla::Literal>(shaped_buffer.on_host_shape());
     transfer_manager->TransferLiteralFromDevice(
         stream, shaped_buffer, literal.get(),
-        [hlo_snapshot, literal](absl::Status status) {
+        [hlo_snapshot, literal](Status status) {
           if (!status.ok()) {
             LOG(ERROR) << "TransferLiteralFromDevice for HLO snapshot inputs "
                           "failed: "
@@ -739,8 +710,9 @@ absl::Status TPUExecuteOp::DoWork(OpKernelContext* context) {
         });
   }
 
-  TF_ASSIGN_OR_RETURN(std::shared_ptr<se::Event> definition_event,
-                      stream->parent()->CreateEvent());
+  auto definition_event = std::make_shared<se::Event>(stream->parent());
+  TF_RET_CHECK(definition_event->Init())
+      << "TPU definition event initialization failed";
 
   trace_me_init.Stop();
 
@@ -777,7 +749,7 @@ absl::Status TPUExecuteOp::DoWork(OpKernelContext* context) {
                  device_assignment.get(), context->cancellation_manager(),
                  context, stream, transfer_stream_ptr.get(),
                  tpu_program_group->tpu_program(core_index)));
-  TF_RETURN_IF_ERROR(stream->RecordEvent(definition_event.get()));
+  stream->ThenRecordEvent(definition_event.get());
 
   TF_ASSIGN_OR_RETURN(
       std::unique_ptr<OutputBuffers> output_buffers,
@@ -792,7 +764,7 @@ absl::Status TPUExecuteOp::DoWork(OpKernelContext* context) {
         std::make_shared<xla::Literal>(output_buffers->buffers.on_host_shape());
     transfer_manager->TransferLiteralFromDevice(
         stream, output_buffers->buffers, literal.get(),
-        [hlo_snapshot, literal](absl::Status status) {
+        [hlo_snapshot, literal](Status status) {
           if (status.ok()) {
             *hlo_snapshot->mutable_result() = literal->ToProto();
           } else {
@@ -804,7 +776,7 @@ absl::Status TPUExecuteOp::DoWork(OpKernelContext* context) {
                                    xla::GetDebugOptionsFromFlags());
         });
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 TPUExecuteOp::~TPUExecuteOp() = default;

@@ -28,7 +28,7 @@ namespace libexport {
 
 using protobuf::RepeatedPtrField;
 
-absl::StatusOr<TFPackage> TFPackage::Load(const std::string& path) {
+tensorflow::StatusOr<TFPackage> TFPackage::Load(const std::string& path) {
   // Load the proto
   TFPackage tf_package;
   const string saved_model_pb_path = io::JoinPath(path, kSavedModelFilenamePb);
@@ -83,7 +83,8 @@ absl::StatusOr<TFPackage> TFPackage::Load(const std::string& path) {
   return tf_package;
 }
 
-absl::StatusOr<std::string> TFPackage::GetVariableCheckpointKey(int index) {
+tensorflow::StatusOr<std::string> TFPackage::GetVariableCheckpointKey(
+    int index) {
   // TODO(danielellis): make sure valid index
   const auto& trackable_object = trackable_object_graph_.nodes(index);
   const TrackableObjectGraph::TrackableObject::SerializedTensor*
@@ -104,7 +105,7 @@ const SavedObjectGraph& TFPackage::GetObjectGraph() {
   return saved_model_proto_.mutable_meta_graphs(0)->object_graph_def();
 }
 
-absl::StatusOr<const tensorflow::NodeDef*> TFPackage::GetGraphDefNode(
+tensorflow::StatusOr<const tensorflow::NodeDef*> TFPackage::GetGraphDefNode(
     std::string name) {
   const auto& iter = graph_def_nodes_by_name_.find(name);
   if (iter == graph_def_nodes_by_name_.end()) {

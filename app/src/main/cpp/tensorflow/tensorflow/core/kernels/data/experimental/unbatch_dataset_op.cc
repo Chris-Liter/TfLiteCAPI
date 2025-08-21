@@ -19,8 +19,6 @@ limitations under the License.
 #include <utility>
 #include <vector>
 
-#include "absl/status/status.h"
-#include "absl/strings/str_cat.h"
 #include "tensorflow/core/framework/dataset.h"
 #include "tensorflow/core/framework/dataset_options.pb.h"
 #include "tensorflow/core/framework/model.h"
@@ -28,16 +26,15 @@ limitations under the License.
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor_shape.h"
 #include "tensorflow/core/framework/types.h"
-#include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/lib/core/errors.h"
 #include "tensorflow/core/lib/gtl/inlined_vector.h"
 #include "tensorflow/core/platform/status.h"
 #include "tensorflow/core/util/batch_util.h"
-#include "tsl/platform/errors.h"
-#include "tsl/platform/mutex.h"
-#include "tsl/platform/status.h"
-#include "tsl/platform/strcat.h"
-#include "tsl/platform/thread_annotations.h"
+#include "tensorflow/tsl/platform/errors.h"
+#include "tensorflow/tsl/platform/mutex.h"
+#include "tensorflow/tsl/platform/status.h"
+#include "tensorflow/tsl/platform/strcat.h"
+#include "tensorflow/tsl/platform/thread_annotations.h"
 
 namespace tensorflow {
 namespace data {
@@ -46,6 +43,7 @@ namespace {
 
 using tsl::mutex;
 using tsl::mutex_lock;
+using tsl::OkStatus;
 using tsl::Status;
 using tsl::strings::StrCat;
 
@@ -73,7 +71,7 @@ class UnbatchDatasetOp : public UnaryDatasetOpKernel {
           if (batch_size_ < 0 && shape.dim_size(0) >= 0) {
             batch_size_ = shape.dim_size(0);
           }
-          absl::InlinedVector<int64_t, 4UL> partial_dim_sizes;
+          gtl::InlinedVector<int64_t, 4> partial_dim_sizes;
           for (int i = 1; i < shape.dims(); ++i) {
             partial_dim_sizes.push_back(shape.dim_size(i));
           }
@@ -118,37 +116,11 @@ class UnbatchDatasetOp : public UnaryDatasetOpKernel {
     Status InputDatasets(
         std::vector<const DatasetBase*>* inputs) const override {
       inputs->push_back(input_);
-      return absl::OkStatus();
+      return OkStatus();
     }
 
     Status CheckExternalState() const override {
       return input_->CheckExternalState();
-    }
-
-    absl::Status Get(OpKernelContext* ctx, int64_t index,
-                     std::vector<Tensor>* out_tensors) const override {
-      TF_RETURN_IF_ERROR(CheckRandomAccessCompatible(index));
-      if (batch_size_ <= 0) {
-        return absl::FailedPreconditionError(absl::StrCat(
-            "Random access for the `unbatch` dataset requires a known batch "
-            "size. Got ",
-            batch_size_, "."));
-      }
-
-      const int64_t input_index = index / batch_size_;
-      const int64_t input_offset = index % batch_size_;
-      std::vector<Tensor> input_tensors;
-      TF_RETURN_IF_ERROR(input_->Get(ctx, input_index, &input_tensors));
-      for (int64_t i = 0; i < input_tensors.size(); ++i) {
-        const DataType& dtype = input_tensors[i].dtype();
-        TensorShape shape = input_tensors[i].shape();
-        shape.RemoveDim(0);
-
-        out_tensors->emplace_back(ctx->get_allocator({}), dtype, shape);
-        TF_RETURN_IF_ERROR(batch_util::MaybeMoveSliceToElement(
-            &input_tensors[i], &out_tensors->back(), input_offset));
-      }
-      return absl::OkStatus();
     }
 
    protected:
@@ -158,7 +130,7 @@ class UnbatchDatasetOp : public UnaryDatasetOpKernel {
       Node* input_graph_node = nullptr;
       TF_RETURN_IF_ERROR(b->AddInputDataset(ctx, input_, &input_graph_node));
       TF_RETURN_IF_ERROR(b->AddDataset(this, {input_graph_node}, output));
-      return absl::OkStatus();
+      return OkStatus();
     }
 
    private:
@@ -185,7 +157,7 @@ class UnbatchDatasetOp : public UnaryDatasetOpKernel {
         mutex_lock l(mu_);
         if (!input_impl_) {
           *end_of_sequence = true;
-          return absl::OkStatus();
+          return OkStatus();
         }
         *end_of_sequence = false;
         while (!*end_of_sequence) {
@@ -205,7 +177,7 @@ class UnbatchDatasetOp : public UnaryDatasetOpKernel {
             if (current_index_ >= current_batch_size_) {
               ctx->MergeCheckpoint(input_ckpt_.get());
             }
-            return absl::OkStatus();
+            return OkStatus();
           }
           current_index_ = 0;
           current_batch_size_ = 0;
@@ -235,7 +207,7 @@ class UnbatchDatasetOp : public UnaryDatasetOpKernel {
           }
         }
         input_impl_.reset();
-        return absl::OkStatus();
+        return OkStatus();
       }
 
      protected:
@@ -272,7 +244,7 @@ class UnbatchDatasetOp : public UnaryDatasetOpKernel {
                 full_name(StrCat("tensors[", i, "]")), tensors_[i]));
           }
         }
-        return absl::OkStatus();
+        return OkStatus();
       }
 
       Status RestoreInternal(IteratorContext* ctx,
@@ -295,7 +267,7 @@ class UnbatchDatasetOp : public UnaryDatasetOpKernel {
         if (current_index_ < current_batch_size_) {
           TF_RETURN_IF_ERROR(RestoreTensors(ctx, reader));
         }
-        return absl::OkStatus();
+        return OkStatus();
       }
 
      private:
@@ -326,7 +298,7 @@ class UnbatchDatasetOp : public UnaryDatasetOpKernel {
           shapes_[i] = tensors_[i].shape();
           shapes_[i].RemoveDim(0);
         }
-        return absl::OkStatus();
+        return OkStatus();
       }
 
       mutex mu_;

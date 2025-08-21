@@ -55,7 +55,7 @@ REGISTER_OP("DecodeProtoV2")
         c->set_output(i + 1, values);
       }
 
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 // TODO(nix): Consider adding an additional input argument that truncates

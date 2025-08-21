@@ -23,11 +23,11 @@ namespace {
 
 // Find all CollectiveReduce nodes and the existing data dependencies between
 // them.
-absl::Status DiscoverDataDependencies(
+Status DiscoverDataDependencies(
     const Graph* graph, std::vector<Node*>* collective_nodes,
     std::vector<int32>* instance_keys,
     absl::flat_hash_map<Node*, absl::flat_hash_set<int32>>* data_dependencies) {
-  absl::Status s;
+  Status s;
   // Algorithm: do Reverse DFS starting at sink.  `node_leave` is called when
   // all parents of `node` have been visited.  At that point,
   // `data_dependencies[node]` is a list containing `instance_key` of every
@@ -40,7 +40,7 @@ absl::Status DiscoverDataDependencies(
     bool enter_node =
         node->IsCollective() && node->type_string() == "CollectiveReduce";
     if (enter_node) {
-      absl::Status get_attr_status =
+      Status get_attr_status =
           GetNodeAttr(node->attrs(), "instance_key", &instance_key);
       s.Update(get_attr_status);
       collective_nodes->push_back(node);
@@ -67,7 +67,7 @@ absl::Status DiscoverDataDependencies(
 // collective nodes, create control dependencies between concurrent collectives
 // and store in `dependency_edges`.
 // If there exists an edge a -> b then `dependency_edges[a]` contains `b`
-absl::Status CreateControlDependencies(
+Status CreateControlDependencies(
     const std::vector<Node*>& collective_nodes,
     const std::vector<int32>& instance_keys,
     absl::flat_hash_map<Node*, absl::flat_hash_set<int32>>* data_dependencies,
@@ -138,13 +138,13 @@ absl::Status CreateControlDependencies(
     }
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Insert control dependencies defined by `dependency_edges` in `graph`.  If
 // `order_type` is `kEdges`, insert explicit control edges, else if `order_type`
 // is `kAttrs`, encode dependencies as an attribute on collective node.
-absl::Status InsertControlDependencies(
+Status InsertControlDependencies(
     Graph* graph, GraphCollectiveOrder order_type,
     const absl::flat_hash_map<Node*, absl::flat_hash_set<Node*>>&
         dependency_edges) {
@@ -176,12 +176,12 @@ absl::Status InsertControlDependencies(
     return errors::Internal("Unexpected GraphCollectiveOrder type ",
                             static_cast<int>(order_type));
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace
 
-absl::Status OrderCollectives(Graph* graph, GraphCollectiveOrder order_type) {
+Status OrderCollectives(Graph* graph, GraphCollectiveOrder order_type) {
   // `instance_keys[i]` corresponds to `collective_nodes[i]`
   std::vector<Node*> collective_nodes;
   std::vector<int32> instance_keys;
@@ -190,7 +190,7 @@ absl::Status OrderCollectives(Graph* graph, GraphCollectiveOrder order_type) {
   TF_RETURN_IF_ERROR(DiscoverDataDependencies(
       graph, &collective_nodes, &instance_keys, &data_dependencies));
 
-  if (collective_nodes.empty()) return absl::OkStatus();
+  if (collective_nodes.empty()) return OkStatus();
 
   absl::flat_hash_map<Node*, absl::flat_hash_set<Node*>> dependency_edges;
   // For all pairs of collective nodes n1 and n2 on the same device, if n1 does

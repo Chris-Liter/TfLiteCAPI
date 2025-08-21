@@ -53,8 +53,7 @@ struct GraphdefToMlirOptions {
 
 // Converts a TensorFlow GraphDef contained in `input` param into a MLIR module.
 // Creates MLIR entities into the given MLIR `context`.
-absl::StatusOr<mlir::OwningOpRef<mlir::ModuleOp>>
-GraphdefToMlirTranslateFunction(
+StatusOr<mlir::OwningOpRef<mlir::ModuleOp>> GraphdefToMlirTranslateFunction(
     llvm::StringRef input, const std::vector<std::string>& input_arrays,
     const std::vector<std::string>& input_dtypes,
     const std::vector<std::optional<std::vector<int>>>& input_shapes,
@@ -67,8 +66,7 @@ ABSL_DEPRECATED(
     "inputs instead of strings")
 // Converts a TensorFlow GraphDef contained in `input` param into a MLIR module.
 // Creates MLIR entities into the given MLIR `context`.
-absl::StatusOr<mlir::OwningOpRef<mlir::ModuleOp>>
-GraphdefToMlirTranslateFunction(
+StatusOr<mlir::OwningOpRef<mlir::ModuleOp>> GraphdefToMlirTranslateFunction(
     llvm::StringRef input, absl::string_view input_arrays,
     absl::string_view input_dtypes, absl::string_view input_shapes,
     absl::string_view output_arrays, absl::string_view control_output_arrays,
@@ -76,7 +74,7 @@ GraphdefToMlirTranslateFunction(
 
 // Similar as the above function, but replaces all constant tensors
 // with randomly generated splat values.
-absl::StatusOr<mlir::OwningOpRef<mlir::ModuleOp>>
+StatusOr<mlir::OwningOpRef<mlir::ModuleOp>>
 GraphdefToSplattedMlirTranslateFunction(
     llvm::StringRef input, const std::vector<std::string>& input_arrays,
     const std::vector<std::string>& input_dtypes,
@@ -90,7 +88,7 @@ ABSL_DEPRECATED(
     "inputs instead of strings")
 // Similar as the above function, but replaces all constant tensors
 // with randomly generated splat values.
-absl::StatusOr<mlir::OwningOpRef<mlir::ModuleOp>>
+StatusOr<mlir::OwningOpRef<mlir::ModuleOp>>
 GraphdefToSplattedMlirTranslateFunction(
     llvm::StringRef input, absl::string_view input_arrays,
     absl::string_view input_dtypes, absl::string_view input_shapes,
@@ -100,8 +98,7 @@ GraphdefToSplattedMlirTranslateFunction(
 // Converts a TensorFlow SavedModel stored in the directory with the given
 // `saved_model_dir` into a MLIR module. Creates MLIR entities into the
 // given MLIR `context`.
-absl::StatusOr<mlir::OwningOpRef<mlir::ModuleOp>>
-SavedModelObjectGraphToMlirImport(
+StatusOr<mlir::OwningOpRef<mlir::ModuleOp>> SavedModelObjectGraphToMlirImport(
     absl::string_view saved_model_dir,
     const std::unordered_set<std::string>& tags,
     absl::Span<std::string> exported_names, mlir::MLIRContext* context,
@@ -111,8 +108,7 @@ SavedModelObjectGraphToMlirImport(
 // `saved_model_dir` into a MLIR module. Creates MLIR entities into the
 // given MLIR `context`.
 // 'saved_model_bundle' if not null, will be initialized with the model bundle.
-absl::StatusOr<mlir::OwningOpRef<mlir::ModuleOp>>
-SavedModelSignatureDefsToMlirImport(
+StatusOr<mlir::OwningOpRef<mlir::ModuleOp>> SavedModelSignatureDefsToMlirImport(
     absl::string_view saved_model_dir,
     const std::unordered_set<std::string>& tags,
     absl::Span<std::string> exported_names, mlir::MLIRContext* context,
@@ -124,7 +120,7 @@ SavedModelSignatureDefsToMlirImport(
 // `saved_model_dir` into a MLIR module. Creates MLIR entities into the
 // given MLIR `context`. This does not create session internally so it is faster
 // and does not perform any graph transformation.
-absl::StatusOr<mlir::OwningOpRef<mlir::ModuleOp>>
+StatusOr<mlir::OwningOpRef<mlir::ModuleOp>>
 SavedModelSignatureDefsToMlirImportLite(
     absl::string_view saved_model_dir,
     const std::unordered_set<std::string>& tags,

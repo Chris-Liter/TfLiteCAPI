@@ -21,15 +21,11 @@ limitations under the License.
 #include <unordered_map>
 #include <vector>
 
-#include "absl/status/status.h"
-#include "tensorflow/core/platform/errors.h"
 #include "tensorflow/core/platform/logging.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/lite/toco/graph_transformations/graph_transformations.h"
 #include "tensorflow/lite/toco/graph_transformations/quantization_util.h"
 #include "tensorflow/lite/toco/model.h"
 #include "tensorflow/lite/toco/model_flags.pb.h"
-#include "tensorflow/lite/toco/toco_types.h"
 #include "tensorflow/lite/toco/tooling_util.h"
 
 namespace toco {
@@ -51,7 +47,6 @@ bool SupportsQuantization(Model* model, const Operator& op) {
   static const std::set<OperatorType> supported_ops{
       OperatorType::kAdd,
       OperatorType::kArgMax,
-      OperatorType::kArgMin,
       OperatorType::kAveragePool,
       OperatorType::kBatchToSpaceND,
       OperatorType::kConcatenation,
@@ -500,7 +495,8 @@ void FixMinMaxPostQuantization(GraphTransformation* transformation,
 
 }  // namespace
 
-absl::Status Quantize::Run(Model* model, std::size_t op_index, bool* modified) {
+::tensorflow::Status Quantize::Run(Model* model, std::size_t op_index,
+                                   bool* modified) {
   *modified = false;
   // Our general "quantization" graph transformation consists in replacing
   //   QuantizedInputArrays[] ->
@@ -522,7 +518,7 @@ absl::Status Quantize::Run(Model* model, std::size_t op_index, bool* modified) {
   auto& op = *model->operators[op_index];
   if (op.type == OperatorType::kDequantize ||
       op.type == OperatorType::kFakeQuant) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   // Our assumption here is that the input arrays are already quantized -
@@ -559,7 +555,7 @@ absl::Status Quantize::Run(Model* model, std::size_t op_index, bool* modified) {
       if (!array.minmax && !array.buffer) {
         LOG(WARNING) << "Can't quantize input array " << input
                      << " because it lacks min/max info";
-        return absl::OkStatus();
+        return ::tensorflow::OkStatus();
       }
       const auto* other_op = GetOpWithOutput(*model, input);
       if (other_op && other_op->type != OperatorType::kDequantize) {
@@ -569,7 +565,7 @@ absl::Status Quantize::Run(Model* model, std::size_t op_index, bool* modified) {
             "which means that we should yield and let other ops "
             "get quantized first",
             LogName(op), input);
-        return absl::OkStatus();
+        return ::tensorflow::OkStatus();
       }
     }
   }
@@ -731,7 +727,7 @@ absl::Status Quantize::Run(Model* model, std::size_t op_index, bool* modified) {
   }
 
   *modified = changed;
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 }  // namespace toco

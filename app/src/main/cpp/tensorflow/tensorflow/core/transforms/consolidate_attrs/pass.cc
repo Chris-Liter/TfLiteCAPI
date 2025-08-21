@@ -15,31 +15,18 @@ limitations under the License.
 
 #include "tensorflow/core/transforms/consolidate_attrs/pass.h"
 
-#include <cassert>
-#include <cstdint>
 #include <memory>
 #include <optional>
 #include <utility>
 
-#include "llvm/ADT/STLExtras.h"
+#include "llvm/ADT/ScopeExit.h"
 #include "llvm/ADT/Sequence.h"
-#include "llvm/ADT/SmallVector.h"
-#include "mlir/IR/Attributes.h"  // from @llvm-project
-#include "mlir/IR/Block.h"  // from @llvm-project
 #include "mlir/IR/BuiltinAttributes.h"  // from @llvm-project
-#include "mlir/IR/BuiltinTypeInterfaces.h"  // from @llvm-project
 #include "mlir/IR/BuiltinTypes.h"  // from @llvm-project
-#include "mlir/IR/OperationSupport.h"  // from @llvm-project
 #include "mlir/IR/PatternMatch.h"  // from @llvm-project
-#include "mlir/IR/Types.h"  // from @llvm-project
-#include "mlir/IR/Value.h"  // from @llvm-project
-#include "mlir/IR/ValueRange.h"  // from @llvm-project
-#include "mlir/Interfaces/FunctionInterfaces.h"  // from @llvm-project
 #include "mlir/Pass/Pass.h"  // from @llvm-project
 #include "mlir/Pass/PassManager.h"  // from @llvm-project
-#include "mlir/Support/LLVM.h"  // from @llvm-project
 #include "mlir/Support/LogicalResult.h"  // from @llvm-project
-#include "mlir/Support/TypeID.h"  // from @llvm-project
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"  // from @llvm-project
 #include "tensorflow/core/ir/dialect.h"
 #include "tensorflow/core/ir/importexport/convert_tensor.h"
@@ -47,6 +34,7 @@ limitations under the License.
 #include "tensorflow/core/ir/tf_op_wrapper.h"
 #include "tensorflow/core/ir/types/dialect.h"
 #include "tensorflow/core/ir/utility.h"
+#include "tensorflow/core/ir/utils/shape_inference_utils.h"
 
 namespace mlir {
 namespace tfg {
@@ -59,13 +47,13 @@ static const char *kRegenerateOutputShapes = "tfg.regenerate_output_shapes";
 
 // Returns true if an attribute is an array of shapes;
 static bool IsArrayOfShapes(ArrayAttr array) {
-  return llvm::all_of(
-      array, [](Attribute attr) { return mlir::isa<ShapeAttr>(attr); });
+  return llvm::all_of(array,
+                      [](Attribute attr) { return attr.isa<ShapeAttr>(); });
 }
 
 // Given a tensor type and shape information, try to refine the type.
 static Type GetReifiedType(Type orig, ShapeAttr shape) {
-  Type element_type = mlir::cast<ShapedType>(orig).getElementType();
+  Type element_type = orig.cast<ShapedType>().getElementType();
   TensorType inferred;
   if (shape.hasRank()) {
     // Replace dimensions less than -1 with ?
@@ -149,11 +137,11 @@ Type ConsolidateAttributesPassImpl::refineTypeWithOutputShapes(
   // Get the output shapes attribute. If the attribute is not an array of
   // exactly one shape, ignore it.
   if (auto output_shapes =
-          mlir::dyn_cast_or_null<ArrayAttr>(attrs.get(output_shapes_id_))) {
+          attrs.get(output_shapes_id_).dyn_cast_or_null<ArrayAttr>()) {
     if (output_shapes.size() == 1 && IsArrayOfShapes(output_shapes)) {
       attrs.erase(output_shapes_id_);
       attrs.set(regenerate_output_shapes_id_, UnitAttr::get(&getContext()));
-      return GetReifiedType(type, mlir::cast<ShapeAttr>(output_shapes[0]));
+      return GetReifiedType(type, output_shapes[0].cast<ShapeAttr>());
     }
   }
   return type;
@@ -165,9 +153,8 @@ Type ConsolidateAttributesPassImpl::refineTypeWithHandleData(
   SmallVector<TensorType> subtypes;
   // Because `tfg.handle_data` is a TFG internal attribute, it will be
   // well-formed.
-  for (Type type :
-       mlir::cast<ArrayAttr>(handle_data).getAsValueRange<TypeAttr>())
-    subtypes.push_back(mlir::cast<TensorType>(type));
+  for (Type type : handle_data.cast<ArrayAttr>().getAsValueRange<TypeAttr>())
+    subtypes.push_back(type.cast<TensorType>());
   auto resource =
       UnrankedTensorType::get(ResourceType::get(subtypes, &getContext()));
   Type reified = tf_type::GetCastCompatibleType(resource, type);
@@ -180,7 +167,7 @@ ArrayAttr ConsolidateAttributesPassImpl::reifyAndDropFunctionArgumentAttributes(
   // we will ignore it. If it isn't an array of shapes or has an inconsistent
   // number of shapes, ignore it.
   ArrayAttr input_shapes =
-      mlir::dyn_cast_or_null<ArrayAttr>(func->getAttr(input_shapes_id_));
+      func->getAttr(input_shapes_id_).dyn_cast_or_null<ArrayAttr>();
   unsigned num_args = func.getNumArguments() / 2;
   if (input_shapes) {
     if (input_shapes.size() != num_args || !IsArrayOfShapes(input_shapes)) {
@@ -201,8 +188,7 @@ ArrayAttr ConsolidateAttributesPassImpl::reifyAndDropFunctionArgumentAttributes(
     arg_type = refineTypeWithOutputShapes(arg_type, attrs);
     arg_type = refineTypeWithHandleData(arg_type, attrs.erase(handle_data_id_));
     if (input_shapes)
-      arg_type =
-          GetReifiedType(arg_type, mlir::cast<ShapeAttr>(input_shapes[i]));
+      arg_type = GetReifiedType(arg_type, input_shapes[i].cast<ShapeAttr>());
     arg.setType(arg_type);
     attrs.erase(dtype_id_);
     attrs.erase(is_ref_id_);
@@ -256,12 +242,12 @@ class ReifyOperationOutputShapes : public RewritePattern {
     // attribute, if it has an inconsistent number of shapes, or if it is not
     // an array of shapes.
     ArrayAttr output_shapes =
-        mlir::dyn_cast_or_null<ArrayAttr>(op->getAttr(output_shapes_id_));
+        op->getAttr(output_shapes_id_).dyn_cast_or_null<ArrayAttr>();
     if (!output_shapes || results.size() != output_shapes.size() ||
         !IsArrayOfShapes(output_shapes))
       return failure();
 
-    rewriter.modifyOpInPlace(op, [&] {
+    rewriter.updateRootInPlace(op, [&] {
       op->removeAttr(output_shapes_id_);
       assert(output_shapes.size() == results.size());
       for (auto it :
@@ -337,14 +323,14 @@ class DropAttributes : public RewritePattern {
   LogicalResult matchAndRewrite(Operation *op,
                                 PatternRewriter &rewriter) const override {
     if (!isa<OpTs...>(op)) return failure();
-    rewriter.startOpModification(op);
+    rewriter.startRootUpdate(op);
     if (!llvm::count_if(attr_ids_, [&](StringAttr attr_id) {
           return op->removeAttr(attr_id);
         })) {
-      rewriter.cancelOpModification(op);
+      rewriter.cancelRootUpdate(op);
       return failure();
     }
-    rewriter.finalizeOpModification(op);
+    rewriter.finalizeRootUpdate(op);
     return success();
   }
 
@@ -436,7 +422,7 @@ void PrepareAttributesForExportPassImpl::prepareFunctionAttributes(
       continue;
     }
     arg_attrs.push_back(prepareAttributesFor(type, attrs));
-    if (auto ranked = mlir::dyn_cast<RankedTensorType>(type)) {
+    if (auto ranked = type.dyn_cast<RankedTensorType>()) {
       input_shapes.push_back(ShapeAttr::get(&getContext(), ranked.getShape()));
     } else {
       input_shapes.push_back(ShapeAttr::get(&getContext(), std::nullopt));
@@ -464,14 +450,14 @@ DictionaryAttr PrepareAttributesForExportPassImpl::prepareAttributesFor(
   NamedAttrList attrs(attr_dict);
   // Add shape data if requested.
   if (attrs.erase(regenerate_output_shapes_id_)) {
-    auto shape = ShapeAttr::get(
-        &getContext(), mlir::isa<RankedTensorType>(type)
-                           ? mlir::cast<RankedTensorType>(type).getShape()
-                           : std::optional<ArrayRef<int64_t>>());
+    auto shape = ShapeAttr::get(&getContext(),
+                                type.isa<RankedTensorType>()
+                                    ? type.cast<RankedTensorType>().getShape()
+                                    : std::optional<ArrayRef<int64_t>>());
     attrs.set(output_shapes_id_, ArrayAttr::get(&getContext(), {shape}));
   }
-  auto element_type = mlir::cast<TensorType>(type).getElementType();
-  if (auto resource = mlir::dyn_cast<ResourceType>(element_type)) {
+  auto element_type = type.cast<TensorType>().getElementType();
+  if (auto resource = element_type.dyn_cast<ResourceType>()) {
     SmallVector<Attribute> handle_data;
     for (TensorType subtype : resource.getSubtypes())
       handle_data.push_back(TypeAttr::get(subtype));
@@ -479,7 +465,7 @@ DictionaryAttr PrepareAttributesForExportPassImpl::prepareAttributesFor(
     if (!handle_data.empty())
       attrs.set(handle_data_id_, ArrayAttr::get(&getContext(), handle_data));
   }
-  if (mlir::isa<tf_type::TensorFlowRefType>(element_type))
+  if (element_type.isa<tf_type::TensorFlowRefType>())
     attrs.set(is_ref_id_, UnitAttr::get(&getContext()));
   return attrs.getDictionary(&getContext());
 }
@@ -489,8 +475,8 @@ static ArrayAttr GetElementTypesAttr(PatternRewriter &rewriter,
                                      ValueRange values) {
   SmallVector<Attribute> types;
   for (Value value : values) {
-    types.push_back(TypeAttr::get(
-        mlir::cast<TensorType>(value.getType()).getElementType()));
+    types.push_back(
+        TypeAttr::get(value.getType().cast<TensorType>().getElementType()));
   }
   return rewriter.getArrayAttr(types);
 }
@@ -529,15 +515,16 @@ struct MaterializeIfAttrs : public MaterializeAttrsPattern<IfLikeOp> {
                                 PatternRewriter &rewriter) const override {
     if (op.getTcond() && op.getTin() && op.getTout()) return failure();
     NamedAttrList attrs(op->getAttrDictionary());
-    attrs.set(
-        op.getTcondAttrName(),
-        TypeAttr::get(
-            mlir::cast<TensorType>(op.getCond().getType()).getElementType()));
+    attrs.set(op.getTcondAttrName(),
+              TypeAttr::get(op.getCond()
+                                .getType()
+                                .template cast<TensorType>()
+                                .getElementType()));
     attrs.set(op.getTinAttrName(),
               this->getArgumentElementTypesAttr(rewriter, op));
     attrs.set(op.getToutAttrName(),
               GetElementTypesAttr(rewriter, op.getOuts()));
-    rewriter.modifyOpInPlace(
+    rewriter.updateRootInPlace(
         op, [&] { op->setAttrs(attrs.getDictionary(op->getContext())); });
     return success();
   }
@@ -556,7 +543,7 @@ struct MaterializeCaseAttrs : public MaterializeAttrsPattern<CaseLikeOp> {
               this->getArgumentElementTypesAttr(rewriter, op));
     attrs.set(op.getToutAttrName(),
               GetElementTypesAttr(rewriter, op.getOuts()));
-    rewriter.modifyOpInPlace(
+    rewriter.updateRootInPlace(
         op, [&] { op->setAttrs(attrs.getDictionary(op->getContext())); });
     return success();
   }
@@ -570,7 +557,7 @@ struct MaterializeTAttr : public MaterializeAttrsPattern<WhileOrForLikeOp> {
   LogicalResult matchAndRewrite(WhileOrForLikeOp op,
                                 PatternRewriter &rewriter) const override {
     if (op.getT()) return failure();
-    rewriter.modifyOpInPlace(op, [&] {
+    rewriter.updateRootInPlace(op, [&] {
       op.setTAttr(this->getArgumentElementTypesAttr(rewriter, op));
     });
     return success();
@@ -596,13 +583,13 @@ class MaterializeOutputShapesBase : public RewritePattern {
 
     SmallVector<Attribute> shapes;
     for (Value result : results) {
-      if (auto ranked = mlir::dyn_cast<RankedTensorType>(result.getType())) {
+      if (auto ranked = result.getType().dyn_cast<RankedTensorType>()) {
         shapes.push_back(ShapeAttr::get(op->getContext(), ranked.getShape()));
       } else {
         shapes.push_back(ShapeAttr::get(op->getContext(), std::nullopt));
       }
     }
-    rewriter.modifyOpInPlace(op, [&] {
+    rewriter.updateRootInPlace(op, [&] {
       op->setAttr(attr_id_, rewriter.getArrayAttr(shapes));
       rewriteImpl(op, rewriter);
     });

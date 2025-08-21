@@ -114,21 +114,21 @@ class ScanDatasetOp : public UnaryDatasetOpKernel {
       }
     }
 
-    absl::Status InputDatasets(
+    Status InputDatasets(
         std::vector<const DatasetBase*>* inputs) const override {
       inputs->push_back(input_);
-      return absl::OkStatus();
+      return OkStatus();
     }
 
-    absl::Status CheckExternalState() const override {
+    Status CheckExternalState() const override {
       TF_RETURN_IF_ERROR(captured_func_->CheckExternalState());
       return input_->CheckExternalState();
     }
 
    protected:
-    absl::Status AsGraphDefInternal(SerializationContext* ctx,
-                                    DatasetGraphDefBuilder* b,
-                                    Node** output) const override {
+    Status AsGraphDefInternal(SerializationContext* ctx,
+                              DatasetGraphDefBuilder* b,
+                              Node** output) const override {
       Node* input_node;
       TF_RETURN_IF_ERROR(b->AddInputDataset(ctx, input_, &input_node));
       std::vector<Node*> initial_state_nodes;
@@ -161,7 +161,7 @@ class ScanDatasetOp : public UnaryDatasetOpKernel {
                          {"preserve_cardinality", preserve_cardinality_attr},
                          {"use_default_device", use_default_device_attr}},
                         output));
-      return absl::OkStatus();
+      return OkStatus();
     }
 
    private:
@@ -173,23 +173,23 @@ class ScanDatasetOp : public UnaryDatasetOpKernel {
 
       bool SymbolicCheckpointCompatible() const override { return true; }
 
-      absl::Status Initialize(IteratorContext* ctx) override {
+      Status Initialize(IteratorContext* ctx) override {
         TF_RETURN_IF_ERROR(
             dataset()->input_->MakeIterator(ctx, this, prefix(), &input_impl_));
         return dataset()->captured_func_->Instantiate(
             ctx, &instantiated_captured_func_);
       }
 
-      absl::Status GetNextInternal(IteratorContext* ctx,
-                                   std::vector<Tensor>* out_tensors,
-                                   bool* end_of_sequence) override {
+      Status GetNextInternal(IteratorContext* ctx,
+                             std::vector<Tensor>* out_tensors,
+                             bool* end_of_sequence) override {
         mutex_lock l(mu_);
 
         std::vector<Tensor> next_element;
         TF_RETURN_IF_ERROR(
             input_impl_->GetNext(ctx, &next_element, end_of_sequence));
         if (*end_of_sequence) {
-          return absl::OkStatus();
+          return OkStatus();
         }
 
         std::vector<Tensor> args;
@@ -202,7 +202,7 @@ class ScanDatasetOp : public UnaryDatasetOpKernel {
         state_and_output.reserve(dataset()->state_types_.size() +
                                  output_dtypes().size());
 
-        absl::Status s = instantiated_captured_func_->Run(
+        Status s = instantiated_captured_func_->Run(
             ctx, std::move(args), &state_and_output, model_node());
         DCHECK(state_and_output.size() <=
                dataset()->state_types_.size() + output_dtypes().size());
@@ -248,7 +248,7 @@ class ScanDatasetOp : public UnaryDatasetOpKernel {
             // `f` may deliberately raise `errors::OutOfRange` to indicate
             // that we should terminate the iteration early.
             *end_of_sequence = true;
-            return absl::OkStatus();
+            return OkStatus();
           }
         }
         return s;
@@ -261,8 +261,8 @@ class ScanDatasetOp : public UnaryDatasetOpKernel {
                                          /*ratio=*/1);
       }
 
-      absl::Status SaveInternal(SerializationContext* ctx,
-                                IteratorStateWriter* writer) override {
+      Status SaveInternal(SerializationContext* ctx,
+                          IteratorStateWriter* writer) override {
         TF_RETURN_IF_ERROR(ctx->HandleCheckExternalStateStatus(
             dataset()->captured_func_->CheckExternalState()));
         mutex_lock l(mu_);
@@ -273,11 +273,11 @@ class ScanDatasetOp : public UnaryDatasetOpKernel {
           TF_RETURN_IF_ERROR(writer->WriteTensor(
               full_name(strings::StrCat("state[", idx, "]")), state_[idx]));
         }
-        return absl::OkStatus();
+        return OkStatus();
       }
 
-      absl::Status RestoreInternal(IteratorContext* ctx,
-                                   IteratorStateReader* reader) override {
+      Status RestoreInternal(IteratorContext* ctx,
+                             IteratorStateReader* reader) override {
         mutex_lock l(mu_);
         TF_RETURN_IF_ERROR(RestoreInput(ctx, reader, input_impl_));
         int64_t size;
@@ -288,7 +288,7 @@ class ScanDatasetOp : public UnaryDatasetOpKernel {
               ctx->flr(), full_name(strings::StrCat("state[", idx, "]")),
               &state_[idx]));
         }
-        return absl::OkStatus();
+        return OkStatus();
       }
 
      private:

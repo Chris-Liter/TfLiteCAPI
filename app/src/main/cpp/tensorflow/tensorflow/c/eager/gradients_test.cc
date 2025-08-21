@@ -52,14 +52,14 @@ class CppGradients
   void SetUp() override {
     TF_StatusPtr status(TF_NewStatus());
     TF_SetTracingImplementation(std::get<0>(GetParam()), status.get());
-    absl::Status s = StatusFromTF_Status(status.get());
+    Status s = StatusFromTF_Status(status.get());
     CHECK_EQ(errors::OK, s.code()) << s.message();
   }
 };
 
-absl::Status RegisterGradients(GradientRegistry* registry) {
+Status RegisterGradients(GradientRegistry* registry) {
   TF_RETURN_IF_ERROR(RegisterNotDifferentiable(registry, "CheckNumerics"));
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 TEST_P(CppGradients, TestSetAttrString) {
@@ -68,7 +68,7 @@ TEST_P(CppGradients, TestSetAttrString) {
   AbstractContextPtr ctx;
   {
     AbstractContext* ctx_raw = nullptr;
-    absl::Status s =
+    Status s =
         BuildImmediateExecutionContext(std::get<1>(GetParam()), &ctx_raw);
     ASSERT_EQ(errors::OK, s.code()) << s.message();
     ctx.reset(ctx_raw);
@@ -77,16 +77,15 @@ TEST_P(CppGradients, TestSetAttrString) {
   AbstractTensorHandlePtr t;
   {
     AbstractTensorHandle* x_raw = nullptr;
-    absl::Status s =
-        TestScalarTensorHandle<float, TF_FLOAT>(ctx.get(), 1.0f, &x_raw);
+    Status s = TestScalarTensorHandle<float, TF_FLOAT>(ctx.get(), 1.0f, &x_raw);
     ASSERT_EQ(errors::OK, s.code()) << s.message();
     t.reset(x_raw);
   }
 
   AbstractOperationPtr check_numerics_op(ctx->CreateOperation());
   ForwardOperation forward_op;
-  absl::Status s = Reset(check_numerics_op.get(), "CheckNumerics",
-                         /*raw_device_name=*/nullptr, &forward_op);
+  Status s = Reset(check_numerics_op.get(), "CheckNumerics",
+                   /*raw_device_name=*/nullptr, &forward_op);
   ASSERT_EQ(errors::OK, s.code()) << s.message();
   if (isa<TracingOperation>(check_numerics_op.get())) {
     s = dyn_cast<TracingOperation>(check_numerics_op.get())
@@ -115,7 +114,7 @@ TEST_P(CppGradients, TestSetAttrString) {
   ASSERT_EQ(read_message, message);
 }
 
-absl::Status RecordOperationWithNullGradientFunctionModel(
+Status RecordOperationWithNullGradientFunctionModel(
     AbstractContext* ctx, absl::Span<AbstractTensorHandle* const> inputs,
     absl::Span<AbstractTensorHandle*> outputs) {
   Tape tape(/*persistent=*/false);
@@ -135,7 +134,7 @@ TEST_P(CppGradients, TestRecordOperationWithNullGradientFunctionRaises) {
   AbstractContextPtr ctx;
   {
     AbstractContext* ctx_raw = nullptr;
-    absl::Status s =
+    Status s =
         BuildImmediateExecutionContext(std::get<1>(GetParam()), &ctx_raw);
     ASSERT_EQ(errors::OK, s.code()) << s.message();
     ctx.reset(ctx_raw);
@@ -144,16 +143,15 @@ TEST_P(CppGradients, TestRecordOperationWithNullGradientFunctionRaises) {
   AbstractTensorHandlePtr x;
   {
     AbstractTensorHandle* x_raw = nullptr;
-    absl::Status s =
-        TestScalarTensorHandle<float, TF_FLOAT>(ctx.get(), 2.0f, &x_raw);
+    Status s = TestScalarTensorHandle<float, TF_FLOAT>(ctx.get(), 2.0f, &x_raw);
     ASSERT_EQ(errors::OK, s.code()) << s.message();
     x.reset(x_raw);
   }
 
   std::vector<AbstractTensorHandle*> outputs(1);
-  absl::Status s = RunModel(RecordOperationWithNullGradientFunctionModel,
-                            ctx.get(), {x.get()}, absl::MakeSpan(outputs),
-                            /*use_function=*/!std::get<2>(GetParam()));
+  Status s = RunModel(RecordOperationWithNullGradientFunctionModel, ctx.get(),
+                      {x.get()}, absl::MakeSpan(outputs),
+                      /*use_function=*/!std::get<2>(GetParam()));
   ASSERT_EQ(error::INVALID_ARGUMENT, s.code());
   ASSERT_EQ(
       "Provided null gradient_function for 'Neg'.\nIf the intent is to treat "

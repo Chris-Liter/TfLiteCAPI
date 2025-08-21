@@ -21,7 +21,7 @@ limitations under the License.
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "tensorflow/compiler/tf2xla/resource_operation_table.h"
-#include "xla/status_macros.h"
+#include "tensorflow/compiler/xla/status_macros.h"
 #include "tensorflow/core/graph/algorithm.h"
 #include "tensorflow/core/graph/graph.h"
 #include "tensorflow/core/lib/core/errors.h"
@@ -41,7 +41,7 @@ const char kRetvalOp[] = "_Retval";
 
 const int kMaxCallDepth = 100;
 
-absl::Status AnalyzeResourceUsage(
+Status AnalyzeResourceUsage(
     const Graph* graph, const std::optional<std::string>& function_name,
     const int call_depth, const absl::flat_hash_set<int>& resource_arg_indices,
     FunctionLibraryRuntime* lib_runtime,
@@ -55,8 +55,8 @@ bool IsControlFlowV1Node(const Node* n) {
 }
 
 // TODO(ycao): Add this as Tensorflow Node method.
-absl::StatusOr<absl::InlinedVector<const Edge*, 1>> OutputEdgesByIndex(
-    const Node& n, int idx) {
+StatusOr<absl::InlinedVector<const Edge*, 1>> OutputEdgesByIndex(const Node& n,
+                                                                 int idx) {
   absl::InlinedVector<const Edge*, 1> res;
   if (idx >= n.num_outputs()) {
     return errors::InvalidArgument("Invalid out_edge index: ", idx, ", Node ",
@@ -95,7 +95,7 @@ void PropagateFromStackOrTensorArraySourceOp(
   }
 }
 
-absl::Status PropagateFromArgOp(
+Status PropagateFromArgOp(
     const Node& n, const std::optional<std::string>& function_name,
     const absl::flat_hash_set<int>& resource_arg_indices,
     absl::flat_hash_map<const Edge*, ResourceUsageAnalysis::NodeInfo>*
@@ -104,7 +104,7 @@ absl::Status PropagateFromArgOp(
 
   int index;
   TF_RETURN_IF_ERROR(GetNodeAttr(n.attrs(), "index", &index));
-  if (!resource_arg_indices.contains(index)) return absl::OkStatus();
+  if (!resource_arg_indices.contains(index)) return OkStatus();
 
   TF_RET_CHECK(function_name.has_value())
       << "ResourceUsageAnalysis does not support analyzing _Arg nodes "
@@ -122,10 +122,10 @@ absl::Status PropagateFromArgOp(
     (*user_to_source)[o] = src_node_info;
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status UpdateResourceUsageFromFunctionBodyAnalysis(
+Status UpdateResourceUsageFromFunctionBodyAnalysis(
     const Node& call_node,
     const std::optional<absl::string_view>& caller_function_name,
     const FunctionBody& fbody,
@@ -176,10 +176,10 @@ absl::Status UpdateResourceUsageFromFunctionBodyAnalysis(
     }
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status PropagateThroughCallOp(
+Status PropagateThroughCallOp(
     const Node& n, const std::optional<std::string>& function_name,
     const int call_depth, FunctionLibraryRuntime* lib_runtime,
     absl::flat_hash_map<const Edge*, ResourceUsageAnalysis::NodeInfo>*
@@ -219,11 +219,11 @@ absl::Status PropagateThroughCallOp(
   TF_RETURN_IF_ERROR(UpdateResourceUsageFromFunctionBodyAnalysis(
       n, function_name, *fbody, called_function_source_to_path, user_to_source,
       source_to_path));
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Analyzes pass through values for Identity and IdentityN ops.
-absl::Status PropagateThroughIdentityOp(
+Status PropagateThroughIdentityOp(
     const Node& n,
     absl::flat_hash_map<const Edge*, ResourceUsageAnalysis::NodeInfo>*
         user_to_source) {
@@ -246,10 +246,10 @@ absl::Status PropagateThroughIdentityOp(
     }
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status AnalyzeResourceUsage(
+Status AnalyzeResourceUsage(
     const Graph* graph, const std::optional<std::string>& function_name,
     const int call_depth, const absl::flat_hash_set<int>& resource_arg_indices,
     FunctionLibraryRuntime* lib_runtime,
@@ -313,12 +313,12 @@ absl::Status AnalyzeResourceUsage(
                                          it.first->dst()->type_string());
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // anonymous namespace
 
-/*Static*/ absl::Status ResourceUsageAnalysis::Analyze(
+/*Static*/ Status ResourceUsageAnalysis::Analyze(
     const Graph* graph, FunctionLibraryRuntime* lib_runtime,
     absl::flat_hash_map<NodeInfo, absl::flat_hash_set<NodeInfo>>*
         source_to_path) {

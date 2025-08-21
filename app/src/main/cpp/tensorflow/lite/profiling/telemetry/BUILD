@@ -1,5 +1,5 @@
-load("//tensorflow:tensorflow.default.bzl", "get_compatible_with_portable")
 load("//tensorflow/lite:build_def.bzl", "tflite_copts")
+load("//tensorflow:tensorflow.default.bzl", "get_compatible_with_portable")
 
 package(
     # copybara:uncomment default_applicable_licenses = ["//tensorflow:license"],

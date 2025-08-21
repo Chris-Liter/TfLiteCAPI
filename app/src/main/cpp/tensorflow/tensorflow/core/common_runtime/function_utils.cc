@@ -49,31 +49,31 @@ struct Endpoint {
 
 // The following Add* routines are used to add a few graph nodes while
 // functions are transformed.
-static Node* AddNoOp(absl::string_view name, Graph* g) {
+static Node* AddNoOp(StringPiece name, Graph* g) {
   NodeDef ndef;
   ndef.set_name(g->NewName(absl::StrCat(kNodeLabel, "/", name)));
   ndef.set_op("NoOp");
-  absl::Status s;
+  Status s;
   Node* ret = g->AddNode(ndef, &s);
   TF_CHECK_OK(s);
   return ret;
 }
 
-static Node* AddIdentity(absl::string_view name, Graph* g, Endpoint input) {
+static Node* AddIdentity(StringPiece name, Graph* g, Endpoint input) {
   DCHECK_LT(0, input.dtype());
   NodeDef ndef;
   ndef.set_name(g->NewName(absl::StrCat(kNodeLabel, "/", name)));
   ndef.set_op("Identity");
   ndef.add_input(input.name());
   AddNodeAttr("T", BaseType(input.dtype()), &ndef);
-  absl::Status s;
+  Status s;
   Node* ret = g->AddNode(ndef, &s);
   TF_CHECK_OK(s);
   g->AddEdge(input.node, input.index, ret, 0);
   return ret;
 }
 
-void DumpGraph(absl::string_view label, const Graph* g) {
+void DumpGraph(StringPiece label, const Graph* g) {
   // TODO(zhifengc): Change Graph to record #nodes.
   VLOG(2) << "Graph " << label << " #nodes " << g->num_nodes() << " #edges "
           << g->num_edges();
@@ -130,7 +130,7 @@ const Edge* GetTheOnlyDataEdge(const EdgeSet& edges) {
 bool RemoveIdentityNodes(Graph* g) {
   VLOG(2) << "Removing identity nodes";
   bool removed_any = false;
-  absl::InlinedVector<Node*, 8UL> matches;
+  gtl::InlinedVector<Node*, 8> matches;
   for (Node* n : g->nodes()) {
     if (!n->IsIdentity()) continue;
     if (!GetTheOnlyDataEdge(n->in_edges())) continue;
@@ -162,7 +162,7 @@ bool RemoveIdentityNodes(Graph* g) {
 
 bool RemoveListArrayConverter(Graph* g) {
   VLOG(2) << "Removing list array converter";
-  absl::InlinedVector<Node*, 8UL> matches;
+  gtl::InlinedVector<Node*, 8> matches;
   for (Node* n : g->nodes()) {
     if ((n->type_string() == "_ListToArray") ||
         (n->type_string() == "_ArrayToList")) {
@@ -175,14 +175,13 @@ bool RemoveListArrayConverter(Graph* g) {
       if (n->num_inputs() != n->num_outputs()) {
         continue;  // Not expected. Skip.
       }
-      absl::InlinedVector<Node*, 8UL> identity_nodes(n->num_inputs(), nullptr);
+      gtl::InlinedVector<Node*, 8> identity_nodes(n->num_inputs(), nullptr);
 
-      const auto no_op = [&](absl::string_view name) -> Node* {
+      const auto no_op = [&](StringPiece name) -> Node* {
         return AddNoOp(absl::StrCat(n->name(), "/", name), g);
       };
 
-      const auto identity = [&](absl::string_view name,
-                                Endpoint input) -> Node* {
+      const auto identity = [&](StringPiece name, Endpoint input) -> Node* {
         Node* node = AddIdentity(absl::StrCat(n->name(), "/", name), g, input);
         node->set_requested_device(input.node->def().device());
         return node;
@@ -260,8 +259,8 @@ bool RemoveListArrayConverter(Graph* g) {
   return removed_any;
 }
 
-absl::Status NameAndAttrsFromFunctionCall(const NodeDef& call_def,
-                                          NameAttrList* function) {
+Status NameAndAttrsFromFunctionCall(const NodeDef& call_def,
+                                    NameAttrList* function) {
   if (call_def.op() == "PartitionedCall" ||
       call_def.op() == "StatefulPartitionedCall") {
     TF_RETURN_IF_ERROR(GetNodeAttr(call_def, "f", function));
@@ -269,12 +268,12 @@ absl::Status NameAndAttrsFromFunctionCall(const NodeDef& call_def,
     function->set_name(call_def.op());
     *function->mutable_attr() = call_def.attr();
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status InstantiateFunctionCall(const NodeDef& call_def,
-                                     FunctionLibraryRuntime* flr,
-                                     FunctionLibraryRuntime::Handle* handle) {
+Status InstantiateFunctionCall(const NodeDef& call_def,
+                               FunctionLibraryRuntime* flr,
+                               FunctionLibraryRuntime::Handle* handle) {
   NameAttrList function;
   TF_RETURN_IF_ERROR(NameAndAttrsFromFunctionCall(call_def, &function));
   return flr->Instantiate(function.name(), AttrSlice(&function.attr()), handle);
@@ -299,7 +298,7 @@ string NewName(const Node* n, bool pretty) {
 void ToGraphDef(const Graph* g, GraphDef* gdef, bool pretty) {
   // We visit nodes in forward topological sort order, which is a
   // possible execution order of the graph.
-  absl::InlinedVector<const Edge*, 4UL> inputs;
+  gtl::InlinedVector<const Edge*, 4> inputs;
   gdef->Clear();
   *gdef->mutable_versions() = g->versions();
 

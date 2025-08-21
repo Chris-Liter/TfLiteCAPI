@@ -16,6 +16,7 @@ limitations under the License.
 #include <string.h>
 
 #include "tensorflow/c/experimental/filesystem/filesystem_interface.h"
+#include "tensorflow/c/tf_status.h"
 
 // Implementation of a filesystem for POSIX environments.
 // This filesystem will support `file://` and empty (local) URI schemes.

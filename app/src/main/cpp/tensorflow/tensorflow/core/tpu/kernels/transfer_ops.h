@@ -20,16 +20,11 @@ limitations under the License.
 #include <memory>
 #include <string>
 
-#include "xla/literal.h"
-#include "xla/stream_executor/stream_executor.h"
-#include "xla/stream_executor/tpu/noncopyable_buffer.h"
-#include "xla/stream_executor/tpu/tpu_platform_interface.h"
-#include "xla/stream_executor/tpu/tpu_transfer_manager_interface.h"
+#include "tensorflow/compiler/jit/xla_device.h"
+#include "tensorflow/compiler/xla/stream_executor/tpu/tpu_platform_interface.h"
+#include "tensorflow/compiler/xla/stream_executor/tpu/tpu_transfer_manager_interface.h"
 #include "tensorflow/core/framework/op_kernel.h"
-#include "tensorflow/core/platform/mutex.h"
-#include "tensorflow/core/platform/status.h"
-#include "tensorflow/core/platform/statusor.h"
-#include "tensorflow/core/platform/threadpool.h"
+#include "tensorflow/core/util/stream_executor_util.h"
 
 namespace tensorflow {
 
@@ -37,14 +32,14 @@ class TpuTransferOpInterface {
  public:
   virtual ~TpuTransferOpInterface() = default;
   virtual void Cancel() = 0;
-  virtual absl::StatusOr<int> GetDeviceOrdinal(OpKernelContext* ctx) = 0;
+  virtual StatusOr<int> GetDeviceOrdinal(OpKernelContext* ctx) = 0;
 
-  virtual absl::Status TransferBuffersToInfeed(
+  virtual Status TransferBuffersToInfeed(
       int device_ordinal,
       const std::deque<tensorflow::tpu::NoncopyableBuffer>& buffers) = 0;
-  virtual absl::Status TransferLiteralToInfeed(
-      int device_ordinal, const xla::LiteralSlice& literal) = 0;
-  virtual absl::Status TransferLiteralFromOutfeed(
+  virtual Status TransferLiteralToInfeed(int device_ordinal,
+                                         const xla::LiteralSlice& literal) = 0;
+  virtual Status TransferLiteralFromOutfeed(
       int device_ordinal, xla::MutableBorrowingLiteral literal) = 0;
 };
 
@@ -53,21 +48,21 @@ class TpuTransferOpInterface {
 class TpuTransferAsyncOpKernelBase : public AsyncOpKernel {
  public:
   explicit TpuTransferAsyncOpKernelBase(
-      OpKernelConstruction* ctx, const std::string& transfer_type,
+      OpKernelConstruction* ctx, const string& transfer_type,
       int number_of_threads,
       std::unique_ptr<TpuTransferOpInterface> transfer_op);
 
   void ComputeAsync(OpKernelContext* ctx, DoneCallback done) override;
 
  protected:
-  virtual absl::Status DoWork(OpKernelContext* context, int device_ordinal) = 0;
+  virtual Status DoWork(OpKernelContext* context, int device_ordinal) = 0;
 
-  absl::Status RunTransferWithOrdinal(OpKernelContext* ctx, int device_ordinal);
+  Status RunTransferWithOrdinal(OpKernelContext* ctx, int device_ordinal);
   std::string transfer_type_;
   std::unique_ptr<TpuTransferOpInterface> transfer_op_;
 
  private:
-  virtual absl::Status RunTransfer(OpKernelContext* ctx) = 0;
+  virtual Status RunTransfer(OpKernelContext* ctx) = 0;
 
   std::unique_ptr<thread::ThreadPool> thread_pool_;
   mutex mu_;
@@ -81,12 +76,12 @@ class TpuTransferAsyncOpKernelBase : public AsyncOpKernel {
 class TpuTransferAsyncOpKernel : public TpuTransferAsyncOpKernelBase {
  public:
   explicit TpuTransferAsyncOpKernel(
-      OpKernelConstruction* ctx, const std::string& transfer_type,
+      OpKernelConstruction* ctx, const string& transfer_type,
       int number_of_threads,
       std::unique_ptr<TpuTransferOpInterface> transfer_op);
 
  private:
-  absl::Status RunTransfer(OpKernelContext* ctx) override;
+  Status RunTransfer(OpKernelContext* ctx) override;
   int device_ordinal_;
 
   // TpuTransferAsyncOpKernel is neither copyable nor movable.
@@ -98,12 +93,12 @@ class TpuTransferAsyncDynamicOrdinalOpKernel
     : public TpuTransferAsyncOpKernelBase {
  public:
   explicit TpuTransferAsyncDynamicOrdinalOpKernel(
-      OpKernelConstruction* ctx, const std::string& transfer_type,
+      OpKernelConstruction* ctx, const string& transfer_type,
       int number_of_threads,
       std::unique_ptr<TpuTransferOpInterface> transfer_op);
 
  private:
-  absl::Status RunTransfer(OpKernelContext* ctx) override;
+  Status RunTransfer(OpKernelContext* ctx) override;
 
   // TpuTransferAsyncDynamicOpKernel is neither copyable nor movable.
   TpuTransferAsyncDynamicOrdinalOpKernel(
@@ -117,19 +112,19 @@ class StreamExecutorTransferOpImpl : public TpuTransferOpInterface {
   explicit StreamExecutorTransferOpImpl();
   ~StreamExecutorTransferOpImpl() override = default;
   void Cancel() override;
-  absl::StatusOr<int> GetDeviceOrdinal(OpKernelContext* ctx) override;
+  StatusOr<int> GetDeviceOrdinal(OpKernelContext* ctx) override;
 
-  absl::Status TransferBuffersToInfeed(
+  Status TransferBuffersToInfeed(
       int device_ordinal,
       const std::deque<tensorflow::tpu::NoncopyableBuffer>& buffers) override;
-  absl::Status TransferLiteralToInfeed(
-      int device_ordinal, const xla::LiteralSlice& literal) override;
+  Status TransferLiteralToInfeed(int device_ordinal,
+                                 const xla::LiteralSlice& literal) override;
 
-  absl::Status TransferLiteralFromOutfeed(
+  Status TransferLiteralFromOutfeed(
       int device_ordinal, xla::MutableBorrowingLiteral literal) override;
 
  private:
-  absl::StatusOr<stream_executor::StreamExecutor*> GetStreamExecutor(
+  StatusOr<stream_executor::StreamExecutor*> GetStreamExecutor(
       int device_ordinal);
   xla::TpuTransferManagerInterface* transfer_manager_;
   tpu::TpuPlatformInterface* tpu_platform_;

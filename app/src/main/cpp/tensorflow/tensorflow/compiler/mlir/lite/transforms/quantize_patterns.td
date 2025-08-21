@@ -13,15 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-// Quantization patterns to be used both when the converter authoritatively
-// quantizes the model and when the converter follows Q-DQ annotations.
+// This is the quantization pattern definition file for TensorFlow Lite.
 
 include "mlir/IR/OpBase.td"
 include "mlir/IR/PatternBase.td"
 include "mlir/Dialect/Arith/IR/ArithOps.td"
 include "mlir/Dialect/Func/IR/FuncOps.td"
-include "mlir/IR/CommonTypeConstraints.td"
-include "tensorflow/compiler/mlir/quantization/common/quantization_lib/quantization.td"
 include "tensorflow/compiler/mlir/lite/ir/tfl_ops.td"
 
 // Quantize attribute $0 by using quantization parameter from %1.
@@ -39,4 +36,3 @@ def : Pat<(TFL_QuantizeOp (TFL_DequantizeOp $in), $qt), (replaceWithValue $in)>;
 def : Pat<(TFL_DequantizeOp
              (TFL_QuantizeOp (Arith_ConstantOp F32ElementsAttr:$cst), $qt)),
           (TFL_ConstOp $cst)>;
-

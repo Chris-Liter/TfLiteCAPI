@@ -1,12 +1,12 @@
 # User ops.
 
 load(
-    "//tensorflow:tensorflow.bzl",
-    "tf_copts",
-)
-load(
     "//tensorflow/core/platform:rules_cc.bzl",
     "cc_library",
+)
+load(
+    "//tensorflow:tensorflow.bzl",
+    "tf_copts",
 )
 
 package(
@@ -24,9 +24,6 @@ cc_library(
     copts = tf_copts(),
     linkstatic = 1,
     visibility = ["//tensorflow/core:__pkg__"],
-    deps = [
-        "//tensorflow/core:framework",
-        "//tensorflow/core:portable_gif_internal",
-    ],
+    deps = ["//tensorflow/core:framework"],
     alwayslink = 1,
 )

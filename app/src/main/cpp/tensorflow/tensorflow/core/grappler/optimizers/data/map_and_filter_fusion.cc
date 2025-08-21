@@ -158,9 +158,10 @@ NodeDef MakeMapNode(const NodeDef& updated_filter, const NodeDef& original_map,
 
 }  // namespace
 
-absl::Status MapAndFilterFusion::OptimizeAndCollectStats(
-    Cluster* cluster, const GrapplerItem& item, GraphDef* output,
-    OptimizationStats* stats) {
+Status MapAndFilterFusion::OptimizeAndCollectStats(Cluster* cluster,
+                                                   const GrapplerItem& item,
+                                                   GraphDef* output,
+                                                   OptimizationStats* stats) {
   GraphDef sorted_old_graph = item.graph;
   TF_RETURN_IF_ERROR(TopologicalSort(&sorted_old_graph));
   // TODO(prazek): We might have some problems with performance if we copy
@@ -239,7 +240,7 @@ absl::Status MapAndFilterFusion::OptimizeAndCollectStats(
   }
 
   TF_RETURN_IF_ERROR(graph.DeleteNodes(nodes_to_delete));
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 REGISTER_GRAPH_OPTIMIZER_AS(MapAndFilterFusion, "map_and_filter_fusion");

@@ -14,7 +14,6 @@ limitations under the License.
 ==============================================================================*/
 #include "tensorflow/core/data/finalization_utils.h"
 
-#include "absl/status/statusor.h"
 #include "tensorflow/core/data/root_dataset.h"
 #include "tensorflow/core/framework/dataset.h"
 #include "tensorflow/core/platform/errors.h"
@@ -23,10 +22,10 @@ limitations under the License.
 namespace tensorflow {
 namespace data {
 
-absl::StatusOr<DatasetBase*> GetFinalizedDataset(OpKernelContext* ctx,
-                                                 const DatasetBase* dataset) {
+StatusOr<DatasetBase*> GetFinalizedDataset(OpKernelContext* ctx,
+                                           const DatasetBase* dataset) {
   return dataset->Finalize(
-      ctx, [ctx, dataset]() -> absl::StatusOr<core::RefCountPtr<DatasetBase>> {
+      ctx, [ctx, dataset]() -> StatusOr<core::RefCountPtr<DatasetBase>> {
         core::RefCountPtr<DatasetBase> dataset_ref_ptr;
         DatasetBase* raw_ptr;
         TF_RETURN_IF_ERROR(data::FinalizeDataset(ctx, dataset, &raw_ptr));

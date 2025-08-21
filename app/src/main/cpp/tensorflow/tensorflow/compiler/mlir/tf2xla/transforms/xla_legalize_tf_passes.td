@@ -45,16 +45,31 @@ def LegalizeTF : Pass<"xla-legalize-tf", "ModuleOp"> {
   ];
 
   let constructor = "mlir::mhlo::createLegalizeTFPass()";
-  let dependentDialects = [
-    "arith::ArithDialect",
-    "chlo::ChloDialect",
-    "func::FuncDialect",
-    "mhlo::MhloDialect",
-    "quant::QuantDialect",
-    "shape::ShapeDialect",
-    "sparse_tensor::SparseTensorDialect",
-    "stablehlo::StablehloDialect"
+  let dependentDialects = ["arith::ArithDialect, chlo::ChloDialect",
+                           "mhlo::MhloDialect",
+                           "quant::QuantizationDialect",
+                           "shape::ShapeDialect",
+                           "func::FuncDialect",
+                           "sparse_tensor::SparseTensorDialect"];
+}
+
+def LegalizeTFNoFallback : Pass<"xla-legalize-tf-no-fallback", "mlir::func::FuncOp"> {
+  let summary = "Legalize from TF dialect's or HLO dialect's control flow.";
+
+  let description = [{
+    Legalizes from TF dialect to HLO dialect. When allow_partial_conversion is
+    false, emits an error if there is any operation that can't be legalized.
+  }];
+  let options = [
+    Option<"allow_partial_conversion_", "allow-partial-conversion", "bool",
+        /*default=*/"false",
+        "Allow operations that can't be legalized.">
   ];
+
+  let constructor = "mlir::mhlo::createLegalizeTFNoFallbackPass()";
+  let dependentDialects = ["arith::ArithDialect", "chlo::ChloDialect",
+                           "mhlo::MhloDialect",
+                           "shape::ShapeDialect", "func::FuncDialect", "sparse_tensor::SparseTensorDialect"];
 }
 
 def LegalizeTFCollective : Pass<"xla-legalize-tf-collective", "ModuleOp"> {

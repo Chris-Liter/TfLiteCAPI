@@ -25,7 +25,7 @@ limitations under the License.
 namespace tensorflow {
 namespace grappler {
 
-absl::Status ComputeTransitiveFanin(
+Status ComputeTransitiveFanin(
     const GraphDef& graph, const std::vector<string>& terminal_nodes,
     std::unordered_map<string, const NodeDef*>* name_to_fanin_node,
     std::vector<const NodeDef*>* fanin_nodes) {
@@ -82,18 +82,18 @@ absl::Status ComputeTransitiveFanin(
       // So, we do not set ill_formed for missing _Send.
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status ComputeTransitiveFanin(const GraphDef& graph,
-                                    const std::vector<string>& terminal_nodes,
-                                    std::vector<const NodeDef*>* fanin_nodes) {
+Status ComputeTransitiveFanin(const GraphDef& graph,
+                              const std::vector<string>& terminal_nodes,
+                              std::vector<const NodeDef*>* fanin_nodes) {
   return ComputeTransitiveFanin(graph, terminal_nodes, nullptr, fanin_nodes);
 }
 
-absl::Status SetTransitiveFaninGraph(
-    const GraphDef& input_graph, GraphDef* output_graph,
-    const std::vector<string>& terminal_nodes) {
+Status SetTransitiveFaninGraph(const GraphDef& input_graph,
+                               GraphDef* output_graph,
+                               const std::vector<string>& terminal_nodes) {
   // Determines transitive fanin nodes from terminal nodes and add them to the
   // output graph.
   std::vector<const NodeDef*> keep;
@@ -106,7 +106,7 @@ absl::Status SetTransitiveFaninGraph(
     *output_graph->add_node() = *keep[i];
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace grappler

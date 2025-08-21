@@ -53,9 +53,7 @@ const char kScopedAllocatorAttrName[] = "_scoped_allocator";
 // For stateless RNGs ops, they are pure but device-dependent. Those ops are not
 // constant-foldable.
 static absl::flat_hash_set<std::string>* kBlockList =
-    new absl::flat_hash_set<std::string>({
-        "StatelessRandomGetKeyCounter",
-    });
+    new absl::flat_hash_set<std::string>({"StatelessRandomGetKeyCounter"});
 
 // Always allow these ops to fold even if their shape information is incomplete.
 static absl::flat_hash_set<std::string>* kAllowList =
@@ -615,10 +613,10 @@ bool ReplaceTensorWithConstant(
 
 }  // namespace
 
-absl::Status ConstantFold(const ConstantFoldingOptions& opts,
-                          FunctionLibraryRuntime* function_library, Env* env,
-                          const Device* partition_device, Graph* graph,
-                          bool* was_mutated) {
+Status ConstantFold(const ConstantFoldingOptions& opts,
+                    FunctionLibraryRuntime* function_library, Env* env,
+                    const Device* partition_device, Graph* graph,
+                    bool* was_mutated) {
   // TensorFlow flushes denormals to zero and rounds to nearest, so we do
   // the same here.
   port::ScopedFlushDenormal flush;
@@ -644,7 +642,7 @@ absl::Status ConstantFold(const ConstantFoldingOptions& opts,
     VLOG(1) << "No constant foldable nodes found";
     *was_mutated = false;
     // This is not an error, so return the status as OK.
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   std::map<NodeAndOutput, NodeAndOutput> tensors_to_fetch;
@@ -657,7 +655,7 @@ absl::Status ConstantFold(const ConstantFoldingOptions& opts,
     VLOG(1) << "No constant nodes found that feed into the original graph.";
     *was_mutated = false;
     // This is not an error, so return the status as OK.
-    return absl::OkStatus();
+    return OkStatus();
   }
   VLOG(1) << "Constant foldable " << constant_graph->num_node_ids() << " : "
           << graph->num_node_ids();
@@ -689,7 +687,7 @@ absl::Status ConstantFold(const ConstantFoldingOptions& opts,
     graph_runner.reset(nullptr);
   });
 
-  absl::Status s =
+  Status s =
       graph_runner->Run(constant_graph.get(), function_library, {} /* inputs*/,
                         tensors_to_fetch_names, &outputs);
   if (!s.ok()) {
@@ -714,7 +712,7 @@ absl::Status ConstantFold(const ConstantFoldingOptions& opts,
   DumpGraph("After", graph);
 
   *was_mutated = (num_nodes_replaced > 0);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace tensorflow

@@ -21,7 +21,7 @@ limitations under the License.
 
 namespace tensorflow {
 
-absl::Status ForceXlaConstantsOnHostPass::Run(
+Status ForceXlaConstantsOnHostPass::Run(
     const GraphOptimizationPassOptions& options) {
   Graph* graph = options.graph->get();
 
@@ -50,7 +50,7 @@ absl::Status ForceXlaConstantsOnHostPass::Run(
       node->AddAttr("_input_hostmem", constant_arg_indices);
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace tensorflow

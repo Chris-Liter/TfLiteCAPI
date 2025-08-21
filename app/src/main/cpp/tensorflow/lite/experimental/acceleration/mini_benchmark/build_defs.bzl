@@ -98,14 +98,13 @@ def validation_model(
     if scale:
         scale_arg = "--scale=" + scale
         zeropoint_arg = "--zero_point=" + zeropoint
-    schema_location = "//tensorflow/compiler/mlir/lite/schema:schema.fbs"
     native.genrule(
         name = name,
         testonly = testonly,
         srcs = [
             main_model,
             jpegs,
-            schema_location,
+            "//tensorflow/lite/schema:schema.fbs",
             metrics_model,
         ],
         outs = [name + ".tflite"],
@@ -113,7 +112,7 @@ def validation_model(
           JPEGS='$(locations %s)'
           JPEGS=$${JPEGS// /,}
           $(location //tensorflow/lite/experimental/acceleration/mini_benchmark/model_modifier:embedder_cmdline) \
-              --schema=$(location %s) \
+              --schema=$(location //tensorflow/lite/schema:schema.fbs) \
               --main_model=$(location %s) \
               --metrics_model=$(location %s) \
               %s %s \
@@ -127,7 +126,6 @@ def validation_model(
           rm '$(@D)/%s.tflite.tmp'
         """ % (
             jpegs,
-            schema_location,
             main_model,
             metrics_model,
             scale_arg,
@@ -246,7 +244,7 @@ def cc_library_with_forced_in_process_benchmark_variant(
     native.cc_library(
         name = name,
         deps = deps + in_process_deps + _concat([select(map) for map in non_in_process_deps_selects]) + [
-            "//tensorflow/lite/experimental/acceleration/mini_benchmark:tflite_acceleration_in_process_default",
+            clean_dep("//tensorflow/lite/experimental/acceleration/mini_benchmark:tflite_acceleration_in_process_default"),
         ],
         **kwargs
     )
@@ -255,7 +253,7 @@ def cc_library_with_forced_in_process_benchmark_variant(
     native.cc_library(
         name = name + "_in_process",
         deps = deps + in_process_deps_renamed + forced_in_process_deps + [
-            "//tensorflow/lite/experimental/acceleration/mini_benchmark:tflite_acceleration_in_process_enable",
+            clean_dep("//tensorflow/lite/experimental/acceleration/mini_benchmark:tflite_acceleration_in_process_enable"),
         ],
         **kwargs
     )

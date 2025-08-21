@@ -175,8 +175,8 @@ inline std::pair<string, string> GetSrcAndDstDataFormats(
   return {src_format, dst_format};
 }
 
-absl::Status ExpandLayoutSensitiveOp(TransposeContext* context,
-                                     TransposerFactory* transposer_factory) {
+Status ExpandLayoutSensitiveOp(TransposeContext* context,
+                               TransposerFactory* transposer_factory) {
   const int num_nodes = context->num_nodes;
   for (int i = 0; i < num_nodes; ++i) {
     auto* node_view = context->graph_view->GetNode(i);
@@ -185,7 +185,7 @@ absl::Status ExpandLayoutSensitiveOp(TransposeContext* context,
       std::shared_ptr<Transposer> transposer =
           transposer_factory->GetTransposer(*node_def);
       if (transposer == nullptr) {
-        return absl::Status(
+        return Status(
             absl::StatusCode::kNotFound,
             absl::StrCat(
                 "Layout sensitive operation should have a transposer. Node: ",
@@ -194,11 +194,11 @@ absl::Status ExpandLayoutSensitiveOp(TransposeContext* context,
       TF_RETURN_IF_ERROR(transposer->TransposeNode(context, node_view));
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status ExpandLayoutAgnosticOp(TransposeContext* context,
-                                    TransposerFactory* transposer_factory) {
+Status ExpandLayoutAgnosticOp(TransposeContext* context,
+                              TransposerFactory* transposer_factory) {
   const int num_nodes = context->num_nodes;
   for (int i = 0; i < num_nodes; ++i) {
     auto* node_view = context->graph_view->GetNode(i);
@@ -206,7 +206,7 @@ absl::Status ExpandLayoutAgnosticOp(TransposeContext* context,
     if (IsLayoutAgnosticOp(*node_def)) {
       const auto& transposer = transposer_factory->GetTransposer(*node_def);
       if (transposer == nullptr) {
-        return absl::Status(
+        return Status(
             absl::StatusCode::kNotFound,
             absl::StrCat(
                 "Layout agnostic operation should have a transposer. Node: ",
@@ -215,7 +215,7 @@ absl::Status ExpandLayoutAgnosticOp(TransposeContext* context,
       TF_RETURN_IF_ERROR(transposer->TransposeNode(context, node_view));
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 inline bool IsCancellableConstPermTransposeNodePair(
@@ -282,7 +282,7 @@ inline bool IsCancellableNodePair(
          IsCancellableDataFormatNodePair(fanout_transpose, fanin_transpose);
 }
 
-absl::Status EraseCancellableNodes(TransposeContext* context) {
+Status EraseCancellableNodes(TransposeContext* context) {
   const int original_num_nodes = context->num_nodes;
   utils::MutableGraphView* graph_view = context->graph_view.get();
   utils::Mutation* mutation = graph_view->GetMutationBuilder();
@@ -329,7 +329,7 @@ absl::Status EraseCancellableNodes(TransposeContext* context) {
 //
 // From: Transpose[NHWC->NCHW] -> Pad[paddings] -> Transpose[NCHW->NHWC]
 // To:   Pad[Permute(paddings)]
-absl::Status EraseCancellableNodesAroundPad(TransposeContext* context) {
+Status EraseCancellableNodesAroundPad(TransposeContext* context) {
   utils::MutableGraphView* graph_view = context->graph_view.get();
   utils::Mutation* mutation = graph_view->GetMutationBuilder();
 
@@ -437,7 +437,7 @@ absl::Status EraseCancellableNodesAroundPad(TransposeContext* context) {
   return mutation->Apply();
 }
 
-absl::Status EraseOutputShapeAttrs(TransposeContext* context) {
+Status EraseOutputShapeAttrs(TransposeContext* context) {
   utils::MutableGraphView* graph_view = context->graph_view.get();
   utils::Mutation* mutation = graph_view->GetMutationBuilder();
   const int num_nodes = graph_view->NumNodes();
@@ -449,7 +449,7 @@ absl::Status EraseOutputShapeAttrs(TransposeContext* context) {
     mutation->RemoveNodeAttr(node, kAttrOutputShape);
     TF_RETURN_IF_ERROR(mutation->Apply());
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace
@@ -458,9 +458,9 @@ absl::Status EraseOutputShapeAttrs(TransposeContext* context) {
 // When there is only CPU, there will be no conversion by default, unless user
 // chose to convert the graph to a desired format. Currently, NCHW -> NHWC
 // format conversion is available on CPU.
-absl::Status GenericLayoutOptimizer::Optimize(Cluster* cluster,
-                                              const GrapplerItem& item,
-                                              GraphDef* output) {
+Status GenericLayoutOptimizer::Optimize(Cluster* cluster,
+                                        const GrapplerItem& item,
+                                        GraphDef* output) {
   if (cluster == nullptr) {
     LOG(WARNING)
         << "generic layout optimizer was called with cluster == nullptr";
@@ -468,7 +468,7 @@ absl::Status GenericLayoutOptimizer::Optimize(Cluster* cluster,
   }
   if (!enforced_layout_.empty() && enforced_layout_ != "NHWC" &&
       enforced_layout_ != "NCHW") {
-    return absl::Status(
+    return Status(
         absl::StatusCode::kInvalidArgument,
         absl::StrCat("Invalid value for enforced_layout: ", enforced_layout_,
                      ". Supported layouts: 'NHWC', 'NCHW'."));
@@ -503,7 +503,7 @@ absl::Status GenericLayoutOptimizer::Optimize(Cluster* cluster,
       default:
         *output = item.graph;
         VLOG(2) << "No layout conversion will take place for CPU.";
-        return absl::OkStatus();
+        return OkStatus();
     }
   }
 
@@ -520,8 +520,8 @@ absl::Status GenericLayoutOptimizer::Optimize(Cluster* cluster,
   }
   TF_RETURN_IF_ERROR(EraseOutputShapeAttrs(&context));
 
-  *output = std::move(context.graph);
-  return absl::OkStatus();
+  *output = context.graph;
+  return OkStatus();
 }
 
 }  // end namespace grappler

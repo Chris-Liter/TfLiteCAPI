@@ -22,7 +22,7 @@ limitations under the License.
 
 namespace tensorflow {
 
-absl::Status CustomDeviceTensorHandle::Shape(PartialTensorShape* shape) const {
+Status CustomDeviceTensorHandle::Shape(PartialTensorShape* shape) const {
   int num_dims;
   TF_RETURN_IF_ERROR(NumDims(&num_dims));
   std::vector<int64_t> dims(num_dims);
@@ -32,8 +32,7 @@ absl::Status CustomDeviceTensorHandle::Shape(PartialTensorShape* shape) const {
   return PartialTensorShape::MakePartialShape(dims.data(), num_dims, shape);
 }
 
-absl::Status CustomDeviceTensorHandle::NumElements(
-    int64_t* num_elements) const {
+Status CustomDeviceTensorHandle::NumElements(int64_t* num_elements) const {
   *num_elements = 1;
   int num_dims;
   TF_RETURN_IF_ERROR(NumDims(&num_dims));
@@ -48,10 +47,10 @@ absl::Status CustomDeviceTensorHandle::NumElements(
     }
     *num_elements *= dim;
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-const char* CustomDeviceTensorHandle::DeviceType(absl::Status* status) const {
+const char* CustomDeviceTensorHandle::DeviceType(Status* status) const {
   const DeviceNameUtils::ParsedName* parsed = ParsedName(status);
   if (!status->ok()) {
     return "";
@@ -59,7 +58,7 @@ const char* CustomDeviceTensorHandle::DeviceType(absl::Status* status) const {
   return parsed->type.c_str();
 }
 
-int CustomDeviceTensorHandle::DeviceId(absl::Status* status) const {
+int CustomDeviceTensorHandle::DeviceId(Status* status) const {
   const DeviceNameUtils::ParsedName* parsed = ParsedName(status);
   if (!status->ok()) {
     return 0;
@@ -67,8 +66,7 @@ int CustomDeviceTensorHandle::DeviceId(absl::Status* status) const {
   return parsed->id;
 }
 
-AbstractTensorInterface* CustomDeviceTensorHandle::Resolve(
-    absl::Status* status) {
+AbstractTensorInterface* CustomDeviceTensorHandle::Resolve(Status* status) {
   core::RefCountPtr<ImmediateExecutionTensorHandle> copied_off(
       context_->GetCustomDeviceOpHandler().CopyTensorHandleToDevice(
           context_, this,
@@ -82,7 +80,7 @@ AbstractTensorInterface* CustomDeviceTensorHandle::Resolve(
 }
 
 const DeviceNameUtils::ParsedName* CustomDeviceTensorHandle::ParsedName(
-    absl::Status* status) const {
+    Status* status) const {
   if (!parsed_name_.has_value()) {
     DeviceNameUtils::ParsedName parsed_name;
     if (!DeviceNameUtils::ParseFullOrLocalName(device_->name(), &parsed_name)) {

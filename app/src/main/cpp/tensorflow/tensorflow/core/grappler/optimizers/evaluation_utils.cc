@@ -15,9 +15,7 @@ limitations under the License.
 
 #include "tensorflow/core/grappler/optimizers/evaluation_utils.h"
 
-#include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/framework/tensor.pb.h"
-#include "tensorflow/core/framework/types.h"
 #include "tensorflow/core/lib/core/threadpool.h"
 #include "tensorflow/core/platform/cpu_info.h"
 #include "tensorflow/core/platform/denormal.h"
@@ -26,7 +24,7 @@ limitations under the License.
 
 namespace tensorflow {
 namespace grappler {
-using TensorVector = absl::InlinedVector<TensorValue, 4UL>;
+using TensorVector = gtl::InlinedVector<TensorValue, 4>;
 
 // In order to avoid the overhead of creating a large thread pool, we set a
 // small default thread count. This value should be revised should DeviceSimple
@@ -49,21 +47,21 @@ DeviceSimple::~DeviceSimple() {
   delete eigen_worker_threads_.workers;
 }
 
-absl::Status DeviceSimple::MakeTensorFromProto(
-    const TensorProto& tensor_proto, const AllocatorAttributes alloc_attrs,
-    Tensor* tensor) {
+Status DeviceSimple::MakeTensorFromProto(const TensorProto& tensor_proto,
+                                         const AllocatorAttributes alloc_attrs,
+                                         Tensor* tensor) {
   Tensor parsed(tensor_proto.dtype());
   if (!parsed.FromProto(cpu_allocator(), tensor_proto)) {
     return errors::InvalidArgument("Cannot parse tensor from tensor_proto.");
   }
   *tensor = parsed;
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status EvaluateNode(const NodeDef& node, const TensorVector& inputs,
-                          DeviceBase* cpu_device, ResourceMgr* resource_mgr,
-                          TensorVector* output) {
-  absl::Status status;
+Status EvaluateNode(const NodeDef& node, const TensorVector& inputs,
+                    DeviceBase* cpu_device, ResourceMgr* resource_mgr,
+                    TensorVector* output) {
+  Status status;
   std::unique_ptr<DeviceBase> device;
   if (cpu_device == nullptr) {
     device.reset(new DeviceSimple());
@@ -71,7 +69,7 @@ absl::Status EvaluateNode(const NodeDef& node, const TensorVector& inputs,
   }
 
   std::unique_ptr<OpKernel> op_kernel(
-      CreateOpKernel(DEVICE_CPU, cpu_device, cpu_device->GetAllocator({}), node,
+      CreateOpKernel("CPU", cpu_device, cpu_device->GetAllocator({}), node,
                      TF_GRAPH_DEF_VERSION, &status));
   TF_RETURN_IF_ERROR(status);
   OpKernelContext::Params params;
@@ -81,7 +79,7 @@ absl::Status EvaluateNode(const NodeDef& node, const TensorVector& inputs,
   params.op_kernel = op_kernel.get();
   params.resource_manager = resource_mgr;
 
-  absl::InlinedVector<AllocatorAttributes, 4UL> output_attrs;
+  gtl::InlinedVector<AllocatorAttributes, 4> output_attrs;
   const int num_outputs = op_kernel->num_outputs();
   for (int i = 0; i < num_outputs; i++) {
     AllocatorAttributes attr;

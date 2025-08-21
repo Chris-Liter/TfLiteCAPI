@@ -15,7 +15,6 @@
 """Tests for tensorflow.ops.math_ops on WeakTensor."""
 
 import itertools
-
 from absl.testing import parameterized
 import numpy as np
 
@@ -32,7 +31,6 @@ from tensorflow.python.framework import tensor
 from tensorflow.python.framework import test_util
 from tensorflow.python.framework.weak_tensor import WeakTensor
 from tensorflow.python.ops import array_ops
-from tensorflow.python.ops import gen_math_ops
 from tensorflow.python.ops import math_ops
 from tensorflow.python.ops import resource_variable_ops
 from tensorflow.python.ops import tensor_array_ops
@@ -555,84 +553,6 @@ class ScalarMulTest(test_util.TensorFlowTestCase):
       self.assertAllEqual(self.evaluate(x.indices), [0, 2, 5])
 
 
-class ComparisonOps(parameterized.TestCase, test_util.TensorFlowTestCase):
-
-  def test_math_equal(self):
-    self.assertAllEqual(math_ops.equal(1, constant_op.constant(1)), True)
-    self.assertAllEqual(
-        math_ops.equal(np.int_(1), constant_op.constant(1)), True
-    )
-    self.assertAllEqual(
-        math_ops.equal(
-            constant_op.constant(1, dtypes.float32),
-            constant_op.constant(1, dtypes.int32),
-        ),
-        True,
-    )
-
-  def test_math_maximum(self):
-    # Test math_ops.maximum.
-    self.assertAllEqual(math_ops.maximum(1, constant_op.constant(2)), 2)
-    self.assertAllEqual(
-        math_ops.maximum(np.int_(1), constant_op.constant(1.5, dtypes.float32)),
-        np.array(1.5, np.float32),
-    )
-    self.assertAllEqual(
-        math_ops.maximum(
-            constant_op.constant(5, dtypes.float32),
-            constant_op.constant(1, dtypes.int32),
-        ),
-        5,
-    )
-
-    # Test gen_math_ops.maximum.
-    self.assertAllEqual(gen_math_ops.maximum(1, constant_op.constant(2)), 2)
-    self.assertAllEqual(
-        gen_math_ops.maximum(
-            np.int_(1), constant_op.constant(1.5, dtypes.float32)
-        ),
-        np.array(1.5, np.float32),
-    )
-    self.assertAllEqual(
-        gen_math_ops.maximum(
-            constant_op.constant(5, dtypes.float32),
-            constant_op.constant(1, dtypes.int32),
-        ),
-        5,
-    )
-
-  def test_math_minimum(self):
-    # Test math_ops.minimum.
-    self.assertAllEqual(math_ops.minimum(1, constant_op.constant(2)), 1)
-    self.assertAllEqual(
-        math_ops.minimum(np.int_(1), constant_op.constant(1.1, dtypes.float32)),
-        1,
-    )
-    self.assertAllEqual(
-        math_ops.minimum(
-            constant_op.constant(5, dtypes.float32),
-            constant_op.constant(-1, dtypes.int32),
-        ),
-        -1,
-    )
-
-    # Test gen_math_ops.minimum.
-    self.assertAllEqual(gen_math_ops.minimum(1, constant_op.constant(2)), 1)
-    self.assertAllEqual(
-        gen_math_ops.minimum(
-            np.int_(1), constant_op.constant(1.1, dtypes.float32)
-        ),
-        1,
-    )
-    self.assertAllEqual(
-        gen_math_ops.minimum(
-            constant_op.constant(5, dtypes.float32),
-            constant_op.constant(-1, dtypes.int32),
-        ),
-        -1,
-    )
-
-
 allowed_var_op_input_combinations = [
     (dtypes.uint8, 10),
     (dtypes.uint8, "weak_i64"),
@@ -839,36 +759,12 @@ class DivAndModTest(test_util.TensorFlowTestCase):
 
   def intEdgeTestData(self, dtype):
     """Edge-case test data for integer types."""
-    # INT_MIN/-1 will produce signed-integer overflow, so we instead test
-    # (INT_MIN + 1) / -1.
+    # INT_MIN/-1 expected to produce signed-integer overflow,
+    # INT_MIN/INT_MAX expected to work.
     nums = np.array(
-        [
-            [np.iinfo(dtype).min, -1, 1, np.iinfo(dtype).max],
-            [np.iinfo(dtype).min + 1, -1, 1, np.iinfo(dtype).max],
-            [np.iinfo(dtype).min, -1, 1, np.iinfo(dtype).max],
-            [np.iinfo(dtype).min, -1, 1, np.iinfo(dtype).max],
-        ],
-        dtype=dtype,
-    )
-    divs = np.array(
-        [
-            [
-                np.iinfo(dtype).min,
-                np.iinfo(dtype).min,
-                np.iinfo(dtype).min,
-                np.iinfo(dtype).min,
-            ],
-            [-1, -1, -1, -1],
-            [1, 1, 1, 1],
-            [
-                np.iinfo(dtype).max,
-                np.iinfo(dtype).max,
-                np.iinfo(dtype).max,
-                np.iinfo(dtype).max,
-            ],
-        ],
-        dtype=dtype,
-    )
+        [np.iinfo(dtype).min, -1, 1, np.iinfo(dtype).max], dtype=dtype
+    ).reshape([4, 1])
+    divs = nums.reshape([1, 4])
     return nums, divs
 
   @test_util.disable_asan("Expected signed integer overflow.")
@@ -1004,7 +900,7 @@ class DivNoNanTest(test_util.TensorFlowTestCase, parameterized.TestCase):
       (dtypes.complex128),
   )
   def testNonFiniteInNumerator(self, dtype):
-    nums = _get_weak_tensor([np.nan, np.inf, -np.inf], dtype=dtype)
+    nums = _get_weak_tensor([np.nan, np.inf, np.NINF], dtype=dtype)
     zeros = _get_weak_tensor([0, 0, 0], dtype=dtype)
     ones = _get_weak_tensor([1, 1, 1], dtype=dtype)
     with test_util.use_gpu():

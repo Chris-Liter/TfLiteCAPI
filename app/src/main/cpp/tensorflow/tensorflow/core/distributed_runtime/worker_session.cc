@@ -20,7 +20,6 @@ limitations under the License.
 #include <vector>
 
 #include "tensorflow/core/lib/monitoring/gauge.h"
-#include "tsl/platform/stacktrace.h"
 
 namespace tensorflow {
 
@@ -77,14 +76,13 @@ class WorkerFreeListCache : public WorkerCacheInterface {
     }
   }
 
-  absl::Status GetEagerClientCache(
+  Status GetEagerClientCache(
       std::unique_ptr<eager::EagerClientCache>* eager_client_cache) override {
     return wrapped_->GetEagerClientCache(eager_client_cache);
   }
 
-  absl::Status GetCoordinationClientCache(
-      std::unique_ptr<CoordinationClientCache>* coordination_client_cache)
-      override {
+  Status GetCoordinationClientCache(std::unique_ptr<CoordinationClientCache>*
+                                        coordination_client_cache) override {
     return wrapped_->GetCoordinationClientCache(coordination_client_cache);
   }
 
@@ -143,12 +141,12 @@ WorkerSession::WorkerSession(
       borrowed_device_mgr_(nullptr),
       remote_device_mgr_(std::move(remote_device_mgr)) {
   // Starts exporting metrics through a platform-specific monitoring API (if
-  // provided). For builds using "tensorflow/compiler/xla/tsl/platform/default",
-  // this is currently a no-op.
+  // provided). For builds using "tensorflow/tsl/platform/default", this is
+  // currently a no-op.
   worker_session_created->GetCell()->Set(true);
 }
 
-absl::Status WorkerSession::UpdateWorkerCacheAndDevices(
+Status WorkerSession::UpdateWorkerCacheAndDevices(
     std::unique_ptr<WorkerCacheInterface> new_worker_cache,
     std::vector<std::unique_ptr<Device>> added_remote_devices,
     const std::vector<Device*>& removed_remote_devices) {
@@ -160,7 +158,7 @@ absl::Status WorkerSession::UpdateWorkerCacheAndDevices(
   TF_RETURN_IF_ERROR(remote_device_mgr_->RemoveDevices(removed_remote_devices));
   TF_RETURN_IF_ERROR(
       remote_device_mgr_->AddDevices(std::move(added_remote_devices)));
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 /* static */
@@ -192,16 +190,14 @@ WorkerSession::WorkerSession(
       borrowed_device_mgr_(borrowed_device_mgr),
       remote_device_mgr_(std::move(remote_device_mgr)) {
   // Starts exporting metrics through a platform-specific monitoring API (if
-  // provided). For builds using "tensorflow/compiler/xla/tsl/platform/default",
-  // this is currently a no-op.
+  // provided). For builds using "tensorflow/tsl/platform/default", this is
+  // currently a no-op.
   worker_session_created->GetCell()->Set(true);
 }
 
 WorkerSession::~WorkerSession() {
-  VLOG(1) << "WorkerSession::~WorkerSession @@stacktrace\n "
-          << tsl::CurrentStackTrace();
   if (graph_mgr_) {
-    absl::Status s = graph_mgr_->DeregisterAll();
+    Status s = graph_mgr_->DeregisterAll();
     if (!s.ok()) {
       LOG(WARNING) << "Error during worker session deletion: " << s;
     }

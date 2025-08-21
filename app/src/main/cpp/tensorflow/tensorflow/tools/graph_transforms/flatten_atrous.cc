@@ -23,9 +23,9 @@ limitations under the License.
 namespace tensorflow {
 namespace graph_transforms {
 
-absl::Status FlattenAtrousConv(const GraphDef& input_graph_def,
-                               const TransformFuncContext& context,
-                               GraphDef* output_graph_def) {
+Status FlattenAtrousConv(const GraphDef& input_graph_def,
+                         const TransformFuncContext& context,
+                         GraphDef* output_graph_def) {
   GraphDef replaced_graph_def;
   TF_RETURN_IF_ERROR(ReplaceMatchingOpTypes(
       input_graph_def,  // clang-format off
@@ -127,11 +127,11 @@ absl::Status FlattenAtrousConv(const GraphDef& input_graph_def,
         new_nodes->push_back(upsampled_filter_node);
         new_nodes->push_back(flattened_conv_node);
 
-        return absl::OkStatus();
+        return OkStatus();
       },
       {}, &replaced_graph_def));
   *output_graph_def = replaced_graph_def;
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 REGISTER_GRAPH_TRANSFORM("flatten_atrous_conv", FlattenAtrousConv);

@@ -69,7 +69,9 @@ template <class ReduceOpType>
 mlir::LogicalResult MaybeUpcastForReduction(ReduceOpType reduce_op,
                                             bool* changed) {
   const mlir::RankedTensorType& input_type =
-      mlir::dyn_cast<mlir::RankedTensorType>(reduce_op.getInput().getType());
+      reduce_op.getInput()
+          .getType()
+          .template dyn_cast<mlir::RankedTensorType>();
   if (!input_type.getElementType().isBF16()) {
     // Upcast only applies for bfloat16 input.
     return mlir::success();
@@ -94,7 +96,9 @@ mlir::LogicalResult MaybeUpcastForReduction(ReduceOpType reduce_op,
   // The original output tensor type that would have been used by all users of
   // the reduce op.
   const mlir::RankedTensorType& output_type =
-      mlir::dyn_cast<mlir::RankedTensorType>(reduce_op.getOutput().getType());
+      reduce_op.getOutput()
+          .getType()
+          .template dyn_cast<mlir::RankedTensorType>();
 
   mlir::TF::CastOp upcast = builder.create<mlir::TF::CastOp>(
       loc,

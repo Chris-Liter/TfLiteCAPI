@@ -44,11 +44,9 @@ func.func @no_devices() {
 }
 
 // CHECK: "tf.opA"
-// device = "CORE_0"
-// CHECK: _parallel_execution_ids = "r0:0"
+// CHECK: _parallel_execution_ids = "r0:0", device = "CORE_0"
 // CHECK: "tf.opA"
-// device = "CORE_0"
-// CHECK: _parallel_execution_ids = "r0:1"
+// CHECK: _parallel_execution_ids = "r0:1", device = "CORE_0"
 
 
 // Tests devices are not remapped if device is not in replicate devices.
@@ -71,11 +69,9 @@ func.func @no_override_device() {
 }
 
 // CHECK: "tf.opA"
-// device = "/TPU:2"
-// CHECK: _parallel_execution_ids = "r0:0"
+// CHECK: _parallel_execution_ids = "r0:0", device = "/TPU:2"
 // CHECK: "tf.opA"
-// device = "/TPU:2"
-// CHECK: _parallel_execution_ids = "r0:1"
+// CHECK: _parallel_execution_ids = "r0:1", device = "/TPU:2"
 
 
 // Tests devices are remapped if device is in replicate devices.
@@ -98,11 +94,9 @@ func.func @remap_device() {
 }
 
 // CHECK: "tf.opA"
-// device = "/CPU:0"
-// CHECK: _parallel_execution_ids = "r0:0"
+// CHECK: _parallel_execution_ids = "r0:0", device = "/CPU:0"
 // CHECK: "tf.opA"
-// device = "/GPU:1"
-// CHECK: _parallel_execution_ids = "r0:1"
+// CHECK: _parallel_execution_ids = "r0:1", device = "/GPU:1"
 
 
 // Tests replicate with control dependency output has each expanded replica
@@ -274,10 +268,10 @@ func.func @device_ordinals() {
   func.return
 }
 
-// CHECK: tf_executor.island wraps "tf.Const"() <{value = dense<1> : tensor<i64>}> {_parallel_execution_ids = "r0:0"}
-// CHECK: tf_executor.island wraps "tf.Const"() <{value = dense<3> : tensor<i64>}> {_parallel_execution_ids = "r0:0"}
-// CHECK: tf_executor.island wraps "tf.Const"() <{value = dense<2> : tensor<i64>}> {_parallel_execution_ids = "r0:1"}
-// CHECK: tf_executor.island wraps "tf.Const"() <{value = dense<4> : tensor<i64>}> {_parallel_execution_ids = "r0:1"}
+// CHECK: tf_executor.island wraps "tf.Const"() {_parallel_execution_ids = "r0:0", value = dense<1> : tensor<i64>}
+// CHECK: tf_executor.island wraps "tf.Const"() {_parallel_execution_ids = "r0:0", value = dense<3> : tensor<i64>}
+// CHECK: tf_executor.island wraps "tf.Const"() {_parallel_execution_ids = "r0:1", value = dense<2> : tensor<i64>}
+// CHECK: tf_executor.island wraps "tf.Const"() {_parallel_execution_ids = "r0:1", value = dense<4> : tensor<i64>}
 
 // -----
 // Tests parallel_execute nested inside replicate
@@ -311,20 +305,20 @@ func.func @nested_parallel_execute(%arg0: tensor<i1>, %arg1: tensor<i1>) {
 // CHECK:      tf_executor.island
 // CHECK:      tf_device.parallel_execute
 // CHECK:      tf_device.launch
-// CHECK:      <{device = "/TPU:1"}>
 // CHECK:      tf.OpA
+// CHECK:      {device = "/TPU:1"}
 // CHECK:      tf_device.launch
-// CHECK:      <{device = "/TPU:2"}>
 // CHECK:      tf.OpB
+// CHECK:      {device = "/TPU:2"}
 // CHECK:      _parallel_execution_ids = "r0:0"
 // CHECK:      tf_executor.island
 // CHECK:      tf_device.parallel_execute
 // CHECK:      tf_device.launch
-// CHECK:      <{device = "/TPU:1"}>
 // CHECK:      tf.OpA
+// CHECK:      {device = "/TPU:1"}
 // CHECK:      tf_device.launch
-// CHECK:      <{device = "/TPU:2"}>
 // CHECK:      tf.OpB
+// CHECK:      {device = "/TPU:2"}
 // CHECK:      _parallel_execution_ids = "r0:1"
 // CHECK:      tf_executor.fetch
 
@@ -349,11 +343,9 @@ func.func @merge_of_parallel_group_attr() {
 }
 
 // CHECK: "tf.opA"
-// device = "/CPU:0"
-// CHECK: _parallel_execution_ids = "r4:5,r0:0"
+// CHECK: _parallel_execution_ids = "r4:5,r0:0", device = "/CPU:0"
 // CHECK: "tf.opA"
-// device = "/GPU:1"
-// CHECK: _parallel_execution_ids = "r4:5,r0:1"
+// CHECK: _parallel_execution_ids = "r4:5,r0:1", device = "/GPU:1"
 
 // -----
 
@@ -426,14 +418,10 @@ func.func @no_override_device_new() {
   func.return
 }
 // CHECK: "tf.opA"
-// device = "/TPU:0"
-// CHECK: _parallel_execution_ids = "r0:0"
+// CHECK: _parallel_execution_ids = "r0:0", device = "/TPU:0"
 // CHECK: "tf.opA"
-// device = "/TPU:0"
-// CHECK: _parallel_execution_ids = "r0:1"
+// CHECK: _parallel_execution_ids = "r0:1", device = "/TPU:0"
 // CHECK: "tf.opA"
-// device = "/TPU:1"
-// CHECK: _parallel_execution_ids = "r1:0"
+// CHECK: _parallel_execution_ids = "r1:0", device = "/TPU:1"
 // CHECK: "tf.opA"
-// device = "/TPU:1"
-// CHECK: _parallel_execution_ids = "r1:1"
+// CHECK: _parallel_execution_ids = "r1:1", device = "/TPU:1"

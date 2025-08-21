@@ -33,7 +33,7 @@ void GPUDeviceContext::CopyCPUTensorToDevice(const Tensor* cpu_tensor,
 }
 
 void GPUDeviceContext::CopyDeviceTensorToCPU(const Tensor* device_tensor,
-                                             absl::string_view tensor_name,
+                                             StringPiece tensor_name,
                                              Device* device, Tensor* cpu_tensor,
                                              StatusCallback done) {
   GPUUtil::CopyGPUTensorToCPU(device, this, device_tensor, cpu_tensor, done);
@@ -47,12 +47,12 @@ void GPUDeviceContext::CopyTensorInSameDevice(const Tensor* input_tensor,
                                   done);
 }
 
-absl::Status GPUDeviceContext::ThenExecute(Device* device, se::Stream* stream,
-                                           std::function<void()> func) {
+Status GPUDeviceContext::ThenExecute(Device* device, se::Stream* stream,
+                                     std::function<void()> func) {
   const DeviceBase::AcceleratorDeviceInfo* gpu_info =
       device->tensorflow_accelerator_device_info();
   gpu_info->event_mgr->ThenExecute(stream, func);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace tensorflow

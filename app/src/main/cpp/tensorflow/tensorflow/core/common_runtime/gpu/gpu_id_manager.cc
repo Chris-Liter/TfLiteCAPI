@@ -20,13 +20,13 @@ limitations under the License.
 
 namespace tensorflow {
 
-absl::Status GpuIdManager::InsertTfPlatformDeviceIdPair(
+Status GpuIdManager::InsertTfPlatformDeviceIdPair(
     TfDeviceId tf_device_id, PlatformDeviceId platform_device_id) {
   return DeviceIdManager::InsertTfPlatformDeviceIdPair(DEVICE_GPU, tf_device_id,
                                                        platform_device_id);
 }
 
-absl::Status GpuIdManager::TfToPlatformDeviceId(
+Status GpuIdManager::TfToPlatformDeviceId(
     TfDeviceId tf_device_id, PlatformDeviceId* platform_device_id) {
   return DeviceIdManager::TfToPlatformDeviceId(DEVICE_GPU, tf_device_id,
                                                platform_device_id);

@@ -17,22 +17,20 @@ limitations under the License.
 #include <unordered_map>
 #include <vector>
 
-#include "absl/status/status.h"
-#include "tensorflow/core/platform/logging.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/lite/toco/graph_transformations/graph_transformations.h"
 #include "tensorflow/lite/toco/model.h"
 #include "tensorflow/lite/toco/tooling_util.h"
+#include "tensorflow/core/platform/logging.h"
 
 namespace toco {
 
-absl::Status IdentifyL2Pool::Run(Model* model, std::size_t op_index,
-                                 bool* modified) {
+::tensorflow::Status IdentifyL2Pool::Run(Model* model, std::size_t op_index,
+                                         bool* modified) {
   *modified = false;
   const auto sqrt_it = model->operators.begin() + op_index;
   const auto* sqrt_op = sqrt_it->get();
   if (sqrt_op->type != OperatorType::kSqrt) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   CHECK_EQ(sqrt_op->inputs.size(), 1);
@@ -46,7 +44,7 @@ absl::Status IdentifyL2Pool::Run(Model* model, std::size_t op_index,
     AddMessageF(
         "Giving up trying to identify L2Pool subgraph: "
         "expected AveragePool op, but Sqrt op has no preceding op");
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   if (prev_to_sqrt_op->type != OperatorType::kAveragePool) {
@@ -54,7 +52,7 @@ absl::Status IdentifyL2Pool::Run(Model* model, std::size_t op_index,
         "Giving up trying to identify L2Pool subgraph: "
         "expected AveragePool op, got %s",
         LogName(*prev_to_sqrt_op));
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   avpool_op = static_cast<const AveragePoolOperator*>(prev_to_sqrt_op);
@@ -67,7 +65,7 @@ absl::Status IdentifyL2Pool::Run(Model* model, std::size_t op_index,
         "Giving up trying to identify L2Pool subgraph: "
         "expected Square op, got %s",
         LogName(*square_op));
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   // Create and emplace L2Pool node.
@@ -93,7 +91,7 @@ absl::Status IdentifyL2Pool::Run(Model* model, std::size_t op_index,
   DeleteOpAndArrays(model, sqrt_op);
 
   *modified = true;
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 }  // namespace toco

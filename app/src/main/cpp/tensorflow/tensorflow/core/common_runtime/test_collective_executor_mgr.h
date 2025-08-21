@@ -60,11 +60,11 @@ class TestParamResolver : public ParamResolverInterface {
     done(errors::Internal("Unimplemented"));
   }
 
-  absl::Status LookupGroup(int32_t group_key, CollGroupParams* group) override {
+  Status LookupGroup(int32_t group_key, CollGroupParams* group) override {
     return errors::Internal("Unimplemented");
   }
 
-  void StartAbort(const absl::Status& s) override {}
+  void StartAbort(const Status& s) override {}
 };
 
 class TestCollectiveExecutorMgr : public CollectiveExecutorMgrInterface {
@@ -102,14 +102,6 @@ class TestCollectiveExecutorMgr : public CollectiveExecutorMgrInterface {
       iter->second->Unref();
       table_.erase(iter);
     }
-  }
-
-  void CleanupAll() override {
-    mutex_lock l(mu_);
-    for (auto& iter : table_) {
-      iter.second->Unref();
-    }
-    table_.clear();
   }
 
   ParamResolverInterface* GetParamResolver() const override {

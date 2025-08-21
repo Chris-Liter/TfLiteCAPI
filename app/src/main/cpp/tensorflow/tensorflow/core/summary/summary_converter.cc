@@ -14,15 +14,6 @@ limitations under the License.
 ==============================================================================*/
 #include "tensorflow/core/summary/summary_converter.h"
 
-#include <algorithm>
-#include <cmath>
-#include <cstddef>
-#include <cstdint>
-#include <cstdlib>
-#include <functional>
-#include <limits>
-
-#include "absl/status/status.h"
 #include "tensorflow/core/framework/register_types.h"
 #include "tensorflow/core/framework/summary.pb.h"
 #include "tensorflow/core/framework/types.h"
@@ -36,7 +27,7 @@ namespace tensorflow {
 namespace {
 
 template <typename T>
-absl::Status TensorValueAt(Tensor t, int64_t i, T* out) {
+Status TensorValueAt(Tensor t, int64_t i, T* out) {
 #define CASE(I)                            \
   case DataTypeToEnum<I>::value:           \
     *out = static_cast<T>(t.flat<I>()(i)); \
@@ -67,7 +58,7 @@ absl::Status TensorValueAt(Tensor t, int64_t i, T* out) {
                                      " not supported.");
   }
   // clang-format on
-  return absl::OkStatus();
+  return OkStatus();
 #undef CASE
 #undef COMPLEX_CASE
 }
@@ -80,10 +71,9 @@ typedef Eigen::Tensor<uint8, 2, Eigen::RowMajor> Uint8Image;
 // differently in the float and uint8 cases: the float case needs a temporary
 // buffer which can be shared across calls to ith_image, but the uint8 case
 // does not.
-absl::Status AddImages(const string& tag, int max_images, int batch_size, int w,
-                       int h, int depth,
-                       const std::function<Uint8Image(int)>& ith_image,
-                       Summary* s) {
+Status AddImages(const string& tag, int max_images, int batch_size, int w,
+                 int h, int depth,
+                 const std::function<Uint8Image(int)>& ith_image, Summary* s) {
   const int N = std::min<int>(max_images, batch_size);
   for (int i = 0; i < N; ++i) {
     Summary::Value* v = s->add_value();
@@ -112,7 +102,7 @@ absl::Status AddImages(const string& tag, int max_images, int batch_size, int w,
       return errors::Internal("PNG encoding failed");
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 template <class T>
@@ -187,10 +177,10 @@ void NormalizeFloatImage(int hw, int depth,
 }
 
 template <class T>
-absl::Status NormalizeAndAddImages(const Tensor& tensor, int max_images, int h,
-                                   int w, int hw, int depth, int batch_size,
-                                   const string& base_tag,
-                                   Tensor bad_color_tensor, Summary* s) {
+Status NormalizeAndAddImages(const Tensor& tensor, int max_images, int h, int w,
+                             int hw, int depth, int batch_size,
+                             const string& base_tag, Tensor bad_color_tensor,
+                             Summary* s) {
   // For float and half images, nans and infs are replaced with bad_color.
   if (bad_color_tensor.dim_size(0) < depth) {
     return errors::InvalidArgument(
@@ -214,18 +204,18 @@ absl::Status NormalizeAndAddImages(const Tensor& tensor, int max_images, int h,
 
 }  // namespace
 
-absl::Status AddTensorAsScalarToSummary(const Tensor& t, const string& tag,
-                                        Summary* s) {
+Status AddTensorAsScalarToSummary(const Tensor& t, const string& tag,
+                                  Summary* s) {
   Summary::Value* v = s->add_value();
   v->set_tag(tag);
   float value;
   TF_RETURN_IF_ERROR(TensorValueAt<float>(t, 0, &value));
   v->set_simple_value(value);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status AddTensorAsHistogramToSummary(const Tensor& t, const string& tag,
-                                           Summary* s) {
+Status AddTensorAsHistogramToSummary(const Tensor& t, const string& tag,
+                                     Summary* s) {
   Summary::Value* v = s->add_value();
   v->set_tag(tag);
   histogram::Histogram histo;
@@ -241,12 +231,12 @@ absl::Status AddTensorAsHistogramToSummary(const Tensor& t, const string& tag,
     histo.Add(double_val);
   }
   histo.EncodeToProto(v->mutable_histo(), false /* Drop zero buckets */);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status AddTensorAsImageToSummary(const Tensor& tensor, const string& tag,
-                                       int max_images, const Tensor& bad_color,
-                                       Summary* s) {
+Status AddTensorAsImageToSummary(const Tensor& tensor, const string& tag,
+                                 int max_images, const Tensor& bad_color,
+                                 Summary* s) {
   if (!(tensor.dims() == 4 &&
         (tensor.dim_size(3) == 1 || tensor.dim_size(3) == 3 ||
          tensor.dim_size(3) == 4))) {
@@ -290,12 +280,12 @@ absl::Status AddTensorAsImageToSummary(const Tensor& tensor, const string& tag,
         "Got ",
         DataTypeString(tensor.dtype()));
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status AddTensorAsAudioToSummary(const Tensor& tensor, const string& tag,
-                                       int max_outputs, float sample_rate,
-                                       Summary* s) {
+Status AddTensorAsAudioToSummary(const Tensor& tensor, const string& tag,
+                                 int max_outputs, float sample_rate,
+                                 Summary* s) {
   if (sample_rate <= 0.0f) {
     return errors::InvalidArgument("sample_rate must be > 0");
   }
@@ -331,7 +321,7 @@ absl::Status AddTensorAsAudioToSummary(const Tensor& tensor, const string& tag,
         channels_by_frames.data(), sample_rate_truncated, num_channels,
         length_frames, sa->mutable_encoded_audio_string()));
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace tensorflow

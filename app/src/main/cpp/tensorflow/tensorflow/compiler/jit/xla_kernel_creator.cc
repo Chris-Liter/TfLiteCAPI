@@ -39,7 +39,7 @@ limitations under the License.
 #include "tensorflow/core/framework/types.h"
 #include "tensorflow/core/lib/core/errors.h"
 #include "tensorflow/core/lib/core/status.h"
-#include "tsl/platform/errors.h"
+#include "tensorflow/tsl/platform/errors.h"
 
 namespace tensorflow {
 
@@ -50,9 +50,9 @@ bool XlaKernelCreator::CanCreateKernel(
          !XlaOpRegistry::IsCompilationDevice(flr.device()->device_type());
 }
 
-static absl::Status CreateXlaKernel(FunctionLibraryRuntime* flr,
-                                    const NodeDef& node_def,
-                                    std::unique_ptr<OpKernel>* kernel) {
+static Status CreateXlaKernel(FunctionLibraryRuntime* flr,
+                              const NodeDef& node_def,
+                              std::unique_ptr<OpKernel>* kernel) {
   if (!CanCreateXlaKernel(node_def)) {
     return errors::Internal("Invalid node: ", node_def.ShortDebugString());
   }
@@ -77,10 +77,9 @@ static absl::Status CreateXlaKernel(FunctionLibraryRuntime* flr,
 
   // Create the kernel.
   Device* dev = flr->device();
-  absl::Status s;
+  Status s;
   auto props = std::make_shared<NodeProperties>(
-      &fbody->record->fdef().signature(), node_def, fbody->arg_types,
-      fbody->ret_types);
+      &fbody->fdef.signature(), node_def, fbody->arg_types, fbody->ret_types);
   OpKernelConstruction construction(DeviceType(dev->device_type()), dev,
                                     dev->GetAllocator(AllocatorAttributes()),
                                     flr, dev->resource_manager(), props,
@@ -93,7 +92,7 @@ static absl::Status CreateXlaKernel(FunctionLibraryRuntime* flr,
   return s;
 }
 
-absl::Status XlaKernelCreator::CreateKernel(
+Status XlaKernelCreator::CreateKernel(
     FunctionLibraryRuntime* flr,
     const std::shared_ptr<const NodeProperties>& props,
     std::unique_ptr<OpKernel>* kernel) const {

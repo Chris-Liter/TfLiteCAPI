@@ -92,11 +92,11 @@ class NodeBuilder {
   NodeBuilder& Input(NodeOut src);
 
   // For inputs that take a list of tensors.
-  NodeBuilder& Input(absl::Span<const NodeOut> src_list);
+  NodeBuilder& Input(gtl::ArraySlice<NodeOut> src_list);
 
   // Require that this node run after src_node(s).
   NodeBuilder& ControlInput(Node* src_node);
-  NodeBuilder& ControlInputs(absl::Span<Node* const> src_nodes);
+  NodeBuilder& ControlInputs(gtl::ArraySlice<Node*> src_nodes);
 
   // Sets the "requested device spec" in the NodeDef (not the
   // "assigned device" in the Node).
@@ -123,12 +123,11 @@ class NodeBuilder {
   // *created_node will be set to the new node (or nullptr on error).
   // If `consume` is true, the builder state will be moved into `node_def`,
   // and the builder will be left in an undefined state.
-  absl::Status Finalize(Graph* graph, Node** created_node,
-                        bool consume = false);
+  Status Finalize(Graph* graph, Node** created_node, bool consume = false);
 
   // Same as `Finalize` above, but using StatusOr to return value. Preferred
   // form.
-  absl::StatusOr<Node*> Finalize(Graph* graph, bool consume = false);
+  StatusOr<Node*> Finalize(Graph* graph, bool consume = false);
 
   // Accessors for the values set in the constructor.
   const string& node_name() const { return def_builder_.node_name(); }

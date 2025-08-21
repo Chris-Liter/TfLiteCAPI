@@ -24,29 +24,25 @@ limitations under the License.
 #include <variant>
 #include <vector>
 
-#include "absl/log/check.h"
-#include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/numbers.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/string_view.h"
-#include "riegeli/base/maker.h"  // from @riegeli
-#include "riegeli/base/types.h"  // from @riegeli
 #include "riegeli/bytes/fd_reader.h"  // from @riegeli
 #include "riegeli/records/record_reader.h"  // from @riegeli
 #include "tensorflow/core/platform/env.h"
 #include "tensorflow/core/platform/file_system_helper.h"
 #include "tensorflow/tools/proto_splitter/chunk.pb.h"
-#include "tsl/platform/errors.h"
-#include "tsl/platform/protobuf.h"
-#include "tsl/platform/statusor.h"
+#include "tensorflow/tsl/platform/errors.h"
+#include "tensorflow/tsl/platform/protobuf.h"
+#include "tensorflow/tsl/platform/statusor.h"
 
 namespace tensorflow {
 namespace tools::proto_splitter {
 
-using ::tensorflow::proto_splitter::ChunkedField;
+using ::proto_splitter::ChunkedField;
 
 namespace {
 absl::StatusOr<int> FieldInt(const FieldType& field) {
@@ -211,34 +207,33 @@ absl::Status AddMapKey(const tsl::protobuf::FieldDescriptor& key_field,
 }
 
 absl::StatusOr<FieldType> GetMapKeyFromFieldIndex(
-    ::tensorflow::proto_splitter::FieldIndex field_index) {
+    ::proto_splitter::FieldIndex field_index) {
   if (!field_index.has_map_key())
     return absl::FailedPreconditionError(
         "Field index doesn't contain a map key.");
 
   switch (field_index.map_key().type_case()) {
-    case ::tensorflow::proto_splitter::FieldIndex::MapKey::TypeCase::kBoolean:
+    case ::proto_splitter::FieldIndex::MapKey::TypeCase::kBoolean:
       return field_index.map_key().boolean();
       break;
-    case ::tensorflow::proto_splitter::FieldIndex::MapKey::TypeCase::kS:
+    case ::proto_splitter::FieldIndex::MapKey::TypeCase::kS:
       return field_index.map_key().s();
       break;
-    case ::tensorflow::proto_splitter::FieldIndex::MapKey::TypeCase::kI32:
+    case ::proto_splitter::FieldIndex::MapKey::TypeCase::kI32:
       return field_index.map_key().i32();
       break;
-    case ::tensorflow::proto_splitter::FieldIndex::MapKey::TypeCase::kI64:
+    case ::proto_splitter::FieldIndex::MapKey::TypeCase::kI64:
       // Cast to int type, which may be lossy. We'll deal with it when it
       // becomes an issue.
       return static_cast<int>(field_index.map_key().i64());
       break;
-    case ::tensorflow::proto_splitter::FieldIndex::MapKey::TypeCase::kUi32:
+    case ::proto_splitter::FieldIndex::MapKey::TypeCase::kUi32:
       return static_cast<int>(field_index.map_key().ui32());
       break;
-    case ::tensorflow::proto_splitter::FieldIndex::MapKey::TypeCase::kUi64:
+    case ::proto_splitter::FieldIndex::MapKey::TypeCase::kUi64:
       return static_cast<int>(field_index.map_key().ui64());
       break;
-    case ::tensorflow::proto_splitter::FieldIndex::MapKey::TypeCase::
-        TYPE_NOT_SET:
+    case ::proto_splitter::FieldIndex::MapKey::TypeCase::TYPE_NOT_SET:
     default:
       return absl::FailedPreconditionError(
           absl::StrCat("Unknown map key type: ", field_index.DebugString()));
@@ -248,12 +243,12 @@ absl::StatusOr<FieldType> GetMapKeyFromFieldIndex(
 }  // namespace
 
 absl::StatusOr<const std::vector<Field>> GetFieldTypes(
-    const tsl::protobuf::RepeatedPtrField<
-        ::tensorflow::proto_splitter::FieldIndex>& field_tags) {
+    const tsl::protobuf::RepeatedPtrField<::proto_splitter::FieldIndex>&
+        field_tags) {
   std::vector<Field> fields;
   for (int fti = 0; fti < field_tags.size();) {
     switch (field_tags[fti].kind_case()) {
-      case ::tensorflow::proto_splitter::FieldIndex::KindCase::kField:
+      case ::proto_splitter::FieldIndex::KindCase::kField:
         fields.push_back(
             Field(static_cast<int>(field_tags[fti].field()), std::nullopt));
         fti++;
@@ -268,15 +263,15 @@ absl::StatusOr<const std::vector<Field>> GetFieldTypes(
           fields.back().second = map_key;
         }
         break;
-      case ::tensorflow::proto_splitter::FieldIndex::KindCase::kIndex:
+      case ::proto_splitter::FieldIndex::KindCase::kIndex:
         return absl::FailedPreconditionError(
             "Index doesn't belong to any field.");
         break;
-      case ::tensorflow::proto_splitter::FieldIndex::KindCase::kMapKey:
+      case ::proto_splitter::FieldIndex::KindCase::kMapKey:
         return absl::FailedPreconditionError(
             "Map key doesn't belong to any field.");
         break;
-      case ::tensorflow::proto_splitter::FieldIndex::KindCase::KIND_NOT_SET:
+      case ::proto_splitter::FieldIndex::KindCase::KIND_NOT_SET:
       default:
         return absl::FailedPreconditionError(absl::StrCat(
             "Unknown field kind: ", field_tags[fti].DebugString()));
@@ -740,16 +735,19 @@ std::string HumanReadableDuration(int64_t microseconds) {
 
 absl::StatusOr<riegeli::RecordReader<riegeli::FdReader<>>> GetRiegeliReader(
     absl::string_view cpb_file) {
-  riegeli::RecordReader reader(riegeli::Maker<riegeli::FdReader>(cpb_file));
-  if (!reader.ok()) {
+  riegeli::RecordReader<riegeli::FdReader<>> reader =
+      riegeli::RecordReader<riegeli::FdReader<>>(
+          riegeli::FdReader(cpb_file));
+  if (!reader.status().ok()) {
+    reader.Close();
     return reader.status();
   }
   return reader;
 }
 
-absl::StatusOr<::tensorflow::proto_splitter::ChunkMetadata> GetChunkMetadata(
-    riegeli::RecordReaderBase& reader) {
-  ::tensorflow::proto_splitter::ChunkMetadata chunk_metadata;
+absl::StatusOr<::proto_splitter::ChunkMetadata> GetChunkMetadata(
+    riegeli::RecordReader<riegeli::FdReader<>>& reader) {
+  ::proto_splitter::ChunkMetadata chunk_metadata;
   bool read_metadata_success = reader.Seek(reader.Size().value()) &&
                                reader.SeekBack() &&
                                reader.ReadRecord(chunk_metadata);
@@ -758,8 +756,8 @@ absl::StatusOr<::tensorflow::proto_splitter::ChunkMetadata> GetChunkMetadata(
 }
 
 absl::StatusOr<std::string> ReadChunk(
-    riegeli::RecordReaderBase& reader,
-    const ::tensorflow::proto_splitter::ChunkInfo& chunk_info) {
+    riegeli::RecordReader<riegeli::FdReader<>>& reader,
+    const ::proto_splitter::ChunkInfo& chunk_info) {
   riegeli::Position pos = chunk_info.offset();
   std::string chunk(chunk_info.size(), '\0');
   if (reader.Seek(pos) && reader.ReadRecord(chunk)) return chunk;

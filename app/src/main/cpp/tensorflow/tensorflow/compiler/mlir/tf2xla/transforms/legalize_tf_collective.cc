@@ -16,12 +16,10 @@ limitations under the License.
 // This file implements logic for lowering TensorFlow dialect's collective
 // ops (TF/XLA) to the HLO dialect.
 
-#include <cstdint>
-#include <memory>
 #include <numeric>
+#include <string>
 #include <utility>
 
-#include "absl/strings/string_view.h"
 #include "llvm/ADT/StringRef.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"  // from @llvm-project
 #include "mlir/Dialect/SparseTensor/IR/SparseTensor.h"  // from @llvm-project
@@ -38,10 +36,10 @@ limitations under the License.
 #include "stablehlo/dialect/ChloOps.h"  // from @stablehlo
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_ops.h"
 #include "tensorflow/compiler/mlir/tf2xla/transforms/utils.h"
-#include "xla/mlir_hlo/mhlo/IR/hlo_ops.h"
-#include "xla/mlir_hlo/utils/convert_op_folder.h"
-#include "xla/mlir_hlo/utils/hlo_utils.h"
-#include "xla/xla_data.pb.h"
+#include "tensorflow/compiler/xla/mlir_hlo/mhlo/IR/hlo_ops.h"
+#include "tensorflow/compiler/xla/mlir_hlo/utils/convert_op_folder.h"
+#include "tensorflow/compiler/xla/mlir_hlo/utils/hlo_utils.h"
+#include "tensorflow/compiler/xla/xla_data.pb.h"
 
 namespace mlir {
 namespace mhlo {
@@ -115,8 +113,9 @@ LogicalResult ConvertReplicaGroups(OpBuilder& builder,
   if (!matchPattern(group_assignment_value, m_Constant(&group_assignment))) {
     return op->emitOpError() << "expects constant group_assignment";
   }
-  replica_groups = mlir::cast<DenseIntElementsAttr>(
-      hlo::convertElementsAttr(group_assignment, builder.getIntegerType(64)));
+  replica_groups =
+      hlo::convertElementsAttr(group_assignment, builder.getIntegerType(64))
+          .cast<DenseIntElementsAttr>();
   if (replica_groups.getType().getRank() != 2) {
     return op->emitOpError() << "group_assignment should have rank 2, got "
                              << replica_groups.getType().getRank();
@@ -177,7 +176,7 @@ LogicalResult ConvertAllReduce(OpBuilder& builder, int64_t channel_id,
     }
     auto divisor =
         GetScalarConstOfType(element_type, loc, replica_group_size, &builder);
-    auto broadcast_dims = builder.getDenseI64ArrayAttr({});
+    auto broadcast_dims = GetI64ElementsAttr({}, &builder);
     result = builder.create<chlo::BroadcastDivOp>(
         loc, all_reduce.getResult(0), divisor.getResult(), broadcast_dims);
   } else if (final_op != "Id") {
@@ -358,33 +357,6 @@ class ConvertCollectiveReduceV2
   }
 };
 
-class ConvertCollectiveAssignGroupV2
-    : public CollectiveRewritePattern<TF::CollectiveAssignGroupV2Op> {
- public:
-  using CollectiveRewritePattern::CollectiveRewritePattern;
-
-  LogicalResult matchAndRewrite(TF::CollectiveAssignGroupV2Op assign_group,
-                                PatternRewriter& rewriter) const override {
-    DenseIntElementsAttr replica_groups;
-    if (failed(ConvertReplicaGroups(rewriter, assign_group.getGroupAssignment(),
-                                    replica_groups, assign_group))) {
-      return failure();
-    }
-    IntegerAttr group_size = rewriter.getI32IntegerAttr(replica_groups.size());
-    IntegerAttr group_key = rewriter.getI32IntegerAttr(0);
-
-    auto const_group_size = rewriter.create<TF::ConstOp>(
-        assign_group->getLoc(), assign_group.getResult(0).getType(),
-        group_size);
-    auto const_group_key = rewriter.create<TF::ConstOp>(
-        assign_group->getLoc(), assign_group.getResult(1).getType(), group_key);
-    rewriter.replaceAllUsesWith(assign_group.getResult(0), const_group_size);
-    rewriter.replaceAllUsesWith(assign_group.getResult(1), const_group_key);
-    rewriter.eraseOp(assign_group);
-    return success();
-  }
-};
-
 void LegalizeTFCollective::runOnOperation() {
   // FIXME(b/226139061): Figure out a way to share the channel_id with
   // send/recv Ops. For now, start with a different range to avoid collision.
@@ -393,7 +365,6 @@ void LegalizeTFCollective::runOnOperation() {
   MLIRContext* context = module->getContext();
 
   RewritePatternSet patterns(context);
-  patterns.insert<ConvertCollectiveAssignGroupV2>(context, &channel_id);
   patterns.insert<ConvertCollectiveReduceV2>(context, &channel_id);
   patterns.insert<ConvertXlaAllReduce>(context, &channel_id);
 

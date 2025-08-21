@@ -49,7 +49,7 @@ struct WritableFileRawStream : public llvm::raw_ostream {
   void write_impl(const char* ptr, size_t size) override {
     // If an error is encountered, null out the file.
     if (file) {
-      absl::Status s = file->Append(StringPiece(ptr, size));
+      Status s = file->Append(StringPiece(ptr, size));
       if (!s.ok()) {
         LOG(WARNING) << "Write failed: " << s;
         file = nullptr;
@@ -62,17 +62,16 @@ struct WritableFileRawStream : public llvm::raw_ostream {
 };
 }  // namespace
 
-absl::Status DumpTextualIRToFile(const MlirDumpConfig& config,
-                                 const Graph& graph,
-                                 const FunctionLibraryDefinition* flib_def,
-                                 WritableFile* file) {
+Status DumpTextualIRToFile(const MlirDumpConfig& config, const Graph& graph,
+                           const FunctionLibraryDefinition* flib_def,
+                           WritableFile* file) {
   WritableFileRawStream os(std::move(file));
   mlir::MLIRContext context;
   mlir::OwningOpRef<mlir::ModuleOp> module;
   if (flib_def) {
     flib_def = &graph.flib_def();
   }
-  auto convert = [&]() -> absl::Status {
+  auto convert = [&]() -> Status {
     mlir::StatusScopedDiagnosticHandler status_handler(&context);
     // TODO(jpienaar): Both the graph debug info and import config should be
     // specifiable.
@@ -94,13 +93,13 @@ absl::Status DumpTextualIRToFile(const MlirDumpConfig& config,
 
   TF_RETURN_IF_ERROR(convert());
   module->print(os, config.op_printing_flags);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 void UseMlirForGraphDump(const MlirDumpConfig& config) {
   SetGraphDumper(
       [config](const Graph& graph, const FunctionLibraryDefinition* flib_def,
-               WritableFile* file) -> absl::Status {
+               WritableFile* file) -> Status {
         return DumpTextualIRToFile(config, graph, flib_def, file);
       },
       /*suffix=*/".mlir");

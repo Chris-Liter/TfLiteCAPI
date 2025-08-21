@@ -18,17 +18,16 @@ limitations under the License.
 #include <unordered_map>
 #include <vector>
 
-#include "absl/status/status.h"
-#include "tensorflow/core/platform/logging.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/lite/toco/graph_transformations/graph_transformations.h"
 #include "tensorflow/lite/toco/model.h"
 #include "tensorflow/lite/toco/tooling_util.h"
+#include "tensorflow/core/platform/logging.h"
 
 namespace toco {
 
-absl::Status IdentifyL2Normalization::Run(Model* model, std::size_t op_index,
-                                          bool* modified) {
+::tensorflow::Status IdentifyL2Normalization::Run(Model* model,
+                                                  std::size_t op_index,
+                                                  bool* modified) {
   *modified = false;
   const auto div_it = model->operators.begin() + op_index;
   const auto* div_or_mul_op = div_it->get();
@@ -38,7 +37,7 @@ absl::Status IdentifyL2Normalization::Run(Model* model, std::size_t op_index,
   } else if (div_or_mul_op->type == OperatorType::kMul) {
     expected_op_type_producing_div_or_mul_input = OperatorType::kRsqrt;
   } else {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   CHECK_EQ(div_or_mul_op->inputs.size(), 2);
   Operator* op_producing_div_or_mul_input[2] = {
@@ -48,14 +47,14 @@ absl::Status IdentifyL2Normalization::Run(Model* model, std::size_t op_index,
   if (!op_producing_div_or_mul_input[1] ||
       op_producing_div_or_mul_input[1]->type !=
           expected_op_type_producing_div_or_mul_input) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   Operator* sqrt_or_rsqrt_op = op_producing_div_or_mul_input[1];
   CHECK_EQ(sqrt_or_rsqrt_op->inputs.size(), 1);
   Operator* op_producing_sqrt_or_rsqrt_input =
       GetOpWithOutput(*model, sqrt_or_rsqrt_op->inputs[0]);
   if (!op_producing_sqrt_or_rsqrt_input) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   // There may be an Add or a Maximum here, adding or clamping to a "small"
@@ -95,7 +94,7 @@ absl::Status IdentifyL2Normalization::Run(Model* model, std::size_t op_index,
           " because the operator producing the input to the square root, %s,"
           ", does not match the expected pattern",
           LogName(*op_producing_sqrt_or_rsqrt_input));
-      return absl::OkStatus();
+      return ::tensorflow::OkStatus();
     }
   }
 
@@ -106,7 +105,7 @@ absl::Status IdentifyL2Normalization::Run(Model* model, std::size_t op_index,
         "Giving up trying to identify L2Normalization subgraph: "
         "expected Sum op, got %s",
         LogName(*sum_op));
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   Operator* square_op = GetOpWithOutput(*model, sum_op->inputs[0]);
@@ -115,7 +114,7 @@ absl::Status IdentifyL2Normalization::Run(Model* model, std::size_t op_index,
         "Giving up trying to identify L2Normalization subgraph: "
         "expected Square op, got %s",
         LogName(*square_op));
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   CHECK_EQ(square_op->inputs.size(), 1);
@@ -125,7 +124,7 @@ absl::Status IdentifyL2Normalization::Run(Model* model, std::size_t op_index,
         "Giving up trying to identify L2Normalization subgraph: %s does not "
         "take the same input as the Mul/Div node",
         LogName(*square_op));
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   // Create and emplace the new L2Normalization
@@ -145,7 +144,7 @@ absl::Status IdentifyL2Normalization::Run(Model* model, std::size_t op_index,
   DeleteOpAndArrays(model, sqrt_or_rsqrt_op);
   DeleteOpAndArrays(model, div_or_mul_op);
   *modified = true;
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 }  // namespace toco

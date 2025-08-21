@@ -22,7 +22,6 @@ limitations under the License.
 
 namespace tflite {
 using Interpreter = ::tflite::impl::Interpreter;
-using SignatureRunner = ::tflite::impl::SignatureRunner;
 }  // namespace tflite
 
 #endif  // TENSORFLOW_LITE_INTERPRETER_H_

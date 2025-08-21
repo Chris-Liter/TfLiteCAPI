@@ -20,14 +20,12 @@ limitations under the License.
 
 #include <memory>
 
-#include <gtest/gtest.h>
-#include "absl/types/span.h"
 #include "tensorflow/c/tf_datatype.h"
 #include "tensorflow/cc/experimental/base/public/runtime.h"
 #include "tensorflow/cc/experimental/base/public/runtime_builder.h"
-#include "tensorflow/cc/experimental/base/public/status.h"
 #include "tensorflow/cc/experimental/base/public/tensor.h"
 #include "tensorflow/cc/experimental/base/tests/tensor_types_test_util.h"
+#include "tensorflow/core/lib/gtl/array_slice.h"
 #include "tensorflow/core/platform/test.h"
 
 namespace tensorflow {
@@ -118,7 +116,7 @@ TYPED_TEST(Construct1DTensorHandleTest,
 
   EXPECT_EQ(tensor.dims(), 1);
   EXPECT_EQ(tensor.dtype(), dtype);
-  absl::Span<const typename TypeParam::type> tensor_view(
+  tensorflow::gtl::ArraySlice<typename TypeParam::type> tensor_view(
       reinterpret_cast<typename TypeParam::type*>(tensor.data()), value.size());
   EXPECT_EQ(tensor_view[0], 42);
   EXPECT_EQ(tensor_view[1], 100);
@@ -168,7 +166,7 @@ TYPED_TEST(Construct2DTensorHandleTest,
 
   EXPECT_EQ(tensor.dims(), 2);
   EXPECT_EQ(tensor.dtype(), dtype);
-  absl::Span<const typename TypeParam::type> tensor_view(
+  tensorflow::gtl::ArraySlice<typename TypeParam::type> tensor_view(
       reinterpret_cast<typename TypeParam::type*>(tensor.data()), value.size());
   EXPECT_EQ(tensor_view[0], 42);
   EXPECT_EQ(tensor_view[1], 100);

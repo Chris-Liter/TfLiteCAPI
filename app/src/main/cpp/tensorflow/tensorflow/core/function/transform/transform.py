@@ -317,7 +317,6 @@ def transform_atomic_function(
       fndef.signature.name,
       func_graph,
       fndef.attr,
-      overwrite=True
   )
   # pylint: enable=protected-access
 

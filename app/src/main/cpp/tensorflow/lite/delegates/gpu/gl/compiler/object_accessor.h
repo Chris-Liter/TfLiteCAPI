@@ -20,7 +20,6 @@ limitations under the License.
 #include <string>
 #include <vector>
 
-#include "absl/strings/string_view.h"
 #include "tensorflow/lite/delegates/gpu/gl/compiler/preprocessor.h"
 #include "tensorflow/lite/delegates/gpu/gl/compiler/variable_accessor.h"
 #include "tensorflow/lite/delegates/gpu/gl/object.h"

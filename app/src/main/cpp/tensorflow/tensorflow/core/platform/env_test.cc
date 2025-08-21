@@ -19,7 +19,6 @@ limitations under the License.
 
 #include <memory>
 
-#include "xla/tsl/lib/core/status_test_util.h"
 #include "tensorflow/core/framework/graph.pb.h"
 #include "tensorflow/core/framework/node_def.pb.h"
 #include "tensorflow/core/platform/cord.h"
@@ -30,6 +29,7 @@ limitations under the License.
 #include "tensorflow/core/platform/strcat.h"
 #include "tensorflow/core/platform/stringpiece.h"
 #include "tensorflow/core/platform/test.h"
+#include "tensorflow/tsl/lib/core/status_test_util.h"
 
 namespace tsl {
 
@@ -53,7 +53,7 @@ tensorflow::GraphDef CreateTestProto() {
   return g;
 }
 
-static void ExpectHasSubstr(absl::string_view s, absl::string_view expected) {
+static void ExpectHasSubstr(StringPiece s, StringPiece expected) {
   EXPECT_TRUE(absl::StrContains(s, expected))
       << "'" << s << "' does not contain '" << expected << "'";
 }
@@ -82,7 +82,7 @@ TEST_F(DefaultEnvTest, IncompleteReadOutOfRange) {
   TF_EXPECT_OK(env_->NewRandomAccessFile(filename, &f));
 
   // Reading past EOF should give an OUT_OF_RANGE error
-  absl::string_view result;
+  StringPiece result;
   char scratch[3];
   EXPECT_EQ(error::OUT_OF_RANGE, f->Read(0, 3, &result, scratch).code());
   EXPECT_EQ(input, result);
@@ -212,7 +212,7 @@ TEST_F(DefaultEnvTest, DeleteRecursivelyFail) {
   const string parent_dir = io::JoinPath(BaseDir(), "root_dir");
 
   int64_t undeleted_files, undeleted_dirs;
-  absl::Status s =
+  Status s =
       env_->DeleteRecursively(parent_dir, &undeleted_files, &undeleted_dirs);
   EXPECT_EQ(error::Code::NOT_FOUND, s.code());
   EXPECT_EQ(0, undeleted_files);
@@ -299,15 +299,15 @@ class TmpDirFileSystem : public NullFileSystem {
  public:
   TF_USE_FILESYSTEM_METHODS_WITH_NO_TRANSACTION_SUPPORT;
 
-  absl::Status FileExists(const string& dir, TransactionToken* token) override {
-    absl::string_view scheme, host, path;
+  Status FileExists(const string& dir, TransactionToken* token) override {
+    StringPiece scheme, host, path;
     io::ParseURI(dir, &scheme, &host, &path);
     if (path.empty()) return errors::NotFound(dir, " not found");
     // The special "flushed" file exists only if the filesystem's caches have
     // been flushed.
     if (path == "/flushed") {
       if (flushed_) {
-        return absl::OkStatus();
+        return OkStatus();
       } else {
         return errors::NotFound("FlushCaches() not called yet");
       }
@@ -315,8 +315,8 @@ class TmpDirFileSystem : public NullFileSystem {
     return Env::Default()->FileExists(io::JoinPath(BaseDir(), path));
   }
 
-  absl::Status CreateDir(const string& dir, TransactionToken* token) override {
-    absl::string_view scheme, host, path;
+  Status CreateDir(const string& dir, TransactionToken* token) override {
+    StringPiece scheme, host, path;
     io::ParseURI(dir, &scheme, &host, &path);
     if (scheme != "tmpdirfs") {
       return errors::FailedPrecondition("scheme must be tmpdirfs");
@@ -324,8 +324,7 @@ class TmpDirFileSystem : public NullFileSystem {
     if (host != "testhost") {
       return errors::FailedPrecondition("host must be testhost");
     }
-    absl::Status status =
-        Env::Default()->CreateDir(io::JoinPath(BaseDir(), path));
+    Status status = Env::Default()->CreateDir(io::JoinPath(BaseDir(), path));
     if (status.ok()) {
       // Record that we have created this directory so `IsDirectory` works.
       created_directories_.push_back(std::string(path));
@@ -333,12 +332,11 @@ class TmpDirFileSystem : public NullFileSystem {
     return status;
   }
 
-  absl::Status IsDirectory(const string& dir,
-                           TransactionToken* token) override {
-    absl::string_view scheme, host, path;
+  Status IsDirectory(const string& dir, TransactionToken* token) override {
+    StringPiece scheme, host, path;
     io::ParseURI(dir, &scheme, &host, &path);
     for (const auto& existing_dir : created_directories_)
-      if (existing_dir == path) return absl::OkStatus();
+      if (existing_dir == path) return OkStatus();
     return errors::NotFound(dir, " not found");
   }
 
@@ -405,7 +403,7 @@ TEST_F(DefaultEnvTest, LocalTempFilename) {
   // Read from the temporary file and check content.
   std::unique_ptr<RandomAccessFile> file_to_read;
   TF_CHECK_OK(env->NewRandomAccessFile(filename, &file_to_read));
-  absl::string_view content;
+  StringPiece content;
   char scratch[1024];
   CHECK_EQ(
       error::OUT_OF_RANGE,
@@ -427,7 +425,7 @@ TEST_F(DefaultEnvTest, CreateUniqueFileName) {
   EXPECT_TRUE(env->CreateUniqueFileName(&filename, suffix));
 
   EXPECT_TRUE(absl::StartsWith(filename, prefix));
-  EXPECT_TRUE(absl::EndsWith(filename, suffix));
+  EXPECT_TRUE(str_util::EndsWith(filename, suffix));
 }
 
 TEST_F(DefaultEnvTest, GetProcessId) {

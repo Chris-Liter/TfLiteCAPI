@@ -19,7 +19,7 @@ limitations under the License.
 #define EIGEN_USE_GPU
 #endif
 
-#include "unsupported/Eigen/CXX11/Tensor"  // from @eigen_archive
+#include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 #include "tensorflow/core/framework/op.h"
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/framework/tensor_shape.h"
@@ -49,8 +49,8 @@ class CSRSparseMatrixAddFunctor {
                                      const T beta)
       : ctx_(ctx), alpha_(alpha), beta_(beta) {}
 
-  absl::Status operator()(const CSRSparseMatrix& a, const CSRSparseMatrix& b,
-                          CSRSparseMatrix* c) {
+  Status operator()(const CSRSparseMatrix& a, const CSRSparseMatrix& b,
+                    CSRSparseMatrix* c) {
     TensorShape a_tensor_shape;
     TensorShape b_tensor_shape;
     TF_RETURN_IF_ERROR(TensorShapeUtils::MakeShape(
@@ -175,7 +175,7 @@ class CSRSparseMatrixAddFunctor {
       TF_RETURN_IF_ERROR(csr_geam.Compute(a_comp, b_comp, &c_comp, workspace));
     }
 
-    return absl::OkStatus();
+    return OkStatus();
   }
 
  private:
@@ -381,8 +381,7 @@ struct CSRSparseMatrixAdd<GPUDevice, T>
   const T beta_;
   bool initialized_;
 
-  CSRSparseMatrixAdd(const CSRSparseMatrixAdd&) = delete;
-  void operator=(const CSRSparseMatrixAdd&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(CSRSparseMatrixAdd);
 };
 
 }  // namespace functor

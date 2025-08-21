@@ -15,17 +15,6 @@ limitations under the License.
 
 #include "tensorflow/examples/speech_commands/recognize_commands.h"
 
-#include <algorithm>
-#include <cstdint>
-#include <limits>
-#include <utility>
-#include <vector>
-
-#include "absl/status/status.h"
-#include "tensorflow/core/framework/tensor.h"
-#include "tensorflow/core/platform/errors.h"
-#include "tensorflow/core/platform/types.h"
-
 namespace tensorflow {
 
 RecognizeCommands::RecognizeCommands(const std::vector<string>& labels,
@@ -43,9 +32,11 @@ RecognizeCommands::RecognizeCommands(const std::vector<string>& labels,
   previous_top_label_time_ = std::numeric_limits<int64_t>::min();
 }
 
-absl::Status RecognizeCommands::ProcessLatestResults(
-    const Tensor& latest_results, const int64_t current_time_ms,
-    string* found_command, float* score, bool* is_new_command) {
+Status RecognizeCommands::ProcessLatestResults(const Tensor& latest_results,
+                                               const int64_t current_time_ms,
+                                               string* found_command,
+                                               float* score,
+                                               bool* is_new_command) {
   if (latest_results.NumElements() != labels_count_) {
     return errors::InvalidArgument(
         "The results for recognition should contain ", labels_count_,
@@ -80,7 +71,7 @@ absl::Status RecognizeCommands::ProcessLatestResults(
     *found_command = previous_top_label_;
     *score = 0.0f;
     *is_new_command = false;
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   // Calculate the average score across all the results in the window.
@@ -131,7 +122,7 @@ absl::Status RecognizeCommands::ProcessLatestResults(
   *found_command = current_top_label;
   *score = current_top_score;
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace tensorflow

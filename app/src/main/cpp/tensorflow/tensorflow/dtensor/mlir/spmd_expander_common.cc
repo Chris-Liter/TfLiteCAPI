@@ -23,37 +23,22 @@ limitations under the License.
 #include <utility>
 #include <vector>
 
-#include "absl/container/flat_hash_map.h"
-#include "absl/log/log.h"
-#include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
-#include "llvm/ADT/STLExtras.h"
-#include "llvm/ADT/SmallVector.h"
-#include "llvm/Support/Casting.h"
 #include "llvm/Support/FormatVariadic.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"  // from @llvm-project
-#include "mlir/IR/Attributes.h"  // from @llvm-project
 #include "mlir/IR/Builders.h"  // from @llvm-project
 #include "mlir/IR/BuiltinAttributes.h"  // from @llvm-project
 #include "mlir/IR/BuiltinOps.h"  // from @llvm-project
-#include "mlir/IR/BuiltinTypeInterfaces.h"  // from @llvm-project
 #include "mlir/IR/BuiltinTypes.h"  // from @llvm-project
 #include "mlir/IR/Location.h"  // from @llvm-project
 #include "mlir/IR/MLIRContext.h"  // from @llvm-project
-#include "mlir/IR/Matchers.h"  // from @llvm-project
-#include "mlir/IR/OpDefinition.h"  // from @llvm-project
 #include "mlir/IR/Operation.h"  // from @llvm-project
 #include "mlir/IR/OperationSupport.h"  // from @llvm-project
 #include "mlir/IR/Value.h"  // from @llvm-project
-#include "mlir/Support/LLVM.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_device.h"
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_ops.h"
-#include "tensorflow/compiler/mlir/tensorflow/ir/tf_types.h"
 #include "tensorflow/core/platform/errors.h"
-#include "tensorflow/core/platform/status.h"
-#include "tensorflow/core/platform/types.h"
 #include "tensorflow/dtensor/cc/constants.h"
-#include "tensorflow/dtensor/cc/dstatus.h"
 #include "tensorflow/dtensor/cc/tensor_layout.h"
 #include "tensorflow/dtensor/mlir/device_utils.h"
 #include "tensorflow/dtensor/mlir/ir/tf_dtensor.h"
@@ -114,10 +99,9 @@ StatusOr<mlir::TensorType> GlobalTypeFromLocalType(
   return new_output_type;
 }
 
-absl::Status CreateSplitOp(const int num_split, const int split_dimension,
-                           const mlir::Location location, mlir::Value src_input,
-                           mlir::OpBuilder* builder,
-                           mlir::TF::SplitOp* split_op) {
+Status CreateSplitOp(const int num_split, const int split_dimension,
+                     const mlir::Location location, mlir::Value src_input,
+                     mlir::OpBuilder* builder, mlir::TF::SplitOp* split_op) {
   // Creates a const op to hold split dimension value.
   auto split_dim_type =
       mlir::RankedTensorType::get({}, builder->getIntegerType(32));
@@ -129,7 +113,7 @@ absl::Status CreateSplitOp(const int num_split, const int split_dimension,
   // Correctly set output shapes of split op output if input shape is statically
   // known.
   mlir::Type output_type;
-  auto input_type = mlir::cast<mlir::TensorType>(src_input.getType());
+  auto input_type = src_input.getType().cast<mlir::TensorType>();
 
   if (input_type.hasRank()) {
     if (input_type.getShape()[split_dimension] == mlir::ShapedType::kDynamic) {
@@ -157,7 +141,7 @@ absl::Status CreateSplitOp(const int num_split, const int split_dimension,
   llvm::SmallVector<mlir::Type, 4> output_types(num_split, output_type);
   *split_op = builder->create<mlir::TF::SplitOp>(
       location, output_types, split_dimension_op.getOutput(), src_input);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Given layouts + shapes, determines if the two are broadcasting compatible.
@@ -694,11 +678,11 @@ mlir::StringAttr GetUniqueControlflowFnName(const std::string& prefix,
       absl::StrCat(prefix, "_dtensor_function_", unique_id));
 }
 
-absl::Status SetBuilderInsertionAfterValue(mlir::Value value,
-                                           mlir::OpBuilder& builder) {
-  if (mlir::isa<mlir::OpResult>(value)) {
+Status SetBuilderInsertionAfterValue(mlir::Value value,
+                                     mlir::OpBuilder& builder) {
+  if (value.isa<mlir::OpResult>()) {
     builder.setInsertionPointAfterValue(value);
-    return absl::OkStatus();
+    return OkStatus();
   }
   mlir::tf_device::ClusterOp cluster;
   for (mlir::Operation* op : value.getUsers()) {
@@ -712,11 +696,10 @@ absl::Status SetBuilderInsertionAfterValue(mlir::Value value,
   if (!cluster) return errors::Internal("value not used in any cluster");
 
   builder.setInsertionPointToStart(cluster.SingleBlock::getBody());
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status PrintTensor(mlir::Value value,
-                         const std::string& format_string = "%s") {
+Status PrintTensor(mlir::Value value, const std::string& format_string = "%s") {
   mlir::OpBuilder builder(value.getContext());
   builder.setInsertionPointAfterValue(value);
   TF_ASSIGN_OR_RETURN(mlir::Value device_id, DeviceId(value));
@@ -730,13 +713,13 @@ absl::Status PrintTensor(mlir::Value value,
   builder.create<mlir::TF::PrintV2Op>(value.getLoc(), format.getOutput(),
                                       /*output_stream=*/"log(info)",
                                       /*end=*/"\n");
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status ExtractConstStringVectorFromValue(
+Status ExtractConstStringVectorFromValue(
     mlir::Value value, llvm::SmallVectorImpl<std::string>& out_vector) {
   value = GetForwardedDTensorLayoutInput(value);
-  if (mlir::isa<mlir::BlockArgument>(value))
+  if (value.isa<mlir::BlockArgument>())
     return errors::Internal("Unable get constant value from block argument.");
   mlir::DenseStringElementsAttr attr;
   if (!matchPattern(value, m_Constant(&attr))) {
@@ -748,12 +731,12 @@ absl::Status ExtractConstStringVectorFromValue(
   for (const auto& str : attr.getRawStringData()) {
     out_vector.push_back(str.str());
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 StatusOr<std::string> ExtractConstScalarStringFromValue(mlir::Value value) {
   value = GetForwardedDTensorLayoutInput(value);
-  if (mlir::isa<mlir::BlockArgument>(value))
+  if (value.isa<mlir::BlockArgument>())
     return errors::Internal("Unable get constant value from block argument.");
   mlir::DenseStringElementsAttr attr;
   if (!matchPattern(value, m_Constant(&attr))) {

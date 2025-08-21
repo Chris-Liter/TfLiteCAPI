@@ -22,7 +22,6 @@ limitations under the License.
 #include "mlir/IR/BuiltinTypes.h"  // from @llvm-project
 #include "mlir/IR/Types.h"  // from @llvm-project
 #include "mlir/Support/DebugStringHelper.h"  // from @llvm-project
-#include "mlir/Support/LLVM.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_types.h"
 #include "tensorflow/compiler/mlir/tensorflow/utils/dynamic_shape_utils.h"
 #include "tensorflow/core/framework/types.h"
@@ -35,65 +34,59 @@ using mlir::Builder;
 using mlir::ShapedType;
 using mlir::Type;
 
-absl::Status ConvertDataType(DataType dtype, Builder builder, Type* type) {
+Status ConvertDataType(DataType dtype, Builder builder, Type* type) {
   switch (dtype) {
     case DT_HALF:
       *type = builder.getF16Type();
-      return absl::OkStatus();
+      return OkStatus();
     case DT_FLOAT:
       *type = builder.getF32Type();
-      return absl::OkStatus();
+      return OkStatus();
     case DT_DOUBLE:
       *type = builder.getF64Type();
-      return absl::OkStatus();
+      return OkStatus();
     case DT_BOOL:
       *type = builder.getIntegerType(1);
-      return absl::OkStatus();
+      return OkStatus();
     case DT_INT8:
       *type = builder.getIntegerType(8);
-      return absl::OkStatus();
+      return OkStatus();
     case DT_INT16:
       *type = builder.getIntegerType(16);
-      return absl::OkStatus();
+      return OkStatus();
     case DT_INT32:
       *type = builder.getIntegerType(32);
-      return absl::OkStatus();
+      return OkStatus();
     case DT_INT64:
       *type = builder.getIntegerType(64);
-      return absl::OkStatus();
+      return OkStatus();
     case DT_UINT8:
       *type = builder.getIntegerType(8, /*isSigned=*/false);
-      return absl::OkStatus();
+      return OkStatus();
     case DT_UINT16:
       *type = builder.getIntegerType(16, /*isSigned=*/false);
-      return absl::OkStatus();
+      return OkStatus();
     case DT_UINT32:
       *type = builder.getIntegerType(32, /*isSigned=*/false);
-      return absl::OkStatus();
+      return OkStatus();
     case DT_UINT64:
       *type = builder.getIntegerType(64, /*isSigned=*/false);
-      return absl::OkStatus();
+      return OkStatus();
     case DT_BFLOAT16:
       *type = builder.getBF16Type();
-      return absl::OkStatus();
+      return OkStatus();
     case DT_COMPLEX64:
       *type = mlir::ComplexType::get(builder.getF32Type());
-      return absl::OkStatus();
+      return OkStatus();
     case DT_COMPLEX128:
       *type = mlir::ComplexType::get(builder.getF64Type());
-      return absl::OkStatus();
+      return OkStatus();
     case tensorflow::DT_FLOAT8_E4M3FN:
       *type = builder.getFloat8E4M3FNType();
-      return absl::OkStatus();
+      return ::tensorflow::OkStatus();
     case tensorflow::DT_FLOAT8_E5M2:
       *type = builder.getFloat8E5M2Type();
-      return absl::OkStatus();
-    case DT_INT4:
-      *type = builder.getIntegerType(4, /*isSigned=*/true);
-      return absl::OkStatus();
-    case DT_UINT4:
-      *type = builder.getIntegerType(4, /*isSigned=*/false);
-      return absl::OkStatus();
+      return ::tensorflow::OkStatus();
 #define HANDLE_TF_TYPE(tftype, enumerant, name)             \
   case DT_##enumerant:                                      \
     *type = builder.getType<mlir::tf_type::tftype##Type>(); \
@@ -106,57 +99,54 @@ absl::Status ConvertDataType(DataType dtype, Builder builder, Type* type) {
   }
 }
 
-absl::Status ConvertScalarTypeToDataType(Type type, DataType* dtype) {
+Status ConvertScalarTypeToDataType(Type type, DataType* dtype) {
   if (type.isF16()) {
     *dtype = DT_HALF;
-    return absl::OkStatus();
+    return OkStatus();
   } else if (type.isF32()) {
     *dtype = DT_FLOAT;
-    return absl::OkStatus();
+    return OkStatus();
   } else if (type.isF64()) {
     *dtype = DT_DOUBLE;
-    return absl::OkStatus();
+    return OkStatus();
   } else if (type.isBF16()) {
     *dtype = DT_BFLOAT16;
-    return absl::OkStatus();
+    return OkStatus();
   } else if (type.isFloat8E4M3FN()) {
     *dtype = DT_FLOAT8_E4M3FN;
-    return absl::OkStatus();
+    return OkStatus();
   } else if (type.isFloat8E5M2()) {
     *dtype = DT_FLOAT8_E5M2;
-    return absl::OkStatus();
-  } else if (auto itype = mlir::dyn_cast<mlir::IntegerType>(type)) {
+    return OkStatus();
+  } else if (auto itype = type.dyn_cast<mlir::IntegerType>()) {
     switch (itype.getWidth()) {
       case 1:
         *dtype = DT_BOOL;
-        return absl::OkStatus();
-      case 4:
-        *dtype = itype.isUnsigned() ? DT_UINT4 : DT_INT4;
-        return absl::OkStatus();
+        return OkStatus();
       case 8:
         *dtype = itype.isUnsigned() ? DT_UINT8 : DT_INT8;
-        return absl::OkStatus();
+        return OkStatus();
       case 16:
         *dtype = itype.isUnsigned() ? DT_UINT16 : DT_INT16;
-        return absl::OkStatus();
+        return OkStatus();
       case 32:
         *dtype = itype.isUnsigned() ? DT_UINT32 : DT_INT32;
-        return absl::OkStatus();
+        return OkStatus();
       case 64:
         *dtype = itype.isUnsigned() ? DT_UINT64 : DT_INT64;
-        return absl::OkStatus();
+        return OkStatus();
       default:
         return errors::Unimplemented(
             absl::StrCat("Converting ", debugString(type), " to DataType"));
     }
-  } else if (auto complex_type = mlir::dyn_cast<mlir::ComplexType>(type)) {
+  } else if (auto complex_type = type.dyn_cast<mlir::ComplexType>()) {
     auto etype = complex_type.getElementType();
     if (etype.isF32()) {
       *dtype = DT_COMPLEX64;
-      return absl::OkStatus();
+      return OkStatus();
     } else if (etype.isF64()) {
       *dtype = DT_COMPLEX128;
-      return absl::OkStatus();
+      return OkStatus();
     }
     return errors::Unimplemented(
         absl::StrCat("Converting ", debugString(type), " to DataType"));
@@ -174,14 +164,14 @@ absl::Status ConvertScalarTypeToDataType(Type type, DataType* dtype) {
       absl::StrCat("Converting ", debugString(type), " to DataType"));
 }
 
-absl::Status ConvertToDataType(Type type, DataType* dtype) {
-  if (auto stype = mlir::dyn_cast<ShapedType>(type)) {
+Status ConvertToDataType(Type type, DataType* dtype) {
+  if (auto stype = type.dyn_cast<ShapedType>()) {
     TF_RETURN_IF_ERROR(
         ConvertScalarTypeToDataType(stype.getElementType(), dtype));
   } else {
     TF_RETURN_IF_ERROR(ConvertScalarTypeToDataType(type, dtype));
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 void ConvertToMlirShape(const TensorShape& input_shape,
@@ -192,8 +182,8 @@ void ConvertToMlirShape(const TensorShape& input_shape,
   }
 }
 
-absl::Status ConvertToMlirShape(const TensorShapeProto& input_shape,
-                                llvm::SmallVectorImpl<int64_t>* shape) {
+Status ConvertToMlirShape(const TensorShapeProto& input_shape,
+                          llvm::SmallVectorImpl<int64_t>* shape) {
   shape->reserve(input_shape.dim_size());
   auto& dims = input_shape.dim();
   for (auto& d : dims) {
@@ -203,11 +193,12 @@ absl::Status ConvertToMlirShape(const TensorShapeProto& input_shape,
     shape->push_back(d.size() == kTFDynamicSize ? ShapedType::kDynamic
                                                 : d.size());
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::StatusOr<mlir::Type> ConvertToMlirTensorType(
-    const TensorShapeProto& shape, DataType dtype, mlir::Builder* builder) {
+StatusOr<mlir::Type> ConvertToMlirTensorType(const TensorShapeProto& shape,
+                                             DataType dtype,
+                                             mlir::Builder* builder) {
   mlir::Type element_type;
   TF_RETURN_IF_ERROR(ConvertDataType(dtype, *builder, &element_type));
   if (shape.unknown_rank()) {

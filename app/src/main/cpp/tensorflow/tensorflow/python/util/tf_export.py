@@ -45,12 +45,13 @@ from typing import Any, NamedTuple, Optional, Protocol, TypeVar
 from tensorflow.python.util import tf_decorator
 from tensorflow.python.util import tf_inspect
 
+ESTIMATOR_API_NAME = 'estimator'
 KERAS_API_NAME = 'keras'
 TENSORFLOW_API_NAME = 'tensorflow'
 
 # List of subpackage names used by TensorFlow components. Have to check that
 # TensorFlow core repo does not export any symbols under these names.
-SUBPACKAGE_NAMESPACES = []
+SUBPACKAGE_NAMESPACES = [ESTIMATOR_API_NAME]
 
 
 class _Attributes(NamedTuple):
@@ -61,12 +62,18 @@ class _Attributes(NamedTuple):
 # Attribute values must be unique to each API.
 API_ATTRS = {
     TENSORFLOW_API_NAME: _Attributes('_tf_api_names', '_tf_api_constants'),
+    ESTIMATOR_API_NAME: _Attributes(
+        '_estimator_api_names', '_estimator_api_constants'
+    ),
     KERAS_API_NAME: _Attributes('_keras_api_names', '_keras_api_constants'),
 }
 
 API_ATTRS_V1 = {
     TENSORFLOW_API_NAME: _Attributes(
         '_tf_api_names_v1', '_tf_api_constants_v1'
+    ),
+    ESTIMATOR_API_NAME: _Attributes(
+        '_estimator_api_names_v1', '_estimator_api_constants_v1'
     ),
     KERAS_API_NAME: _Attributes(
         '_keras_api_names_v1', '_keras_api_constants_v1'
@@ -106,7 +113,7 @@ def get_canonical_name_for_symbol(
 
   Args:
     symbol: API function or class.
-    api_name: API name. Currently, only `tensorflow`.
+    api_name: API name (tensorflow or estimator).
     add_prefix_to_v1_names: Specifies whether a name available only in V1 should
       be prefixed with compat.v1.
 
@@ -170,16 +177,20 @@ def get_v1_names(symbol: Any) -> Sequence[str]:
     symbol: symbol to get API names for.
 
   Returns:
-    List of all API names for this symbol.
+    List of all API names for this symbol including TensorFlow and
+    Estimator names.
   """
   names_v1 = []
   tensorflow_api_attr_v1 = API_ATTRS_V1[TENSORFLOW_API_NAME].names
+  estimator_api_attr_v1 = API_ATTRS_V1[ESTIMATOR_API_NAME].names
   keras_api_attr_v1 = API_ATTRS_V1[KERAS_API_NAME].names
 
   if not hasattr(symbol, '__dict__'):
     return names_v1
   if tensorflow_api_attr_v1 in symbol.__dict__:
     names_v1.extend(getattr(symbol, tensorflow_api_attr_v1))
+  if estimator_api_attr_v1 in symbol.__dict__:
+    names_v1.extend(getattr(symbol, estimator_api_attr_v1))
   if keras_api_attr_v1 in symbol.__dict__:
     names_v1.extend(getattr(symbol, keras_api_attr_v1))
   return names_v1
@@ -192,16 +203,20 @@ def get_v2_names(symbol: Any) -> Sequence[str]:
     symbol: symbol to get API names for.
 
   Returns:
-    List of all API names for this symbol.
+    List of all API names for this symbol including TensorFlow and
+    Estimator names.
   """
   names_v2 = []
   tensorflow_api_attr = API_ATTRS[TENSORFLOW_API_NAME].names
+  estimator_api_attr = API_ATTRS[ESTIMATOR_API_NAME].names
   keras_api_attr = API_ATTRS[KERAS_API_NAME].names
 
   if not hasattr(symbol, '__dict__'):
     return names_v2
   if tensorflow_api_attr in symbol.__dict__:
     names_v2.extend(getattr(symbol, tensorflow_api_attr))
+  if estimator_api_attr in symbol.__dict__:
+    names_v2.extend(getattr(symbol, estimator_api_attr))
   if keras_api_attr in symbol.__dict__:
     names_v2.extend(getattr(symbol, keras_api_attr))
   return names_v2
@@ -214,13 +229,17 @@ def get_v1_constants(module: Any) -> Sequence[str]:
     module: TensorFlow module.
 
   Returns:
-    List of all API constants under the given module.
+    List of all API constants under the given module including TensorFlow and
+    Estimator constants.
   """
   constants_v1 = []
   tensorflow_constants_attr_v1 = API_ATTRS_V1[TENSORFLOW_API_NAME].constants
+  estimator_constants_attr_v1 = API_ATTRS_V1[ESTIMATOR_API_NAME].constants
 
   if hasattr(module, tensorflow_constants_attr_v1):
     constants_v1.extend(getattr(module, tensorflow_constants_attr_v1))
+  if hasattr(module, estimator_constants_attr_v1):
+    constants_v1.extend(getattr(module, estimator_constants_attr_v1))
   return constants_v1
 
 
@@ -231,13 +250,17 @@ def get_v2_constants(module: Any) -> Sequence[str]:
     module: TensorFlow module.
 
   Returns:
-    List of all API constants under the given module.
+    List of all API constants under the given module including TensorFlow and
+    Estimator constants.
   """
   constants_v2 = []
   tensorflow_constants_attr = API_ATTRS[TENSORFLOW_API_NAME].constants
+  estimator_constants_attr = API_ATTRS[ESTIMATOR_API_NAME].constants
 
   if hasattr(module, tensorflow_constants_attr):
     constants_v2.extend(getattr(module, tensorflow_constants_attr))
+  if hasattr(module, estimator_constants_attr):
+    constants_v2.extend(getattr(module, estimator_constants_attr))
   return constants_v2
 
 
@@ -262,7 +285,8 @@ class api_export(object):  # pylint: disable=invalid-name
 
     Args:
       *args: API names in dot delimited format.
-      api_name: API you want to generate Currently, only `tensorflow`.
+      api_name: Name of the API you want to generate (e.g. `tensorflow` or
+        `estimator`). Default is `tensorflow`.
       v1: Names for the TensorFlow V1 API. If not set, we will use V2 API names
         both for TensorFlow V1 and V2 APIs.
       allow_multiple_exports: Deprecated.
@@ -276,11 +300,11 @@ class api_export(object):  # pylint: disable=invalid-name
   def _validate_symbol_names(self) -> None:
     """Validate you are exporting symbols under an allowed package.
 
-    We need to ensure things exported by tf_export, etc.
+    We need to ensure things exported by tf_export, estimator_export, etc.
     export symbols under disjoint top-level package names.
 
     For TensorFlow, we check that it does not export anything under subpackage
-    names used by components (keras, etc.).
+    names used by components (estimator, keras, etc.).
 
     For each component, we check that it exports everything under its own
     subpackage.
@@ -299,7 +323,9 @@ class api_export(object):  # pylint: disable=invalid-name
     else:
       if not all(n.startswith(self._api_name) for n in all_symbol_names):
         raise InvalidSymbolNameError(
-            'Can only export symbols under package name of component.'
+            'Can only export symbols under package name of component. '
+            'e.g. tensorflow_estimator must export all symbols under '
+            'tf.estimator'
         )
 
   def __call__(self, func: T) -> T:

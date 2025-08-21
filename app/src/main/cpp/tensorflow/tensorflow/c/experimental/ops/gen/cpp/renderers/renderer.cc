@@ -14,13 +14,9 @@ limitations under the License.
 ==============================================================================*/
 #include "tensorflow/c/experimental/ops/gen/cpp/renderers/renderer.h"
 
-#include "absl/strings/match.h"
-#include "absl/strings/str_cat.h"
 #include "absl/strings/substitute.h"
-#include "tensorflow/c/experimental/ops/gen/cpp/renderers/renderer_context.h"
 #include "tensorflow/core/lib/strings/str_util.h"
 #include "tensorflow/core/platform/logging.h"
-#include "tensorflow/core/platform/stringpiece.h"
 
 namespace tensorflow {
 namespace generator {
@@ -39,7 +35,7 @@ Renderer& Renderer::CodeLine(const string& text) {
 }
 
 Renderer& Renderer::CodeLines(const string& text) {
-  absl::string_view trimmed_text(text);
+  StringPiece trimmed_text(text);
   str_util::RemoveWhitespaceContext(&trimmed_text);
   for (const string& line : str_util::Split(trimmed_text, '\n')) {
     context_.code.AddLineWithoutIndent(line);
@@ -48,7 +44,7 @@ Renderer& Renderer::CodeLines(const string& text) {
 }
 
 Renderer& Renderer::Statement(const string& text) {
-  if (absl::EndsWith(text, ";")) {
+  if (str_util::EndsWith(text, ";")) {
     LOG(WARNING) << "Superfluous terminating ';' in '" << text << "'";
     context_.code.AddLineWithIndent(text);
   } else {

@@ -31,13 +31,13 @@ string FormatNodeForError(const Node& node) {
   return FormatNodeDefForError(node.def());
 }
 
-absl::Status NameRangesForNode(const Node& node, const OpDef& op_def,
-                               NameRangeMap* inputs, NameRangeMap* outputs) {
+Status NameRangesForNode(const Node& node, const OpDef& op_def,
+                         NameRangeMap* inputs, NameRangeMap* outputs) {
   return NameRangesForNode(node.def(), op_def, inputs, outputs);
 }
 
-absl::Status AttachDef(const absl::Status& status, const Node& node,
-                       bool allow_multiple_formatted_node) {
+Status AttachDef(const Status& status, const Node& node,
+                 bool allow_multiple_formatted_node) {
   return AttachDef(status, node.def(), allow_multiple_formatted_node);
 }
 

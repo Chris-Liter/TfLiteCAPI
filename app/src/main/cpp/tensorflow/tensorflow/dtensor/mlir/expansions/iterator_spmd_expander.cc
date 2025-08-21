@@ -22,15 +22,11 @@ limitations under the License.
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Support/FormatVariadic.h"
 #include "mlir/IR/Attributes.h"  // from @llvm-project
-#include "mlir/IR/Builders.h"  // from @llvm-project
 #include "mlir/IR/BuiltinAttributes.h"  // from @llvm-project
 #include "mlir/IR/BuiltinTypes.h"  // from @llvm-project
 #include "mlir/IR/Operation.h"  // from @llvm-project
-#include "mlir/IR/Types.h"  // from @llvm-project
 #include "mlir/Support/LLVM.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_attributes.h"
-#include "tensorflow/compiler/mlir/tensorflow/ir/tf_ops.h"
-#include "tensorflow/core/platform/errors.h"
 #include "tensorflow/dtensor/cc/constants.h"
 #include "tensorflow/dtensor/cc/dstatus.h"
 #include "tensorflow/dtensor/cc/tensor_layout.h"
@@ -54,7 +50,7 @@ StatusOr<mlir::Operation*> IteratorGetNextSPMDExpander::ExpandOp(
 
   for (int i = 0; i < original_op->getNumResults(); ++i) {
     mlir::TensorType global_output_type =
-        mlir::cast<mlir::TensorType>(original_op.getResult(i).getType());
+        original_op.getResult(i).getType().cast<mlir::TensorType>();
     std::vector<int64_t> local_shape =
         output_layouts[i].LocalShapeFromGlobalShape(
             global_output_type.getShape());
@@ -115,9 +111,10 @@ StatusOr<mlir::Operation*> IteratorGetNextAsOptionalSPMDExpander::ExpandOp(
   for (int i = 0; i < array_attr.size(); ++i) {
     std::vector<int64_t> local_shape =
         output_layouts[i].LocalShapeFromGlobalShape(
-            mlir::cast<mlir::TF::ShapeAttr>(array_attr[i]).getShape());
-    output_shape_attrs[i] = mlir::cast<mlir::Attribute>(
-        mlir::TF::ShapeAttr::get(op->getContext(), {local_shape}));
+            array_attr[i].cast<mlir::TF::ShapeAttr>().getShape());
+    output_shape_attrs[i] =
+        mlir::TF::ShapeAttr::get(op->getContext(), {local_shape})
+            .cast<mlir::Attribute>();
   }
 
   // Update the `output_shapes` attribute on the op to match the local shape

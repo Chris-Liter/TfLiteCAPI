@@ -15,7 +15,6 @@ limitations under the License.
 #ifndef TENSORFLOW_LITE_TESTING_JOIN_H_
 #define TENSORFLOW_LITE_TESTING_JOIN_H_
 
-#include <cstdint>
 #include <cstdlib>
 #include <iomanip>
 #include <sstream>

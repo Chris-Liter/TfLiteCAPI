@@ -14,8 +14,6 @@ limitations under the License.
 ==============================================================================*/
 #include "tensorflow/core/kernels/data/model_dataset_op.h"
 
-#include <cstdint>
-
 #include "tensorflow/core/data/dataset_utils.h"
 #include "tensorflow/core/framework/cancellation.h"
 
@@ -37,7 +35,7 @@ namespace data {
 namespace {
 
 // Default share of available RAM that can be used by model's internal buffers.
-constexpr double kRamBudgetShare = model::kRamBudgetShare;
+constexpr double kRamBudgetShare = 0.5;
 
 }  // namespace
 
@@ -93,20 +91,19 @@ class ModelDatasetOp::Dataset : public DatasetBase {
     return input_->Cardinality(options);
   }
 
-  absl::Status InputDatasets(
-      std::vector<const DatasetBase*>* inputs) const override {
+  Status InputDatasets(std::vector<const DatasetBase*>* inputs) const override {
     inputs->push_back(input_);
-    return absl::OkStatus();
+    return OkStatus();
   }
 
-  absl::Status CheckExternalState() const override {
+  Status CheckExternalState() const override {
     return input_->CheckExternalState();
   }
 
  protected:
-  absl::Status AsGraphDefInternal(SerializationContext* ctx,
-                                  DatasetGraphDefBuilder* b,
-                                  Node** output) const override {
+  Status AsGraphDefInternal(SerializationContext* ctx,
+                            DatasetGraphDefBuilder* b,
+                            Node** output) const override {
     Node* input_graph_node = nullptr;
     TF_RETURN_IF_ERROR(b->AddInputDataset(ctx, input_, &input_graph_node));
     AttrValue algorithm_attr;
@@ -122,7 +119,7 @@ class ModelDatasetOp::Dataset : public DatasetBase {
                        std::make_pair(kCpuBudget, cpu_budget_attr),
                        std::make_pair(kRamBudget, ram_budget_attr)},
                       output));
-    return absl::OkStatus();
+    return OkStatus();
   }
 
  private:
@@ -141,14 +138,14 @@ class ModelDatasetOp::Dataset : public DatasetBase {
 
     ~Iterator() override { cancellation_manager_->StartCancel(); }
 
-    absl::Status Initialize(IteratorContext* ctx) override {
+    Status Initialize(IteratorContext* ctx) override {
       return dataset()->input_->MakeIterator(IteratorContext(CreateParams(ctx)),
                                              this, prefix(), &input_impl_);
     }
 
-    absl::Status GetNextInternal(IteratorContext* ctx,
-                                 std::vector<Tensor>* out_tensors,
-                                 bool* end_of_sequence) override {
+    Status GetNextInternal(IteratorContext* ctx,
+                           std::vector<Tensor>* out_tensors,
+                           bool* end_of_sequence) override {
       if (!ctx->model()) {
         mutex_lock l(mu_);
         TF_RETURN_IF_ERROR(EnsureOptimizationLoopThreadStarted(ctx));
@@ -164,13 +161,13 @@ class ModelDatasetOp::Dataset : public DatasetBase {
                                        /*ratio=*/1);
     }
 
-    absl::Status SaveInternal(SerializationContext* ctx,
-                              IteratorStateWriter* writer) override {
+    Status SaveInternal(SerializationContext* ctx,
+                        IteratorStateWriter* writer) override {
       return SaveInput(ctx, writer, input_impl_);
     }
 
-    absl::Status RestoreInternal(IteratorContext* ctx,
-                                 IteratorStateReader* reader) override {
+    Status RestoreInternal(IteratorContext* ctx,
+                           IteratorStateReader* reader) override {
       return RestoreInput(IteratorContext(CreateParams(ctx)), reader,
                           input_impl_);
     }
@@ -188,26 +185,19 @@ class ModelDatasetOp::Dataset : public DatasetBase {
       return params;
     }
 
-    absl::Status EnsureOptimizationLoopThreadStarted(IteratorContext* ctx)
+    Status EnsureOptimizationLoopThreadStarted(IteratorContext* ctx)
         TF_EXCLUSIVE_LOCKS_REQUIRED(mu_) {
       if (!model_thread_) {
-        auto ram_budget_manager = ctx->ram_budget_manager();
-        model_thread_ =
-            ctx->StartThread("tf_data_model", [this, ram_budget_manager]() {
-              int64_t captured_cpu_budget = cpu_budget_;
-              int64_t captured_ram_budget = ram_budget_;
-              absl::Status status = model_->OptimizeLoop(
-                  dataset()->algorithm_,
-                  [captured_cpu_budget]() { return captured_cpu_budget; }, 1.0,
-                  captured_ram_budget, *ram_budget_manager,
-                  cancellation_manager_.get());
-              if (!status.ok()) {
-                LOG(WARNING)
-                    << "Optimization loop failed: " << status.ToString();
-              }
-            });
+        model_thread_ = ctx->StartThread("tf_data_model", [this]() {
+          Status status =
+              model_->OptimizeLoop(dataset()->algorithm_, cpu_budget_,
+                                   ram_budget_, cancellation_manager_.get());
+          if (!status.ok()) {
+            LOG(WARNING) << "Optimization loop failed: " << status.ToString();
+          }
+        });
       }
-      return absl::OkStatus();
+      return OkStatus();
     }
 
     mutex mu_;

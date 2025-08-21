@@ -33,9 +33,7 @@ GrpcDispatcherImpl::GrpcDispatcherImpl(
   VLOG(1) << "Registered data service dispatcher";
 }
 
-absl::Status GrpcDispatcherImpl::Start() { return impl_.Start(); }
-
-void GrpcDispatcherImpl::Stop() { impl_.Stop(); }
+Status GrpcDispatcherImpl::Start() { return impl_.Start(); }
 
 size_t GrpcDispatcherImpl::NumActiveIterations() {
   return impl_.NumActiveIterations();
@@ -68,7 +66,6 @@ HANDLER(GetDataServiceConfig);
 HANDLER(Snapshot);
 HANDLER(GetSnapshotSplit);
 HANDLER(GetSnapshotStreams);
-HANDLER(DisableCompressionAtRuntime);
 #undef HANDLER
 
 }  // namespace data

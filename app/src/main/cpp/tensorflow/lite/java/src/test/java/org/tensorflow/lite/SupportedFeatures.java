@@ -25,7 +25,7 @@ public final class SupportedFeatures {
   private SupportedFeatures() {}
 
   /**
-   * True if the TF Lite implementation supports `setCanceled`.
+   * True if the TF Lite implementation supports cancellation.
    *
    * @see Interpreter#setCanceled
    */
@@ -47,11 +47,14 @@ public final class SupportedFeatures {
   public static native boolean supportsAllowFp16PrecisionForFp32();
 
   /**
-   * True if the TF Lite implementation supports resizing tensor dimensions whose size is not -1,
-   * which is used to indicate dynamic sizes. This affects whether you can call `runSignature` with
-   * inputs/outputs that are a different shape than the model expects.
+   * True if the TF Lite implementation supports SignatureDef related methods.
    *
    * @see Interpreter#runSignature
+   * @see Interpreter#getSignatureKeys
+   * @see Interpreter#getSignatureInputs
+   * @see Interpreter#getSignatureOutputs
+   * @see Interpreter#getInputTensorFromSignature
+   * @see Interpreter#getOutputTensorFromSignature
    */
-  public static native boolean supportsNonstrictResize();
+  public static native boolean supportsSignatures();
 }

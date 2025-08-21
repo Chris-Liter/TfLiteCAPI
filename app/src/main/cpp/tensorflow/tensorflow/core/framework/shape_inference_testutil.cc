@@ -30,9 +30,9 @@ namespace shape_inference {
 
 using errors::Unknown;
 
-absl::Status ShapeInferenceTestutil::InferShapes(ShapeInferenceTestOp op,
-                                                 const string& ins,
-                                                 const string& expected_outs) {
+Status ShapeInferenceTestutil::InferShapes(ShapeInferenceTestOp op,
+                                           const string& ins,
+                                           const string& expected_outs) {
   const OpRegistrationData* op_reg_data;
   TF_RETURN_IF_ERROR(OpRegistry::Global()->LookUp(op.name, &op_reg_data));
 
@@ -138,7 +138,7 @@ absl::Status ShapeInferenceTestutil::InferShapes(ShapeInferenceTestOp op,
     }
 
     // Verify the dimensions.
-    CHECK(absl::StartsWith(expected, "[") && absl::EndsWith(expected, "]"))
+    CHECK(absl::StartsWith(expected, "[") && str_util::EndsWith(expected, "]"))
         << expected;
     expected.remove_prefix(1);
     expected.remove_suffix(1);
@@ -203,7 +203,7 @@ absl::Status ShapeInferenceTestutil::InferShapes(ShapeInferenceTestOp op,
       } else {
         // Parse it as a value.
         int64_t value = -1;
-        if (!absl::SimpleAtoi(expected_dim, &value)) {
+        if (!strings::safe_strto64(expected_dim, &value)) {
           return Unknown(err_prefix, ": the expected dimension value '",
                          expected_dim, "' failed to parse as int64",
                          err_suffix);
@@ -226,16 +226,16 @@ absl::Status ShapeInferenceTestutil::InferShapes(ShapeInferenceTestOp op,
       }
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // static
-absl::Status ShapeInferenceTestutil::MakeShapeFromString(
+Status ShapeInferenceTestutil::MakeShapeFromString(
     InferenceContext::ShapeManager* manager, const string& spec,
     ShapeHandle* output) {
   if (spec == "?") {
     *output = manager->UnknownShape();
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   std::vector<DimensionHandle> dims;
@@ -270,7 +270,7 @@ absl::Status ShapeInferenceTestutil::MakeShapeFromString(
   }
   *output = manager->MakeShape(dims);
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace shape_inference

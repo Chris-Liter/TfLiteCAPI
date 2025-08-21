@@ -17,9 +17,7 @@ limitations under the License.
 
 #include <algorithm>
 #include <cstddef>
-#include <cstdint>
 #include <iterator>
-#include <map>
 #include <memory>
 #include <optional>
 #include <string>
@@ -30,54 +28,36 @@ limitations under the License.
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
-#include "absl/strings/string_view.h"
-#include "absl/types/span.h"
 #include "llvm/Support/Casting.h"
-#include "tensorflow/c/eager/c_api.h"
 #include "tensorflow/c/eager/c_api_internal.h"
 #include "tensorflow/c/eager/parallel_device/parallel_device_lib.h"
 #include "tensorflow/c/eager/tfe_tensorhandle_internal.h"
 #include "tensorflow/c/tf_datatype.h"
 #include "tensorflow/c/tf_status.h"
 #include "tensorflow/c/tf_status_helper.h"
-#include "tensorflow/c/tf_tensor.h"
-#include "tensorflow/c/tf_tensor_internal.h"
-#include "xla/status_macros.h"
+#include "tensorflow/compiler/xla/status_macros.h"
 #include "tensorflow/core/common_runtime/graph_constructor.h"
 #include "tensorflow/core/common_runtime/shape_refiner.h"
 #include "tensorflow/core/framework/attr_value.pb.h"
 #include "tensorflow/core/framework/function.h"
-#include "tensorflow/core/framework/function.pb.h"
 #include "tensorflow/core/framework/node_def.pb.h"
-#include "tensorflow/core/framework/node_def_builder.h"
 #include "tensorflow/core/framework/node_def_util.h"
-#include "tensorflow/core/framework/shape_inference.h"
 #include "tensorflow/core/framework/tensor.pb.h"
 #include "tensorflow/core/framework/tensor_shape.h"
-#include "tensorflow/core/framework/types.h"
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/graph/graph.h"
 #include "tensorflow/core/lib/strings/proto_serialization.h"
 #include "tensorflow/core/platform/fingerprint.h"
 #include "tensorflow/core/platform/status.h"
-#include "tensorflow/core/platform/types.h"
 #include "tensorflow/core/public/version.h"
-#include "tensorflow/core/util/device_name_utils.h"
-#include "tensorflow/core/util/managed_stack_trace.h"
 #include "tensorflow/dtensor/cc/constants.h"
 #include "tensorflow/dtensor/cc/dstatus.h"
-#include "tensorflow/dtensor/cc/dtensor_operation.h"
 #include "tensorflow/dtensor/cc/dtensor_utils.h"
 #include "tensorflow/dtensor/cc/small_constant_optimization.h"
 #include "tensorflow/dtensor/cc/tensor_layout.h"
-#include "tensorflow/dtensor/cc/tensor_with_layout.h"
-#include "tsl/platform/fingerprint.h"
-#include "tsl/platform/logging.h"  // IWYU pragma: keep
-#include "tsl/platform/status.h"
 
 namespace tensorflow {
 namespace dtensor {
-
 namespace {
 // Represents an input node during graph construction.
 // When executing a Function, `output` is used to align graph inputs
@@ -118,11 +98,11 @@ StatusOr<ResourceHandle> TensorHandleToResourceHandle(
     TFE_TensorHandle* tensor) {
   // Resolve the Tensor as resource handle such that we can get the shape and
   // dtype of the tensor it points to.
-  TF_StatusPtr status(TF_NewStatus(), internal::TF_StatusDeleter());
+  TF_Status status;
   std::unique_ptr<TF_Tensor, decltype(&TF_DeleteTensor)> tf_tensor(
-      TFE_TensorHandleResolve(tensor, status.get()), TF_DeleteTensor);
-  if (TF_GetCode(status.get()) != TF_OK) {
-    return StatusFromTF_Status(status.get());
+      TFE_TensorHandleResolve(tensor, &status), TF_DeleteTensor);
+  if (TF_GetCode(&status) != TF_OK) {
+    return StatusFromTF_Status(&status);
   }
   Tensor t;
   TF_RETURN_IF_ERROR(TF_TensorToTensor(tf_tensor.get(), &t));
@@ -203,7 +183,7 @@ std::unique_ptr<TensorWithLayoutTf> BroadcastResourceTensor(
     PartialTensorShape partial_shape = r->dtypes_and_shapes().begin()->shape;
     // Set the shape/type of the tensor that the resource points to
     // so that the graph has correct shape/type information that we can use.
-    const absl::Status s =
+    const Status s =
         llvm::cast<ResourceHandleWithLayout>((*result).get())
             ->UpdateShapeAndDType(partial_shape.AsProto(),
                                   r->dtypes_and_shapes().begin()->dtype);
@@ -239,12 +219,12 @@ bool LayoutsAreCompatible(std::optional<Layout> first_layout,
 }
 
 // Parse a pair of attribute of (indices, layouts) into a map.
-absl::Status ParseAttrMap(const Node& node, absl::string_view indices_attr,
-                          absl::string_view layout_attr,
-                          std::map<int, Layout>* indices_layout_map) {
+Status ParseAttrMap(const Node& node, absl::string_view indices_attr,
+                    absl::string_view layout_attr,
+                    std::map<int, Layout>* indices_layout_map) {
   std::vector<std::string> layouts;
   if (!TryGetNodeAttr(node.attrs(), layout_attr, &layouts)) {
-    return absl::OkStatus();
+    return OkStatus();
   }
   const TensorProto* indices;
   if (!TryGetNodeAttr(node.attrs(), indices_attr, &indices)) {
@@ -262,17 +242,17 @@ absl::Status ParseAttrMap(const Node& node, absl::string_view indices_attr,
     indices_layout_map->emplace(
         arg_index, tensorflow::dtensor::Layout::FromString(arg_layout).value());
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status ParseResourceArgumentLayouts(
+Status ParseResourceArgumentLayouts(
     const Node& node, std::map<int, Layout>* inferred_resource_input_layouts) {
   return ParseAttrMap(node, kNewResourceLayoutIndices, kNewResourceArgLayouts,
                       inferred_resource_input_layouts);
 }
 
-absl::Status ParseShapeInputLayouts(
-    const Node& node, std::map<int, Layout>* shape_output_metadata) {
+Status ParseShapeInputLayouts(const Node& node,
+                              std::map<int, Layout>* shape_output_metadata) {
   return ParseAttrMap(node, kShapeOpInputLayoutIndices, kShapeOpInputLayout,
                       shape_output_metadata);
 }
@@ -325,7 +305,7 @@ StatusOr<std::vector<int64_t>> GetTensorShapeAsVector(
 StatusOr<std::vector<int64_t>> GetTensorShapeAsVector(
     TFE_TensorHandle* tensor) {
   tensorflow::PartialTensorShape shape;
-  const absl::Status status = tensorflow::unwrap(tensor)->Shape(&shape);
+  const Status status = tensorflow::unwrap(tensor)->Shape(&shape);
   if (status.ok()) {
     return GetTensorShapeAsVector(shape);
   } else {
@@ -516,7 +496,7 @@ StatusOr<std::string> SummarizeValues(
 
 std::string TensorWithLayoutTf::SummarizeValue() const {
   std::string value_summary;
-  absl::Status status;
+  Status status;
   if (layout_.IsSingleDevice() || layout_.IsFullyReplicated()) {
     status =
         tensorflow::unwrap(tensors_[0].get())->SummarizeValue(value_summary);
@@ -598,7 +578,7 @@ tensorflow::Fprint128 ResourceHandleWithLayout::CacheKey() const {
   return f;
 }
 
-absl::Status ResourceHandleWithLayout::UpdateLayout(const Layout& new_layout) {
+tsl::Status ResourceHandleWithLayout::UpdateLayout(const Layout& new_layout) {
   // Only set the value for deferenced layout if the incoming layout is not
   // empty. This is still hacky as we use empty layout as placeholder for
   // eagerly placed VarHandleOp.
@@ -612,7 +592,7 @@ absl::Status ResourceHandleWithLayout::UpdateLayout(const Layout& new_layout) {
         "Attempted to overwrite an existing Layout.");
   }
   dereferenced_layout_.emplace(new_layout);
-  return absl::OkStatus();
+  return tsl::OkStatus();
 }
 
 char SparseTensorWithLayout::ID = 0;
@@ -632,9 +612,9 @@ std::string SparseTensorWithLayout::SummarizeValue() const {
   std::string values_summary;
   std::string dense_shapes_summary;
 
-  absl::Status indices_status;
-  absl::Status values_status;
-  absl::Status dense_shapes_status;
+  Status indices_status;
+  Status values_status;
+  Status dense_shapes_status;
 
   if (layout().IsFullyReplicated()) {
     indices_status = tensorflow::unwrap(indices_->tensor(0))
@@ -724,12 +704,12 @@ StatusOr<bool> ExecutableManager<ExecutionFunctions>::ShouldFoldInput(
       "manager)");
 }
 
-absl::Status InferOutputLayouts(const DTensorOperation& doperation,
-                                const NameAttrList& attributes,
-                                const std::optional<Layout>& default_layout,
-                                tensorflow::Graph* graph,
-                                std::vector<const Layout*>* output_layouts) {
-  absl::Status status;
+Status InferOutputLayouts(const DTensorOperation& doperation,
+                          const NameAttrList& attributes,
+                          const std::optional<Layout>& default_layout,
+                          tensorflow::Graph* graph,
+                          std::vector<const Layout*>* output_layouts) {
+  tensorflow::Status status;
   tensorflow::NodeDef op_node_def;
   op_node_def.set_op(doperation.name);
   op_node_def.set_name("eager_operation");
@@ -753,10 +733,10 @@ absl::Status InferOutputLayouts(const DTensorOperation& doperation,
     output_layouts->push_back(layout);
   }
   graph->RemoveNode(op_node);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status PrepareGraphForMlir(
+Status PrepareGraphForMlir(
     const ExecutableManager<mlir::OwningOpRef<mlir::ModuleOp>>& module_manager,
     const std::vector<TensorWithLayout*>& inputs,
     const DTensorOperation& doperation,
@@ -770,7 +750,7 @@ absl::Status PrepareGraphForMlir(
   // determine default layouts.
   ShapeRefiner shape_refiner(TF_GRAPH_DEF_VERSION, &flib_def);
   shape_refiner.set_function_library_for_shape_inference(&flib_def);
-  absl::Status status;
+  tensorflow::Status status;
   {
     // We include an _Arg node for the device ID, but this isn't used by the
     // initial function. It will be provided a value, though, so it's
@@ -944,7 +924,7 @@ absl::Status PrepareGraphForMlir(
       ret_node->AddAttr(kDefaultLayoutAttr, layout->ToString());
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 StatusOr<std::vector<int64_t>> GetNumLocalOutputs(Node* node) {
@@ -962,7 +942,7 @@ StatusOr<std::vector<int64_t>> GetNumLocalOutputs(Node* node) {
 }
 
 namespace {
-absl::Status SetMultiDeviceFunctionOutputs(
+Status SetMultiDeviceFunctionOutputs(
     TranslatedFunction& function, Node* node,
     const std::vector<PartialTensorShape>& global_output_shapes) {
   const AttrValue* serialized_layouts = (node->attrs()).Find(kLayoutAttr);
@@ -995,7 +975,7 @@ absl::Status SetMultiDeviceFunctionOutputs(
     }
   }
   function.num_local_outputs = std::move(num_local_outputs);
-  return absl::OkStatus();
+  return OkStatus();
 }
 }  // namespace
 
@@ -1107,12 +1087,11 @@ StatusOr<ExecutionFunctions> IdentifyAllFunctionsToExecute(
 // be dropped during MLIR lowering.
 // TODO(b/171265131): fix the underlying issue to avoid inserting identity
 // nodes.
-absl::Status MaybeInsertIdentityNodes(const FunctionDef* function_def,
-                                      Graph* graph) {
+Status MaybeInsertIdentityNodes(const FunctionDef* function_def, Graph* graph) {
   if (function_def == nullptr || function_def->control_ret().empty()) {
-    return absl::OkStatus();
+    return OkStatus();
   }
-  absl::Status status;
+  tensorflow::Status status;
   for (Node* n : graph->nodes()) {
     if (!n->IsRetval()) {
       continue;
@@ -1139,7 +1118,7 @@ absl::Status MaybeInsertIdentityNodes(const FunctionDef* function_def,
     // Add an edge between Identity and _Retval.
     graph->AddEdge(ret_identity_node, 0, n, 0);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 void AddDTensorFunctionAttr(FunctionDef& function_def) {

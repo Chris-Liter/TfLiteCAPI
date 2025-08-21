@@ -20,11 +20,12 @@ limitations under the License.
 #include <optional>
 #include <vector>
 
-#include "xla/stream_executor/gpu/gpu_init.h"
-#include "xla/stream_executor/stream_executor.h"
-#include "xla/tsl/framework/device_id.h"
-#include "tsl/platform/logging.h"
-#include "tsl/platform/status.h"
+#include "tensorflow/compiler/xla/stream_executor/device_id_utils.h"
+#include "tensorflow/compiler/xla/stream_executor/gpu/gpu_init.h"
+#include "tensorflow/compiler/xla/stream_executor/stream_executor.h"
+#include "tensorflow/tsl/framework/device_id.h"
+#include "tensorflow/tsl/platform/logging.h"
+#include "tensorflow/tsl/platform/status.h"
 
 #define MASK_WORDS 2
 #define MASK_BYTES (MASK_WORDS * sizeof(int64_t))
@@ -47,7 +48,7 @@ bool CheckMask(se::StreamExecutor* exec, void* ptr, int64_t* mask) {
   se::DeviceMemory<int64_t> gpu_ptr{se::DeviceMemoryBase{ptr, MASK_BYTES}};
   int64_t tmp[MASK_WORDS];
 
-  absl::Status result = exec->SynchronousMemcpyD2H(gpu_ptr, MASK_BYTES, tmp);
+  tsl::Status result = exec->SynchronousMemcpyD2H(gpu_ptr, MASK_BYTES, tmp);
   if (!result.ok()) {
     LOG(FATAL) << "Could not copy debug mask, " << result;
   }
@@ -67,7 +68,7 @@ bool CheckMask(se::StreamExecutor* exec, void* ptr, int64_t* mask) {
 
 void InitMask(se::StreamExecutor* exec, void* ptr, int64_t* mask) {
   se::DeviceMemory<int64_t> gpu_ptr{se::DeviceMemoryBase{ptr, MASK_BYTES}};
-  absl::Status result = exec->SynchronousMemcpyH2D(mask, MASK_BYTES, &gpu_ptr);
+  tsl::Status result = exec->SynchronousMemcpyH2D(mask, MASK_BYTES, &gpu_ptr);
   if (!result.ok()) {
     LOG(FATAL) << "Could not copy debug mask, " << result;
   }
@@ -81,8 +82,8 @@ void InitMask(se::StreamExecutor* exec, void* ptr, int64_t* mask) {
 GPUDebugAllocator::GPUDebugAllocator(Allocator* allocator,
                                      tsl::PlatformDeviceId platform_device_id)
     : base_allocator_(allocator) {
-  stream_exec_ = se::GPUMachineManager()
-                     ->ExecutorForDevice(platform_device_id.value())
+  stream_exec_ = se::DeviceIdUtil::ExecutorForPlatformDeviceId(
+                     se::GPUMachineManager(), platform_device_id)
                      .value();
 }
 
@@ -160,8 +161,8 @@ bool GPUDebugAllocator::CheckFooter(void* ptr) {
 GPUNanResetAllocator::GPUNanResetAllocator(
     Allocator* allocator, tsl::PlatformDeviceId platform_device_id)
     : base_allocator_(allocator) {
-  stream_exec_ = se::GPUMachineManager()
-                     ->ExecutorForDevice(platform_device_id.value())
+  stream_exec_ = se::DeviceIdUtil::ExecutorForPlatformDeviceId(
+                     se::GPUMachineManager(), platform_device_id)
                      .value();
 }
 
@@ -178,7 +179,7 @@ void* GPUNanResetAllocator::AllocateRaw(size_t alignment, size_t num_bytes) {
   se::DeviceMemory<float> nan_ptr{
       se::DeviceMemoryBase{static_cast<float*>(allocated_ptr), req_size}};
 
-  absl::Status result =
+  tsl::Status result =
       stream_exec_->SynchronousMemcpyH2D(&nans[0], req_size, &nan_ptr);
   if (!result.ok()) {
     LOG(ERROR) << "Could not initialize to NaNs, " << result;
@@ -194,7 +195,7 @@ void GPUNanResetAllocator::DeallocateRaw(void* ptr) {
                             std::nanf(""));
     se::DeviceMemory<float> nan_ptr{
         se::DeviceMemoryBase{static_cast<float*>(ptr), req_size}};
-    absl::Status result =
+    tsl::Status result =
         stream_exec_->SynchronousMemcpyH2D(&nans[0], req_size, &nan_ptr);
     if (!result.ok()) {
       LOG(ERROR) << "Could not initialize to NaNs, " << result;

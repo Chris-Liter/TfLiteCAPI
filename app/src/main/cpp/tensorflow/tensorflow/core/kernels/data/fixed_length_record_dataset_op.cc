@@ -94,17 +94,16 @@ class FixedLengthRecordDatasetOp::Dataset : public DatasetBase {
     return name_utils::DatasetDebugString(kDatasetType, params);
   }
 
-  absl::Status InputDatasets(
-      std::vector<const DatasetBase*>* inputs) const override {
-    return absl::OkStatus();
+  Status InputDatasets(std::vector<const DatasetBase*>* inputs) const override {
+    return OkStatus();
   }
 
-  absl::Status CheckExternalState() const override { return absl::OkStatus(); }
+  Status CheckExternalState() const override { return OkStatus(); }
 
  protected:
-  absl::Status AsGraphDefInternal(SerializationContext* ctx,
-                                  DatasetGraphDefBuilder* b,
-                                  Node** output) const override {
+  Status AsGraphDefInternal(SerializationContext* ctx,
+                            DatasetGraphDefBuilder* b,
+                            Node** output) const override {
     Node* filenames = nullptr;
     Node* header_bytes = nullptr;
     Node* record_bytes = nullptr;
@@ -122,7 +121,7 @@ class FixedLengthRecordDatasetOp::Dataset : public DatasetBase {
                       {filenames, header_bytes, record_bytes, footer_bytes,
                        buffer_size, compression_type},
                       output));
-    return absl::OkStatus();
+    return OkStatus();
   }
 
  private:
@@ -131,9 +130,9 @@ class FixedLengthRecordDatasetOp::Dataset : public DatasetBase {
     explicit UncompressedIterator(const Params& params)
         : DatasetIterator<Dataset>(params) {}
 
-    absl::Status GetNextInternal(IteratorContext* ctx,
-                                 std::vector<Tensor>* out_tensors,
-                                 bool* end_of_sequence) override {
+    Status GetNextInternal(IteratorContext* ctx,
+                           std::vector<Tensor>* out_tensors,
+                           bool* end_of_sequence) override {
       mutex_lock l(mu_);
       do {
         // We are currently processing a file, so try to read the next record.
@@ -153,7 +152,7 @@ class FixedLengthRecordDatasetOp::Dataset : public DatasetBase {
             record_tensor.scalar<tstring>()() = record;
             out_tensors->emplace_back(std::move(record_tensor));
             *end_of_sequence = false;
-            return absl::OkStatus();
+            return OkStatus();
           }
 
           // We have reached the end of the current file, so maybe move on to
@@ -166,7 +165,7 @@ class FixedLengthRecordDatasetOp::Dataset : public DatasetBase {
         // Iteration ends when there are no more files to process.
         if (current_file_index_ == dataset()->filenames_.size()) {
           *end_of_sequence = true;
-          return absl::OkStatus();
+          return OkStatus();
         }
 
         // Actually move on to next file.
@@ -197,8 +196,8 @@ class FixedLengthRecordDatasetOp::Dataset : public DatasetBase {
     }
 
    protected:
-    absl::Status SaveInternal(SerializationContext* ctx,
-                              IteratorStateWriter* writer) override {
+    Status SaveInternal(SerializationContext* ctx,
+                        IteratorStateWriter* writer) override {
       mutex_lock l(mu_);
       TF_RETURN_IF_ERROR(writer->WriteScalar(prefix(), kCurrentFileIndex,
                                              current_file_index_));
@@ -209,11 +208,11 @@ class FixedLengthRecordDatasetOp::Dataset : public DatasetBase {
       int64_t current_pos = input_buffer_ ? input_buffer_->Tell() : -1;
       TF_RETURN_IF_ERROR(
           writer->WriteScalar(prefix(), kCurrentPos, current_pos));
-      return absl::OkStatus();
+      return OkStatus();
     }
 
-    absl::Status RestoreInternal(IteratorContext* ctx,
-                                 IteratorStateReader* reader) override {
+    Status RestoreInternal(IteratorContext* ctx,
+                           IteratorStateReader* reader) override {
       mutex_lock l(mu_);
       int64_t current_file_index;
       TF_RETURN_IF_ERROR(
@@ -240,7 +239,7 @@ class FixedLengthRecordDatasetOp::Dataset : public DatasetBase {
         TF_RETURN_IF_ERROR(input_buffer_->Seek(current_pos));
       }
 
-      return absl::OkStatus();
+      return OkStatus();
     }
 
    private:
@@ -257,9 +256,9 @@ class FixedLengthRecordDatasetOp::Dataset : public DatasetBase {
     explicit CompressedIterator(const Params& params)
         : DatasetIterator<Dataset>(params) {}
 
-    absl::Status GetNextInternal(IteratorContext* ctx,
-                                 std::vector<Tensor>* out_tensors,
-                                 bool* end_of_sequence) override {
+    Status GetNextInternal(IteratorContext* ctx,
+                           std::vector<Tensor>* out_tensors,
+                           bool* end_of_sequence) override {
       static monitoring::CounterCell* bytes_counter =
           metrics::GetTFDataBytesReadCounter(kDatasetType);
       mutex_lock l(mu_);
@@ -280,16 +279,16 @@ class FixedLengthRecordDatasetOp::Dataset : public DatasetBase {
               record_tensor.scalar<tstring>()() = std::move(record);
               out_tensors->emplace_back(std::move(record_tensor));
               *end_of_sequence = false;
-              return absl::OkStatus();
+              return OkStatus();
             }
           } else {
             tstring record;
-            absl::Status s = buffered_input_stream_->ReadNBytes(
+            Status s = buffered_input_stream_->ReadNBytes(
                 dataset()->record_bytes_, &record);
             if (s.ok()) {
               bytes_counter->IncrementBy(dataset()->record_bytes_);
               lookahead_cache_.append(record);
-              absl::string_view lookahead_cache_view(lookahead_cache_);
+              StringPiece lookahead_cache_view(lookahead_cache_);
               record = tstring(
                   lookahead_cache_view.substr(0, dataset()->record_bytes_));
               lookahead_cache_ = tstring(
@@ -299,7 +298,7 @@ class FixedLengthRecordDatasetOp::Dataset : public DatasetBase {
               record_tensor.scalar<tstring>()() = std::move(record);
               out_tensors->emplace_back(std::move(record_tensor));
               *end_of_sequence = false;
-              return absl::OkStatus();
+              return OkStatus();
             }
             if (errors::IsOutOfRange(s) && !record.empty()) {
               uint64 body_size =
@@ -327,7 +326,7 @@ class FixedLengthRecordDatasetOp::Dataset : public DatasetBase {
         // Iteration ends when there are no more files to process.
         if (current_file_index_ == dataset()->filenames_.size()) {
           *end_of_sequence = true;
-          return absl::OkStatus();
+          return OkStatus();
         }
 
         // Actually move on to next file.
@@ -385,8 +384,8 @@ class FixedLengthRecordDatasetOp::Dataset : public DatasetBase {
       return model::MakeSourceNode(std::move(args));
     }
 
-    absl::Status SaveInternal(SerializationContext* ctx,
-                              IteratorStateWriter* writer) override {
+    Status SaveInternal(SerializationContext* ctx,
+                        IteratorStateWriter* writer) override {
       mutex_lock l(mu_);
       TF_RETURN_IF_ERROR(writer->WriteScalar(prefix(), kCurrentFileIndex,
                                              current_file_index_));
@@ -398,11 +397,11 @@ class FixedLengthRecordDatasetOp::Dataset : public DatasetBase {
           buffered_input_stream_ ? buffered_input_stream_->Tell() : -1;
       TF_RETURN_IF_ERROR(
           writer->WriteScalar(prefix(), kCurrentPos, current_pos));
-      return absl::OkStatus();
+      return OkStatus();
     }
 
-    absl::Status RestoreInternal(IteratorContext* ctx,
-                                 IteratorStateReader* reader) override {
+    Status RestoreInternal(IteratorContext* ctx,
+                           IteratorStateReader* reader) override {
       mutex_lock l(mu_);
       int64_t current_file_index;
       TF_RETURN_IF_ERROR(
@@ -435,7 +434,7 @@ class FixedLengthRecordDatasetOp::Dataset : public DatasetBase {
             dataset()->footer_bytes_, &lookahead_cache_));
       }
 
-      return absl::OkStatus();
+      return OkStatus();
     }
 
    private:
@@ -479,7 +478,6 @@ void FixedLengthRecordDatasetOp::MakeDataset(OpKernelContext* ctx,
     filenames.push_back(filenames_tensor->flat<tstring>()(i));
     metrics::RecordTFDataFilename(kDatasetType, filenames[i]);
   }
-  LogFilenames(filenames);
 
   int64_t header_bytes = -1;
   OP_REQUIRES_OK(

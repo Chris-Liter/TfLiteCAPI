@@ -31,7 +31,7 @@ namespace tensorflow {
 namespace grappler {
 
 // TODO(ashwinm): Expand this to add more structural checks.
-absl::Status StructureVerifier::Verify(const GraphDef& graph) {
+Status StructureVerifier::Verify(const GraphDef& graph) {
   StatusGroup status_group;
 
   FunctionLibraryDefinition function_library(OpRegistry::Global(),

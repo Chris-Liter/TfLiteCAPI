@@ -67,8 +67,7 @@ class TensorSliceReaderCache {
  private:
   // Need to use a regular function type in the key map as std::function does
   // not support ==.
-  typedef absl::Status (*OpenFuncType)(const string&,
-                                       TensorSliceReader::Table**);
+  typedef Status (*OpenFuncType)(const string&, TensorSliceReader::Table**);
 
   // Protects attributes below.
   mutex mu_;

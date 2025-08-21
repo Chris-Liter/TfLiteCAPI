@@ -17,28 +17,14 @@ limitations under the License.
 
 #include "tensorflow/core/tpu/graph_rewrite/update_tpu_embedding_ops_passes.h"
 
-#include <map>
 #include <string>
-#include <vector>
 
 #include "absl/algorithm/container.h"
 #include "absl/container/flat_hash_map.h"
-#include "absl/log/log.h"
-#include "absl/status/status.h"
-#include "absl/strings/str_split.h"
-#include "absl/strings/string_view.h"
 #include "tensorflow/compiler/tf2xla/side_effect_util.h"
-#include "xla/status_macros.h"
-#include "tensorflow/core/common_runtime/optimization_registry.h"
-#include "tensorflow/core/framework/device.h"
-#include "tensorflow/core/framework/function.pb.h"
-#include "tensorflow/core/framework/node_def.pb.h"
+#include "tensorflow/compiler/xla/status_macros.h"
 #include "tensorflow/core/framework/node_def_util.h"
 #include "tensorflow/core/graph/graph.h"
-#include "tensorflow/core/platform/status.h"
-#include "tensorflow/core/platform/types.h"
-#include "tensorflow/core/util/device_name_utils.h"
-#include "tsl/platform/errors.h"
 
 namespace tensorflow {
 namespace {
@@ -59,7 +45,7 @@ constexpr absl::string_view kTPUGradientSendOps[] = {
 
 }  // namespace
 
-absl::Status UpdateTPUEmbeddingEnqueueOrdinalPass::Run(
+Status UpdateTPUEmbeddingEnqueueOrdinalPass::Run(
     const GraphOptimizationPassOptions& options) {
   VLOG(1) << "UpdateTPUEmbeddingEnqueueOrdinalPass::Run";
 
@@ -73,7 +59,7 @@ absl::Status UpdateTPUEmbeddingEnqueueOrdinalPass::Run(
   options.device_set->FindMatchingDevices(tpu_device_spec, &tpu_devices);
   if (tpu_devices.empty()) {
     // If there are no TPUs don't run this pass.
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   TF_RET_CHECK(options.graph != nullptr);
@@ -88,7 +74,7 @@ absl::Status UpdateTPUEmbeddingEnqueueOrdinalPass::Run(
 
   // Only run if there are embedding nodes.
   if (embedding_nodes.empty()) {
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   DeviceNameUtils::ParsedName single_tpu_device_spec =
@@ -119,11 +105,11 @@ absl::Status UpdateTPUEmbeddingEnqueueOrdinalPass::Run(
   }
 
   VLOG(1) << "UpdateTPUEmbeddingEnqueueOrdinalPass::Run() finished";
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 template <typename A, typename N>
-absl::Status UpdateMapsForModeOverride(
+Status UpdateMapsForModeOverride(
     const std::string& op, const A& attrs, const N node_identifier,
     std::map<std::string, N>* enqueue_op,
     std::map<std::string, bool>* found_recv_op,
@@ -156,11 +142,11 @@ absl::Status UpdateMapsForModeOverride(
       (*enqueue_op)[layer_call_index] = node_identifier;
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 template <typename M, typename N>
-absl::Status ComputeEnqueueTrainingStatus(
+Status ComputeEnqueueTrainingStatus(
     const std::map<std::string, N>& enqueue_op,
     const std::map<std::string, bool>& found_recv_op,
     const std::map<std::string, bool>& found_grad_send_op, M* enqueue) {
@@ -180,14 +166,14 @@ absl::Status ComputeEnqueueTrainingStatus(
     // for this
     (*enqueue)[node.second] = send_exists;
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Get the enqueue ops and their status (training or eval) from a graph.
 // enqueue is a map from a Graph Node* for an enqueue op to a bool which is true
 // when the enqueue is part of a TPUEmbedding layer call that contains a send
 // gradients.
-absl::Status UpdateTPUEmbeddingModePass::GetEnqueueOpsFromGraph(
+Status UpdateTPUEmbeddingModePass::GetEnqueueOpsFromGraph(
     Graph* graph, absl::flat_hash_map<Node*, bool>* enqueue) {
   // Maps are index by the TPUEmbedding layer's call number.
   std::map<std::string, Node*> enqueue_op;
@@ -208,9 +194,9 @@ absl::Status UpdateTPUEmbeddingModePass::GetEnqueueOpsFromGraph(
 }
 
 // Update the graph for a specific enqueue op.
-absl::Status UpdateTPUEmbeddingModePass::UpdateGraphEnqueueOp(bool training,
-                                                              Graph* graph,
-                                                              Node* enqueue) {
+Status UpdateTPUEmbeddingModePass::UpdateGraphEnqueueOp(bool training,
+                                                        Graph* graph,
+                                                        Node* enqueue) {
   // When using the layer, the mode override input is a SelectV2 op (unless this
   // pass has already run), which takes a training and eval op as input. We will
   // simply short circut the SelectV2 and take input from the correct op.
@@ -225,13 +211,13 @@ absl::Status UpdateTPUEmbeddingModePass::UpdateGraphEnqueueOp(bool training,
     graph->RemoveEdge(select_edge);
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Get the enqueue ops and their status (training or eval) from a function def.
 // The enqueue map is indexed by the position of the enqueue op in the
 // function's node_def array.
-absl::Status UpdateTPUEmbeddingModePass::GetEnqueueOpsFromFunctionDef(
+Status UpdateTPUEmbeddingModePass::GetEnqueueOpsFromFunctionDef(
     FunctionDef* function, std::map<int, bool>* enqueue) {
   std::map<std::string, int> enqueue_op;
   std::map<std::string, bool> found_recv_op;
@@ -253,7 +239,7 @@ absl::Status UpdateTPUEmbeddingModePass::GetEnqueueOpsFromFunctionDef(
 }
 
 // Update the function def for a specific enqueue op.
-absl::Status UpdateTPUEmbeddingModePass::UpdateFunctionDefEnqueueOp(
+Status UpdateTPUEmbeddingModePass::UpdateFunctionDefEnqueueOp(
     int enqueue, bool training, FunctionDef* function, bool* updated) {
   // When using the layer, the mode override input is a SelectV2 op,
   // which takes a training and eval op as input. We will simply short circut
@@ -287,10 +273,10 @@ absl::Status UpdateTPUEmbeddingModePass::UpdateFunctionDefEnqueueOp(
     *updated = true;
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status UpdateTPUEmbeddingModePass::Run(
+Status UpdateTPUEmbeddingModePass::Run(
     const GraphOptimizationPassOptions& options) {
   // Updates the Enqueue ops when using a layer to set the mode override
   // behavior depending on the existence of send gradients ops.
@@ -337,7 +323,7 @@ absl::Status UpdateTPUEmbeddingModePass::Run(
   }
 
   VLOG(1) << "UpdateTPUEmbeddingModePass::Run() finished";
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace tensorflow

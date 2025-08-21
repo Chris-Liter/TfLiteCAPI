@@ -28,12 +28,10 @@ limitations under the License.
 #include <string>
 #include <utility>
 
-#include "jpeglib.h"  // from @libjpeg_turbo
 #include "tensorflow/core/lib/jpeg/jpeg_handle.h"
 #include "tensorflow/core/platform/dynamic_annotations.h"
-#include "tensorflow/core/platform/jpeg.h"
 #include "tensorflow/core/platform/logging.h"
-#include "tensorflow/core/platform/tstring.h"
+#include "tensorflow/core/platform/mem.h"
 #include "tensorflow/core/platform/types.h"
 
 namespace tensorflow {

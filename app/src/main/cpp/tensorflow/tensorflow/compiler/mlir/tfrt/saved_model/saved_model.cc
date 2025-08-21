@@ -15,29 +15,27 @@ limitations under the License.
 
 #include "tensorflow/compiler/mlir/tfrt/saved_model/saved_model.h"
 
-#include <cstdint>
 #include <utility>
 
-#include "absl/status/status.h"
-#include "absl/status/statusor.h"
-#include "llvm/ADT/STLFunctionalExtras.h"
-#include "llvm/ADT/SmallVector.h"
-#include "llvm/ADT/StringRef.h"
+#include "absl/strings/str_split.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"  // from @llvm-project
 #include "mlir/IR/Attributes.h"  // from @llvm-project
-#include "mlir/IR/BuiltinAttributes.h"  // from @llvm-project
-#include "mlir/IR/BuiltinTypes.h"  // from @llvm-project
-#include "mlir/IR/SymbolTable.h"  // from @llvm-project
-#include "mlir/IR/Visitors.h"  // from @llvm-project
+#include "mlir/IR/MLIRContext.h"  // from @llvm-project
 #include "mlir/Pass/PassManager.h"  // from @llvm-project
-#include "mlir/Support/LLVM.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_saved_model.h"
+#include "tensorflow/compiler/mlir/tensorflow/transforms/bridge.h"
+#include "tensorflow/compiler/mlir/tensorflow/transforms/passes.h"
+#include "tensorflow/compiler/mlir/tensorflow/translate/import_model.h"
+#include "tensorflow/compiler/mlir/tensorflow/translate/tf_mlir_translate.h"
 #include "tensorflow/compiler/mlir/tensorflow/utils/convert_type.h"
-#include "tensorflow/core/framework/tensor_shape.h"
-#include "tensorflow/core/framework/types.pb.h"
-#include "tensorflow/core/platform/status.h"
-#include "tsl/platform/errors.h"
+#include "tensorflow/compiler/mlir/tensorflow/utils/dump_mlir_util.h"
+#include "tensorflow/compiler/mlir/tensorflow/utils/error_util.h"
+#include "tensorflow/compiler/mlir/tfrt/transforms/passes.h"
 #include "tfrt/bef_converter/mlir_to_bef.h"  // from @tf_runtime
+#include "tfrt/core_runtime/core_runtime.h"  // from @tf_runtime
+#include "tfrt/core_runtime/op_handler.h"  // from @tf_runtime
+#include "tfrt/host_context/host_context.h"  // from @tf_runtime
+#include "tfrt/tensor/dense_host_tensor_view.h"  // from @tf_runtime
 
 namespace tensorflow {
 namespace {
@@ -45,14 +43,14 @@ namespace {
 using ::mlir::tf_saved_model::kTfSavedModelIndexPathAttr;
 
 llvm::StringRef ProcessIndexPath(mlir::ArrayAttr index_path) {
-  if (index_path.size() == 1 && mlir::isa<mlir::StringAttr>(index_path[0])) {
+  if (index_path.size() == 1 && index_path[0].isa<mlir::StringAttr>()) {
     // TODO(chky): Support cases where index_path is not a single string.
-    return mlir::cast<mlir::StringAttr>(index_path[0]).getValue();
+    return index_path[0].cast<mlir::StringAttr>().getValue();
   }
   return "";
 }
 
-absl::StatusOr<std::pair<tensorflow::DataType, tensorflow::PartialTensorShape>>
+StatusOr<std::pair<tensorflow::DataType, tensorflow::PartialTensorShape>>
 ProcessTensorSpec(mlir::TensorType type) {
   tensorflow::DataType dtype;
   TF_RETURN_IF_ERROR(
@@ -74,7 +72,7 @@ Status MapFunctionSignaturesFromTFSavedModelMLIR(
     llvm::function_ref<void(const TFRTSavedModelSignatureInfo&)> map_fn) {
   // Create bound inputs for each functions.
   mlir::SymbolTable symbol_table(module);
-  tensorflow::Status status = absl::OkStatus();
+  tensorflow::Status status = OkStatus();
   module.walk([&symbol_table, map_fn, &status](mlir::func::FuncOp func) {
     // Use the exported name as the function name, and skip non-exported
     // functions.
@@ -95,8 +93,8 @@ Status MapFunctionSignaturesFromTFSavedModelMLIR(
       if (auto input_index_path = func.getArgAttrOfType<mlir::ArrayAttr>(
               i, kTfSavedModelIndexPathAttr)) {
         input_names.push_back(ProcessIndexPath(input_index_path));
-        auto statusor_spec = ProcessTensorSpec(
-            mlir::cast<mlir::TensorType>(func_type.getInput(i)));
+        auto statusor_spec =
+            ProcessTensorSpec(func_type.getInput(i).cast<mlir::TensorType>());
         if (!statusor_spec.ok()) {
           status = std::move(statusor_spec).status();
           return mlir::WalkResult::interrupt();
@@ -123,8 +121,8 @@ Status MapFunctionSignaturesFromTFSavedModelMLIR(
       if (auto output_index_path = func.getResultAttrOfType<mlir::ArrayAttr>(
               i, kTfSavedModelIndexPathAttr)) {
         output_names.push_back(ProcessIndexPath(output_index_path));
-        auto statusor_spec = ProcessTensorSpec(
-            mlir::cast<mlir::TensorType>(func_type.getResult(i)));
+        auto statusor_spec =
+            ProcessTensorSpec(func_type.getResult(i).cast<mlir::TensorType>());
         if (!statusor_spec.ok()) {
           status = std::move(statusor_spec).status();
           return mlir::WalkResult::interrupt();

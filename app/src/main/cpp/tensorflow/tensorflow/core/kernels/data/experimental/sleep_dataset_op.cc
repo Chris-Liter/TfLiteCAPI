@@ -70,20 +70,20 @@ class SleepDatasetOp : public UnaryDatasetOpKernel {
       return input_->Cardinality(options);
     }
 
-    absl::Status InputDatasets(
+    Status InputDatasets(
         std::vector<const DatasetBase*>* inputs) const override {
       inputs->push_back(input_);
-      return absl::OkStatus();
+      return OkStatus();
     }
 
-    absl::Status CheckExternalState() const override {
+    Status CheckExternalState() const override {
       return input_->CheckExternalState();
     }
 
    protected:
-    absl::Status AsGraphDefInternal(SerializationContext* ctx,
-                                    DatasetGraphDefBuilder* b,
-                                    Node** output) const override {
+    Status AsGraphDefInternal(SerializationContext* ctx,
+                              DatasetGraphDefBuilder* b,
+                              Node** output) const override {
       Node* input_graph_node = nullptr;
       TF_RETURN_IF_ERROR(b->AddInputDataset(ctx, input_, &input_graph_node));
 
@@ -115,7 +115,7 @@ class SleepDatasetOp : public UnaryDatasetOpKernel {
         }
       }
 
-      absl::Status Initialize(IteratorContext* ctx) override {
+      Status Initialize(IteratorContext* ctx) override {
         TF_RETURN_IF_ERROR(RegisterCancellationCallback(
             ctx->cancellation_manager(),
             [this]() {
@@ -127,9 +127,9 @@ class SleepDatasetOp : public UnaryDatasetOpKernel {
                                                &input_impl_);
       }
 
-      absl::Status GetNextInternal(IteratorContext* ctx,
-                                   std::vector<Tensor>* out_tensors,
-                                   bool* end_of_sequence) override {
+      Status GetNextInternal(IteratorContext* ctx,
+                             std::vector<Tensor>* out_tensors,
+                             bool* end_of_sequence) override {
         mutex_lock l(mu_);
         RecordStop(ctx);
         bool cancelled = mu_.AwaitWithDeadline(
@@ -150,13 +150,13 @@ class SleepDatasetOp : public UnaryDatasetOpKernel {
                                          /*ratio=*/1);
       }
 
-      absl::Status SaveInternal(SerializationContext* ctx,
-                                IteratorStateWriter* writer) override {
+      Status SaveInternal(SerializationContext* ctx,
+                          IteratorStateWriter* writer) override {
         return SaveInput(ctx, writer, input_impl_);
       }
 
-      absl::Status RestoreInternal(IteratorContext* ctx,
-                                   IteratorStateReader* reader) override {
+      Status RestoreInternal(IteratorContext* ctx,
+                             IteratorStateReader* reader) override {
         return RestoreInput(ctx, reader, input_impl_);
       }
 

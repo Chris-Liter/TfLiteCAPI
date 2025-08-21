@@ -12,9 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
-#include "absl/status/status.h"
 #include "tensorflow/core/platform/logging.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/lite/toco/graph_transformations/graph_transformations.h"
 #include "tensorflow/lite/toco/model.h"
 #include "tensorflow/lite/toco/tooling_util.h"
@@ -23,12 +21,13 @@ namespace toco {
 
 // This pass will convert an AddN operator with only 2 inputs into a regular Add
 // operator, to which more optimizations may apply.
-absl::Status ConvertTrivialAddNToAdd::Run(Model* model, std::size_t op_index,
-                                          bool* modified) {
+::tensorflow::Status ConvertTrivialAddNToAdd::Run(Model* model,
+                                                  std::size_t op_index,
+                                                  bool* modified) {
   *modified = false;
   auto addn_it = model->operators.begin() + op_index;
   if (addn_it->get()->type != OperatorType::kAddN) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   AddNOperator* addn_op = static_cast<AddNOperator*>(addn_it->get());
   CHECK_GE(addn_op->inputs.size(), 2);
@@ -36,7 +35,7 @@ absl::Status ConvertTrivialAddNToAdd::Run(Model* model, std::size_t op_index,
 
   // We only reduce AddN with N=2 to a regular Add.
   if (addn_op->inputs.size() != 2) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   // Copy inputs & outputs to regular Add.
@@ -49,7 +48,7 @@ absl::Status ConvertTrivialAddNToAdd::Run(Model* model, std::size_t op_index,
   model->operators.emplace(addn_it, add_op);
   DeleteOpAndArrays(model, addn_op);
   *modified = true;
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 }  // namespace toco

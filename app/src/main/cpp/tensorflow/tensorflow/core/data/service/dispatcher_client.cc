@@ -41,15 +41,14 @@ limitations under the License.
 #include "tensorflow/core/platform/statusor.h"
 #include "tensorflow/core/platform/types.h"
 #include "tensorflow/core/protobuf/data_service.pb.h"
-#include "tsl/platform/errors.h"
 
 namespace tensorflow {
 namespace data {
 
-absl::Status DataServiceDispatcherClient::Initialize() {
+Status DataServiceDispatcherClient::Initialize() {
   mutex_lock l(mu_);
   if (stub_) {
-    return absl::OkStatus();
+    return OkStatus();
   }
   std::shared_ptr<grpc::ChannelCredentials> credentials;
   TF_RETURN_IF_ERROR(
@@ -81,11 +80,10 @@ absl::Status DataServiceDispatcherClient::Initialize() {
         "same version of TensorFlow. If you're running an MPM binary, make "
         "sure the server is running an up-to-date MPM.");
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::StatusOr<WorkerHeartbeatResponse>
-DataServiceDispatcherClient::WorkerHeartbeat(
+StatusOr<WorkerHeartbeatResponse> DataServiceDispatcherClient::WorkerHeartbeat(
     const WorkerHeartbeatRequest& request) {
   WorkerHeartbeatResponse response;
   grpc::ClientContext client_ctx;
@@ -96,7 +94,7 @@ DataServiceDispatcherClient::WorkerHeartbeat(
   return response;
 }
 
-absl::Status DataServiceDispatcherClient::WorkerUpdate(
+Status DataServiceDispatcherClient::WorkerUpdate(
     const std::string& worker_address,
     std::vector<TaskProgress>& task_progress) {
   WorkerUpdateRequest req;
@@ -110,11 +108,11 @@ absl::Status DataServiceDispatcherClient::WorkerUpdate(
   if (!status.ok()) {
     return grpc_util::WrapError("Failed to send worker update", status);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status DataServiceDispatcherClient::GetDatasetDef(
-    const std::string& dataset_id, DatasetDef& dataset_def) {
+Status DataServiceDispatcherClient::GetDatasetDef(const std::string& dataset_id,
+                                                  DatasetDef& dataset_def) {
   GetDatasetDefRequest req;
   req.set_dataset_id(dataset_id);
   GetDatasetDefResponse resp;
@@ -124,14 +122,14 @@ absl::Status DataServiceDispatcherClient::GetDatasetDef(
     return grpc_util::WrapError("Failed to get dataset def", status);
   }
   dataset_def = resp.dataset_def();
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status DataServiceDispatcherClient::GetSplit(int64_t iteration_id,
-                                                   int64_t repetition,
-                                                   int64_t split_provider_index,
-                                                   Tensor& split,
-                                                   bool& end_of_splits) {
+Status DataServiceDispatcherClient::GetSplit(int64_t iteration_id,
+                                             int64_t repetition,
+                                             int64_t split_provider_index,
+                                             Tensor& split,
+                                             bool& end_of_splits) {
   TF_RETURN_IF_ERROR(EnsureInitialized());
   GetSplitRequest req;
   req.set_iteration_id(iteration_id);
@@ -149,10 +147,10 @@ absl::Status DataServiceDispatcherClient::GetSplit(int64_t iteration_id,
       return errors::Internal("Failed to parse split tensor proto");
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status DataServiceDispatcherClient::Snapshot(
+Status DataServiceDispatcherClient::Snapshot(
     const DatasetDef& dataset, const std::string& path,
     const experimental::DistributedSnapshotMetadata& metadata) {
   TF_RETURN_IF_ERROR(EnsureInitialized());
@@ -168,10 +166,10 @@ absl::Status DataServiceDispatcherClient::Snapshot(
   if (!status.ok()) {
     return grpc_util::WrapError("Failed to snapshot", status);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status DataServiceDispatcherClient::GetSnapshotSplit(
+Status DataServiceDispatcherClient::GetSnapshotSplit(
     const std::string& worker_address, const std::string& base_path,
     int64_t stream_index, int64_t source_index, int64_t repetition_index,
     Tensor& split, int64_t& local_split_index, bool& end_of_splits) {
@@ -191,16 +189,16 @@ absl::Status DataServiceDispatcherClient::GetSnapshotSplit(
   local_split_index = resp.local_split_index();
   end_of_splits = resp.end_of_splits();
   if (end_of_splits) {
-    return absl::OkStatus();
+    return OkStatus();
   }
   if (!split.FromProto(resp.split())) {
     return errors::Internal("Failed to parse split tensor proto: ",
                             resp.split().DebugString());
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status DataServiceDispatcherClient::RegisterDataset(
+Status DataServiceDispatcherClient::RegisterDataset(
     const DatasetDef& dataset, const DataServiceMetadata& metadata,
     const std::optional<std::string>& requested_dataset_id,
     std::string& dataset_id) {
@@ -219,10 +217,10 @@ absl::Status DataServiceDispatcherClient::RegisterDataset(
     return grpc_util::WrapError("Failed to register dataset", status);
   }
   dataset_id = resp.dataset_id();
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status DataServiceDispatcherClient::GetOrCreateJob(
+Status DataServiceDispatcherClient::GetOrCreateJob(
     const std::string& dataset_id, const ProcessingModeDef& processing_mode,
     const std::optional<std::string>& job_name,
     std::optional<int64_t> num_consumers, bool use_cross_trainer_cache,
@@ -249,10 +247,10 @@ absl::Status DataServiceDispatcherClient::GetOrCreateJob(
         status);
   }
   job_id = resp.job_id();
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status DataServiceDispatcherClient::GetOrCreateIteration(
+Status DataServiceDispatcherClient::GetOrCreateIteration(
     int64_t job_id, int64_t repetition, int64_t& iteration_client_id) {
   TF_RETURN_IF_ERROR(EnsureInitialized());
   GetOrCreateIterationRequest req;
@@ -268,10 +266,10 @@ absl::Status DataServiceDispatcherClient::GetOrCreateIteration(
         status);
   }
   iteration_client_id = resp.iteration_client_id();
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status DataServiceDispatcherClient::ReleaseIterationClient(
+Status DataServiceDispatcherClient::ReleaseIterationClient(
     int64_t iteration_client_id) {
   TF_RETURN_IF_ERROR(EnsureInitialized());
   ReleaseIterationClientRequest req;
@@ -285,11 +283,13 @@ absl::Status DataServiceDispatcherClient::ReleaseIterationClient(
                      iteration_client_id),
         status);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status DataServiceDispatcherClient::MaybeRemoveTask(
-    int64_t task_id, int64_t consumer_index, int64_t round, bool& removed) {
+Status DataServiceDispatcherClient::MaybeRemoveTask(int64_t task_id,
+                                                    int64_t consumer_index,
+                                                    int64_t round,
+                                                    bool& removed) {
   TF_RETURN_IF_ERROR(EnsureInitialized());
   MaybeRemoveTaskRequest req;
   req.set_task_id(task_id);
@@ -302,10 +302,10 @@ absl::Status DataServiceDispatcherClient::MaybeRemoveTask(
     return grpc_util::WrapError("Failed to call MaybeRemoveTask", status);
   }
   removed = resp.removed();
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status DataServiceDispatcherClient::ClientHeartbeat(
+Status DataServiceDispatcherClient::ClientHeartbeat(
     ClientHeartbeatRequest& req, ClientHeartbeatResponse& resp) {
   TF_RETURN_IF_ERROR(EnsureInitialized());
   grpc::ClientContext ctx;
@@ -313,10 +313,10 @@ absl::Status DataServiceDispatcherClient::ClientHeartbeat(
   if (!s.ok()) {
     return grpc_util::WrapError("Failed to get tasks", s);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status DataServiceDispatcherClient::GetWorkers(
+Status DataServiceDispatcherClient::GetWorkers(
     std::vector<WorkerInfo>& workers) {
   TF_RETURN_IF_ERROR(EnsureInitialized());
   GetWorkersRequest req;
@@ -330,10 +330,10 @@ absl::Status DataServiceDispatcherClient::GetWorkers(
   for (auto& worker : resp.workers()) {
     workers.push_back(worker);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status DataServiceDispatcherClient::GetDataServiceMetadata(
+Status DataServiceDispatcherClient::GetDataServiceMetadata(
     const std::string& dataset_id, DataServiceMetadata& metadata) {
   TF_RETURN_IF_ERROR(EnsureInitialized());
   GetDataServiceMetadataRequest req;
@@ -345,10 +345,10 @@ absl::Status DataServiceDispatcherClient::GetDataServiceMetadata(
     return grpc_util::WrapError("Failed to get data service metadata", s);
   }
   metadata = resp.metadata();
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status DataServiceDispatcherClient::GetDataServiceConfig(
+Status DataServiceDispatcherClient::GetDataServiceConfig(
     DataServiceConfig& config) {
   TF_RETURN_IF_ERROR(EnsureInitialized());
   GetDataServiceConfigRequest request;
@@ -359,26 +359,10 @@ absl::Status DataServiceDispatcherClient::GetDataServiceConfig(
     return grpc_util::WrapError("Failed to get data service config", s);
   }
   config = response.config();
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status DataServiceDispatcherClient::DisableCompressionAtRuntime(
-    const std::string& dataset_id, bool disable_compression_at_runtime,
-    DisableCompressionAtRuntimeResponse& response) {
-  TF_RETURN_IF_ERROR(EnsureInitialized());
-  grpc::ClientContext ctx;
-  DisableCompressionAtRuntimeRequest request;
-  request.set_dataset_id(dataset_id);
-  request.set_disable_compression_at_runtime(disable_compression_at_runtime);
-  grpc::Status s = stub_->DisableCompressionAtRuntime(&ctx, request, &response);
-  if (!s.ok()) {
-    return grpc_util::WrapError(
-        "Failed to get runtime compression disabling decision", s);
-  }
-  return absl::OkStatus();
-}
-
-absl::Status DataServiceDispatcherClient::EnsureInitialized() {
+Status DataServiceDispatcherClient::EnsureInitialized() {
   return grpc_util::Retry([this] { return Initialize(); },
                           "Initialize dispatcher client",
                           /*deadline_micros=*/kint64max);

@@ -12,12 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
-#include <cstdint>
 #include <functional>
 #include <memory>
 
 #include <gtest/gtest.h>
-#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "llvm/ADT/StringRef.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"  // from @llvm-project
@@ -31,7 +29,7 @@ limitations under the License.
 #include "tensorflow/compiler/mlir/tensorflow/utils/serialize_mlir_module_utils.h"
 #include "tensorflow/compiler/mlir/tf2xla/transforms/passes.h"
 #include "tensorflow/core/lib/monitoring/cell_reader.h"
-#include "tsl/platform/statusor.h"
+#include "tensorflow/tsl/platform/statusor.h"
 
 namespace tensorflow {
 namespace {
@@ -42,7 +40,7 @@ using ::mlir::OwningOpRef;
 using ::mlir::PassManager;
 using ::tensorflow::monitoring::testing::CellReader;
 
-absl::StatusOr<OwningOpRef<ModuleOp>> GetMlirModuleFromString(
+StatusOr<OwningOpRef<ModuleOp>> GetMlirModuleFromString(
     absl::string_view module_string, MLIRContext* context) {
   mlir::DialectRegistry mlir_registry;
   RegisterAllTensorFlowDialects(mlir_registry);
@@ -90,7 +88,7 @@ TEST(XlaLegalizeTest, IllegalOp) {
     }
   })";
   CellReader<int64_t> legalize_failure_count(
-      "/tensorflow/core/tf2xla/v1/mlir_failed_xla_legalize_tf_pass_count");
+      "/tensorflow/core/tf2xla/v0/mlir_failed_xla_legalize_tf_pass_count");
 
   auto status = BuildAndRunPipeline(kMlirIllegalOpStr, legalizeTFPasses());
 
@@ -105,7 +103,7 @@ TEST(XlaLegalizeTest, LegalOp) {
      %0:2 = "tf.InfeedDequeueTuple"() : () -> (tensor<3x3xf32>, tensor<4x?xf32>) func.return %0#0, %0#1 : tensor<3x3xf32>, tensor<4x?xf32>
    })";
   CellReader<int64_t> legalize_failure_count(
-      "/tensorflow/core/tf2xla/v1/mlir_failed_xla_legalize_tf_pass_count");
+      "/tensorflow/core/tf2xla/v0/mlir_failed_xla_legalize_tf_pass_count");
 
   auto status = BuildAndRunPipeline(kMlirLegalOpStr, legalizeTFPasses());
 

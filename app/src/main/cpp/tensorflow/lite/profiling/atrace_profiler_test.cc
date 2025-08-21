@@ -18,6 +18,7 @@ limitations under the License.
 #include <sys/system_properties.h>
 #endif
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 namespace tflite {

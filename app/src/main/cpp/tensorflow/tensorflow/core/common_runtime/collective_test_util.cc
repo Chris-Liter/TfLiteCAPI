@@ -294,9 +294,8 @@ Tensor CopyTensorToHost(Device* device, const Tensor& tensor) {
   LOG(FATAL) << "Unsupported device_type " << device->device_type();
 }
 
-absl::Status RunCollective(CollectiveTestEnv* test_env,
-                           CollectiveParams* col_params, Device* device,
-                           Tensor* input, Tensor* output) {
+Status RunCollective(CollectiveTestEnv* test_env, CollectiveParams* col_params,
+                     Device* device, Tensor* input, Tensor* output) {
   // Copy input and allocate output if on GPU.
   Tensor input_buffer;
   Tensor output_buffer;
@@ -326,11 +325,10 @@ absl::Status RunCollective(CollectiveTestEnv* test_env,
   op_params.step_id = kStepId;
   op_params.device = device;
   op_params.cancellation_manager = &cancellation_manager;
-  absl::InlinedVector<TensorValue, 4UL> inputs;
+  gtl::InlinedVector<TensorValue, 4> inputs;
   inputs.push_back(TensorValue(&input_buffer));
   op_params.inputs = inputs;
-  absl::InlinedVector<AllocatorAttributes, 4UL> input_aa(
-      {AllocatorAttributes()});
+  gtl::InlinedVector<AllocatorAttributes, 4> input_aa({AllocatorAttributes()});
   op_params.input_alloc_attrs = input_aa;
   DeviceContext* dev_ctx = nullptr;
   auto* dev_info = device->tensorflow_accelerator_device_info();
@@ -364,9 +362,9 @@ absl::Status RunCollective(CollectiveTestEnv* test_env,
   TF_RETURN_IF_ERROR(collective_impl->InitializeCollectiveContext(col_ctx));
 
   // Run the collective.
-  absl::Status status;
+  Status status;
   Notification n;
-  collective_impl->Run([&status, &n](absl::Status s) {
+  collective_impl->Run([&status, &n](Status s) {
     status = s;
     n.Notify();
   });

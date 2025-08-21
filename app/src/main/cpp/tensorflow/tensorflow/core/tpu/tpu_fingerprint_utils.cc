@@ -12,24 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
-
 #include "tensorflow/core/tpu/tpu_fingerprint_utils.h"
 
-#include <cstdint>
-#include <string>
-
-#include "xla/status_macros.h"
-#include "tensorflow/core/framework/function.h"
-#include "tensorflow/core/framework/function.pb.h"
+#include "tensorflow/compiler/xla/status_macros.h"
 #include "tensorflow/core/lib/strings/proto_serialization.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/core/tpu/tpu_compile_interface.h"
-#include "tsl/platform/logging.h"  // IWYU pragma: keep
 
 namespace tensorflow {
 
-absl::Status FingerprintFunctionLibrary(
-    const FunctionLibraryDefinition& library, uint64_t& fingerprint) {
+Status FingerprintFunctionLibrary(const FunctionLibraryDefinition& library,
+                                  uint64* fingerprint) {
   // TODO(phawkins): rather than fingerprinting the entire function library,
   // consider fingerprinting just the transitive dependencies of a
   // computation.
@@ -40,8 +32,8 @@ absl::Status FingerprintFunctionLibrary(
                  << library_proto.ByteSizeLong();
   }
   TF_RET_CHECK(SerializeToStringDeterministic(library_proto, &serialized));
-  fingerprint = TpuCompileInterface::Get()->FingerprintString(serialized);
-  return absl::OkStatus();
+  *fingerprint = TpuCompileInterface::Get()->FingerprintString(serialized);
+  return OkStatus();
 }
 
 }  // namespace tensorflow

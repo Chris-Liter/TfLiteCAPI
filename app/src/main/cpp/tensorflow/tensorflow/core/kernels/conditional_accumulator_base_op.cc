@@ -49,14 +49,13 @@ class AccumulatorSetGlobalStepOp
           new_global_step_tensor->shape().DebugString()));
     }
 
-    absl::Status status =
+    Status status =
         accumulator->SetGlobalStep(new_global_step_tensor->scalar<int64_t>()());
     if (!status.ok()) ctx->CtxFailureWithWarning(status);
   }
 
  private:
-  AccumulatorSetGlobalStepOp(const AccumulatorSetGlobalStepOp&) = delete;
-  void operator=(const AccumulatorSetGlobalStepOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(AccumulatorSetGlobalStepOp);
 };
 
 REGISTER_KERNEL_BUILDER(Name("AccumulatorSetGlobalStep").Device(DEVICE_CPU),
@@ -73,9 +72,7 @@ class ResourceAccumulatorSetGlobalStepOp : public AccumulatorSetGlobalStepOp {
   }
 
  private:
-  ResourceAccumulatorSetGlobalStepOp(
-      const ResourceAccumulatorSetGlobalStepOp&) = delete;
-  void operator=(const ResourceAccumulatorSetGlobalStepOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(ResourceAccumulatorSetGlobalStepOp);
 };
 
 REGISTER_KERNEL_BUILDER(
@@ -119,8 +116,7 @@ class AccumulatorNumAccumulatedOp
   }
 
  private:
-  AccumulatorNumAccumulatedOp(const AccumulatorNumAccumulatedOp&) = delete;
-  void operator=(const AccumulatorNumAccumulatedOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(AccumulatorNumAccumulatedOp);
 };
 
 REGISTER_KERNEL_BUILDER(Name("AccumulatorNumAccumulated").Device(DEVICE_CPU),
@@ -137,9 +133,7 @@ class ResourceAccumulatorNumAccumulatedOp : public AccumulatorNumAccumulatedOp {
   }
 
  private:
-  ResourceAccumulatorNumAccumulatedOp(
-      const ResourceAccumulatorNumAccumulatedOp&) = delete;
-  void operator=(const ResourceAccumulatorNumAccumulatedOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(ResourceAccumulatorNumAccumulatedOp);
 };
 
 REGISTER_KERNEL_BUILDER(

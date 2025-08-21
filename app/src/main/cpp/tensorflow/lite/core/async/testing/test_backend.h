@@ -18,9 +18,8 @@ limitations under the License.
 #include <limits>
 #include <memory>
 
-#include "tensorflow/lite/core/async/async_kernel_internal.h"
-#include "tensorflow/lite/core/async/c/types.h"
 #include "tensorflow/lite/core/c/common.h"
+#include "tensorflow/lite/core/async/async_kernel_internal.h"
 
 namespace tflite {
 namespace async {

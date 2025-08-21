@@ -16,7 +16,7 @@ limitations under the License.
 #include "tensorflow/compiler/jit/xla_tensor.h"
 
 #include "tensorflow/compiler/tf2xla/shape_util.h"
-#include "xla/shape_util.h"
+#include "tensorflow/compiler/xla/shape_util.h"
 
 namespace tensorflow {
 
@@ -41,10 +41,10 @@ namespace tensorflow {
   }
 }
 
-absl::Status XlaTensor::AllocateShapedBuffer(DataType dtype,
-                                             const xla::Shape& on_device_shape,
-                                             xla::LocalClient* client,
-                                             int device_ordinal) {
+Status XlaTensor::AllocateShapedBuffer(DataType dtype,
+                                       const xla::Shape& on_device_shape,
+                                       xla::LocalClient* client,
+                                       int device_ordinal) {
   xla::Shape on_host_shape =
       xla::ShapeUtil::DeviceShapeToHostShape(on_device_shape);
   xla::ScopedShapedBuffer shaped_buffer(on_host_shape, on_device_shape,
@@ -66,7 +66,7 @@ absl::Status XlaTensor::AllocateShapedBuffer(DataType dtype,
   VLOG(4) << shaped_buffer.ToString();
 
   set_shaped_buffer(std::move(shaped_buffer));
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 void XlaTensor::WaitForDefinitionEventOnStream(se::Stream* stream) {
@@ -83,7 +83,7 @@ void XlaTensor::WaitForDefinitionEventOnStream(se::Stream* stream) {
     return;
   }
 
-  stream->WaitFor(definition_event_.get()).IgnoreError();
+  stream->ThenWaitFor(definition_event_.get());
   streams_defined_on_.push_back(stream);
 }
 
@@ -94,9 +94,9 @@ void XlaTensor::ResetDefinitionEvent(std::shared_ptr<se::Event> event,
   streams_defined_on_ = {stream};
 }
 
-absl::Status XlaTensor::RefreshStatusOfStreams() {
+Status XlaTensor::RefreshStatusOfStreams() {
   mutex_lock lock(mu_);
-  absl::Status status;
+  Status status;
   for (se::Stream* stream : streams_defined_on_) {
     status.Update(stream->RefreshStatus());
   }

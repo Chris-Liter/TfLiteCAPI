@@ -80,16 +80,12 @@ LogicalResult CreateTflFusableOpCustomOptions(
   size_t start_map = fbb.StartMap();
 
   for (auto attr : attrs) {
-    if (auto float_attr = mlir::dyn_cast_or_null<FloatAttr>(attr.second)) {
+    if (auto float_attr = attr.second.dyn_cast_or_null<FloatAttr>()) {
       fbb.Float(attr.first.data(), float_attr.getValue().convertToFloat());
-    } else if (auto int_attr =
-                   mlir::dyn_cast_or_null<IntegerAttr>(attr.second)) {
+    } else if (auto int_attr = attr.second.dyn_cast_or_null<IntegerAttr>()) {
       fbb.Int(attr.first.data(), int_attr.getInt());
-    } else if (auto bool_attr = mlir::dyn_cast_or_null<BoolAttr>(attr.second)) {
+    } else if (auto bool_attr = attr.second.dyn_cast_or_null<BoolAttr>()) {
       fbb.Bool(attr.first.data(), bool_attr.getValue());
-    } else if (auto string_attr =
-                   mlir::dyn_cast_or_null<StringAttr>(attr.second)) {
-      fbb.String(attr.first.data(), string_attr.getValue().str());
     } else {
       // TODO(b/201482289): support other data types.
       return failure();
@@ -184,7 +180,7 @@ LogicalResult CheckFusableLayerNormalizedLstmCellSimple(
     func::FuncOp lstm_func) {
   for (int i = 0; i < 5; ++i) {
     auto input = lstm_func.getArgument(i);
-    auto input_type = mlir::dyn_cast_or_null<RankedTensorType>(input.getType());
+    auto input_type = input.getType().dyn_cast_or_null<RankedTensorType>();
     if (!input_type) {
       lstm_func.emitWarning(
           "we cannot fuse this lstm func because all the inputs have not "
@@ -199,7 +195,7 @@ LogicalResult CheckFusableLayerNormalizedLstmCellSimple(
 LogicalResult CheckFusableLstmCellSimple(func::FuncOp lstm_func) {
   for (int i = 0; i < 4; ++i) {
     auto input = lstm_func.getArgument(i);
-    auto input_type = mlir::dyn_cast_or_null<RankedTensorType>(input.getType());
+    auto input_type = input.getType().dyn_cast_or_null<RankedTensorType>();
     if (!input_type) {
       lstm_func.emitWarning(
           "we cannot fuse this lstm func because all the inputs have not "
@@ -252,7 +248,7 @@ LogicalResult CheckFusableKerasLstm(func::FuncOp lstm_func, ModuleOp module) {
   // types.
   for (int i = 0; i < 6; ++i) {
     auto input = lstm_func.getArgument(i);
-    auto input_type = mlir::dyn_cast_or_null<RankedTensorType>(input.getType());
+    auto input_type = input.getType().dyn_cast_or_null<RankedTensorType>();
     if (!input_type) {
       lstm_func.emitWarning(
           "we cannot fuse this lstm func because all the inputs have not "
@@ -345,7 +341,7 @@ void PrepareCompositeFunctionsPass::ConvertTFImplementsWithAttributes(
   StringRef api_name = attr.getName().getLeafReference().getValue();
   bool enable_fuse_tftext =
       tfl_fuse_tftext_ || IsTFTextRegistered(tensorflow::OpRegistry::Global());
-  if (api_name.starts_with(kTFTextAPIPrefix) && enable_fuse_tftext) {
+  if (api_name.startswith(kTFTextAPIPrefix) && enable_fuse_tftext) {
     if (failed(ConvertTFTextAPI(func, api_name, attr))) {
       return signalPassFailure();
     }
@@ -370,7 +366,7 @@ void PrepareCompositeFunctionsPass::ConvertTFImplementsWithAttributes(
     for (auto attr_item : dict_attr) {
       // Push other attributes except the TFLFusableOp.
       if (attr_item.getName() == kTFLFusableOp &&
-          mlir::dyn_cast<BoolAttr>(attr_item.getValue()).getValue()) {
+          attr_item.getValue().dyn_cast<BoolAttr>().getValue()) {
         tfl_fusable_op = true;
       } else {
         attributes.push_back({attr_item.getName(), attr_item.getValue()});
@@ -394,7 +390,7 @@ void PrepareCompositeFunctionsPass::ConvertTFAPIImplements(func::FuncOp func,
   // outputs(full sequence) is used, not the last_output, not the new_states.
   // We will discard everything except the outputs.
   // And the outputs is in the shape of [batch, time, units].
-  if (attr.getValue().starts_with("lstm_")) {
+  if (attr.getValue().startswith("lstm_")) {
     // Check if the keras lstm can be fused, if not, we just don't do anything.
     if (failed(CheckFusableKerasLstm(func, module))) return;
     func.eraseBody();
@@ -409,7 +405,7 @@ void PrepareCompositeFunctionsPass::ConvertTFAPIImplements(func::FuncOp func,
   // IndyLSTMs have diagonal recurrent weight matrices and can benefit from
   // more efficent operations in TFLite with the correct conversion (i.e. when
   // the diagonal recurrent weight matrices are provided as vectors).
-  if (attr.getValue().starts_with("indy_lstm_")) {
+  if (attr.getValue().startswith("indy_lstm_")) {
     // Check if the keras lstm can be fused, if not, we just don't do anything.
     if (failed(CheckFusableKerasLstm(func, module))) return;
     func.eraseBody();

@@ -28,7 +28,7 @@ limitations under the License.
 
 #include "absl/container/inlined_vector.h"
 #include "absl/strings/str_format.h"
-#include "unsupported/Eigen/CXX11/Tensor"  // from @eigen_archive
+#include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 #include "tensorflow/c/c_api.h"
 #include "tensorflow/c/tf_datatype.h"
 #include "tensorflow/c/tf_status.h"
@@ -111,12 +111,12 @@ static void MyDeleteFunc(void* kernel) {
 }
 
 namespace tensorflow {
-absl::Status TF_TensorToTensor(const TF_Tensor* src, Tensor* dst);
+Status TF_TensorToTensor(const TF_Tensor* src, Tensor* dst);
 
 static std::unique_ptr<OpKernel> GetFakeKernel(const char* device_name,
                                                const char* op_name,
                                                const char* node_name,
-                                               absl::Status* status) {
+                                               Status* status) {
   NodeDef def;
   def.set_op(op_name);
   def.set_name(node_name);
@@ -135,7 +135,7 @@ static std::unique_ptr<OpKernel> GetFakeKernel(const char* device_name,
 static std::unique_ptr<OpKernel> GetFakeKernel2(const char* device_name,
                                                 const char* op_name,
                                                 const char* node_name,
-                                                absl::Status* status) {
+                                                Status* status) {
   NodeDef def;
   def.set_op(op_name);
   def.set_name(node_name);
@@ -189,7 +189,7 @@ TEST(TestKernel, TestRegisterKernelBuilder) {
   }
 
   {
-    absl::Status status;
+    Status status;
     std::unique_ptr<OpKernel> kernel =
         GetFakeKernel(device_name, op_name, node_name, &status);
     TF_EXPECT_OK(status);
@@ -235,7 +235,7 @@ TEST(TestKernel, TF_RegisterKernelBuilderWithKernelDef) {
   }
 
   {
-    absl::Status status;
+    Status status;
     std::unique_ptr<OpKernel> kernel =
         GetFakeKernel(device_name, op_name, node_name, &status);
     TF_EXPECT_OK(status);
@@ -277,7 +277,7 @@ TEST(TestKernel, TestRegisterAsyncKernelBuilder) {
   }
 
   {
-    absl::Status status;
+    Status status;
     std::unique_ptr<OpKernel> kernel =
         GetFakeKernel(device_name, op_name, node_name, &status);
     TF_EXPECT_OK(status);
@@ -327,8 +327,7 @@ class TestKernelAttr : public ::testing::Test {
   ~TestKernelAttr() override {}
 
   std::unique_ptr<OpKernel> GetFakeKernelWithAttr(const char* op_name,
-                                                  AttrValue v,
-                                                  absl::Status* status) {
+                                                  AttrValue v, Status* status) {
     NodeDef def;
     def.set_op(op_name);
     def.set_name("FakeNode");
@@ -348,7 +347,7 @@ class TestKernelAttr : public ::testing::Test {
       EXPECT_EQ(TF_OK, TF_GetCode(status));
       TF_DeleteStatus(status);
     }
-    absl::Status status;
+    Status status;
     std::unique_ptr<OpKernel> kernel =
         GetFakeKernelWithAttr(op_name, v, &status);
     TF_EXPECT_OK(status);
@@ -449,7 +448,7 @@ TEST_F(TestKernelAttr, StringList) {
 
   AttrValue v;
   std::string attr_in[] = {"bugs", "bunny", "duck"};
-  SetAttrValue(absl::Span<const std::string>(attr_in, 3), &v);
+  SetAttrValue(gtl::ArraySlice<std::string>(attr_in, 3), &v);
   CreateAndCallKernelWithAttr(my_create_func, "TestKernelAttrStringList", v);
 }
 
@@ -635,7 +634,7 @@ TEST_F(TestKernelAttr, IntList) {
 
   AttrValue v;
   int64_t attr_in[] = {1, 2, 3, 4};
-  SetAttrValue(absl::Span<const int64_t>(attr_in, 4), &v);
+  SetAttrValue(gtl::ArraySlice<int64_t>(attr_in, 4), &v);
   CreateAndCallKernelWithAttr(my_create_func, "TestKernelAttrIntList", v);
 }
 
@@ -685,7 +684,7 @@ TEST_F(TestKernelAttr, FloatList) {
 
   AttrValue v;
   float attr_in[] = {1.414, 2.718, 3.1415};
-  SetAttrValue(absl::Span<const float>(attr_in, 3), &v);
+  SetAttrValue(gtl::ArraySlice<float>(attr_in, 3), &v);
   CreateAndCallKernelWithAttr(my_create_func, "TestKernelAttrFloatList", v);
 }
 
@@ -735,7 +734,7 @@ TEST_F(TestKernelAttr, BoolList) {
 
   AttrValue v;
   bool attr_in[] = {true, false, true, false};
-  SetAttrValue(absl::Span<const bool>(attr_in, 4), &v);
+  SetAttrValue(gtl::ArraySlice<bool>(attr_in, 4), &v);
   CreateAndCallKernelWithAttr(my_create_func, "TestKernelAttrBoolList", v);
 }
 
@@ -785,7 +784,7 @@ TEST_F(TestKernelAttr, TypeList) {
 
   AttrValue v;
   DataType attr_in[] = {DT_FLOAT, DT_DOUBLE, DT_HALF, DT_COMPLEX128};
-  SetAttrValue(absl::Span<const DataType>(attr_in, 4), &v);
+  SetAttrValue(gtl::ArraySlice<DataType>(attr_in, 4), &v);
   CreateAndCallKernelWithAttr(my_create_func, "TestKernelAttrTypeList", v);
 }
 #undef EXPECT_TF_SIZE
@@ -868,13 +867,13 @@ TEST(TestKernel, TestInputAndOutputCount) {
 
     Tensor t(tensorflow::uint8(123));
 
-    absl::InlinedVector<TensorValue, 4UL> inputs;
+    gtl::InlinedVector<TensorValue, 4> inputs;
     // Simulate 2 inputs
     inputs.emplace_back(&t);
     inputs.emplace_back();
     p.inputs = inputs;
 
-    absl::Status status;
+    Status status;
     std::unique_ptr<OpKernel> kernel =
         GetFakeKernel(device_name, op_name, node_name, &status);
     TF_EXPECT_OK(status);
@@ -1351,7 +1350,7 @@ TEST_F(DeviceKernelOpTest, TestGetKernelInfo) {
     AllocatorAttributes alloc_attrs;
     p.output_attr_array = &alloc_attrs;
 
-    absl::InlinedVector<TensorValue, 4UL> inputs;
+    gtl::InlinedVector<TensorValue, 4> inputs;
     Tensor t0(1.0f);
     Tensor t1(2.0f);
     Tensor t2_0(2.0f);
@@ -1363,7 +1362,7 @@ TEST_F(DeviceKernelOpTest, TestGetKernelInfo) {
     inputs.emplace_back(&t2_1);
     inputs.emplace_back(&t2_2);
 
-    absl::Status status;
+    Status status;
     std::unique_ptr<OpKernel> kernel =
         GetFakeKernel2(device_name, op_name, node_name, &status);
     TF_EXPECT_OK(status);
@@ -1425,13 +1424,13 @@ TEST_F(DeviceKernelOpTest, TestForwardInputOrAllocateOutput) {
 
     Tensor t(123.0f);
 
-    absl::InlinedVector<TensorValue, 4UL> inputs;
+    gtl::InlinedVector<TensorValue, 4> inputs;
     // GetFakeKernel requires a NodeDef with two inputs
     inputs.emplace_back(&t);
     inputs.emplace_back();
     p.inputs = inputs;
 
-    absl::Status status;
+    Status status;
     std::unique_ptr<OpKernel> kernel =
         GetFakeKernel(device_name, op_name, node_name, &status);
     TF_EXPECT_OK(status);

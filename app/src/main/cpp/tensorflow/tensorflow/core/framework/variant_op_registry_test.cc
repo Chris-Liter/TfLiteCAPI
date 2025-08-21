@@ -24,7 +24,7 @@ limitations under the License.
 
 #include "tensorflow/core/framework/variant_op_registry.h"
 
-#include "unsupported/Eigen/CXX11/Tensor"  // from @eigen_archive
+#include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/framework/types.h"
 #include "tensorflow/core/lib/core/status_test_util.h"
@@ -39,46 +39,44 @@ namespace {
 
 struct VariantValue {
   string TypeName() const { return "TEST VariantValue"; }
-  static absl::Status CPUZerosLikeFn(OpKernelContext* ctx,
-                                     const VariantValue& v,
-                                     VariantValue* v_out) {
+  static Status CPUZerosLikeFn(OpKernelContext* ctx, const VariantValue& v,
+                               VariantValue* v_out) {
     if (v.early_exit) {
       return errors::InvalidArgument("early exit zeros_like!");
     }
     v_out->value = 1;  // CPU
-    return absl::OkStatus();
+    return OkStatus();
   }
-  static absl::Status GPUZerosLikeFn(OpKernelContext* ctx,
-                                     const VariantValue& v,
-                                     VariantValue* v_out) {
+  static Status GPUZerosLikeFn(OpKernelContext* ctx, const VariantValue& v,
+                               VariantValue* v_out) {
     if (v.early_exit) {
       return errors::InvalidArgument("early exit zeros_like!");
     }
     v_out->value = 2;  // GPU
-    return absl::OkStatus();
+    return OkStatus();
   }
-  static absl::Status CPUAddFn(OpKernelContext* ctx, const VariantValue& a,
-                               const VariantValue& b, VariantValue* out) {
+  static Status CPUAddFn(OpKernelContext* ctx, const VariantValue& a,
+                         const VariantValue& b, VariantValue* out) {
     if (a.early_exit) {
       return errors::InvalidArgument("early exit add!");
     }
     out->value = a.value + b.value;  // CPU
-    return absl::OkStatus();
+    return OkStatus();
   }
-  static absl::Status GPUAddFn(OpKernelContext* ctx, const VariantValue& a,
-                               const VariantValue& b, VariantValue* out) {
+  static Status GPUAddFn(OpKernelContext* ctx, const VariantValue& a,
+                         const VariantValue& b, VariantValue* out) {
     if (a.early_exit) {
       return errors::InvalidArgument("early exit add!");
     }
     out->value = -(a.value + b.value);  // GPU
-    return absl::OkStatus();
+    return OkStatus();
   }
-  static absl::Status CPUToGPUCopyFn(
+  static Status CPUToGPUCopyFn(
       const VariantValue& from, VariantValue* to,
-      const std::function<absl::Status(const Tensor&, Tensor*)>& copier) {
+      const std::function<Status(const Tensor&, Tensor*)>& copier) {
     TF_RETURN_IF_ERROR(copier(Tensor(), nullptr));
     to->value = 0xdeadbeef;
-    return absl::OkStatus();
+    return OkStatus();
   }
   bool early_exit;
   int value;
@@ -170,9 +168,9 @@ TEST(VariantOpCopyToGPURegistryTest, TestBasic) {
   Variant v_out;
   bool dummy_executed = false;
   auto dummy_copy_fn = [&dummy_executed](const Tensor& from,
-                                         Tensor* to) -> absl::Status {
+                                         Tensor* to) -> Status {
     dummy_executed = true;
-    return absl::OkStatus();
+    return OkStatus();
   };
   TF_EXPECT_OK((*copy_to_gpu_fn)(v, &v_out, dummy_copy_fn));
   EXPECT_TRUE(dummy_executed);
@@ -205,8 +203,8 @@ TEST(VariantOpZerosLikeRegistryTest, TestBasicCPU) {
   Variant v_out = VariantValue();
 
   OpKernelContext* null_context_pointer = nullptr;
-  absl::Status s0 = UnaryOpVariant<CPUDevice>(
-      null_context_pointer, ZEROS_LIKE_VARIANT_UNARY_OP, v, &v_out);
+  Status s0 = UnaryOpVariant<CPUDevice>(null_context_pointer,
+                                        ZEROS_LIKE_VARIANT_UNARY_OP, v, &v_out);
   EXPECT_FALSE(s0.ok());
   EXPECT_TRUE(absl::StrContains(s0.message(), "early exit zeros_like"));
 
@@ -277,7 +275,7 @@ TEST(VariantOpAddRegistryTest, TestBasicCPU) {
   Variant v_out = VariantValue();
 
   OpKernelContext* null_context_pointer = nullptr;
-  absl::Status s0 = BinaryOpVariants<CPUDevice>(
+  Status s0 = BinaryOpVariants<CPUDevice>(
       null_context_pointer, ADD_VARIANT_BINARY_OP, v_a, v_b, &v_out);
   EXPECT_FALSE(s0.ok());
   EXPECT_TRUE(absl::StrContains(s0.message(), "early exit add"));

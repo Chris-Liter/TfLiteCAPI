@@ -89,7 +89,7 @@ GraphExecutionState::~GraphExecutionState() {
   delete graph_;
 }
 
-/* static */ absl::Status GraphExecutionState::MakeForBaseGraph(
+/* static */ Status GraphExecutionState::MakeForBaseGraph(
     GraphDef&& graph_def, const GraphExecutionStateOptions& options,
     std::unique_ptr<GraphExecutionState>* out_state) {
 #ifndef __ANDROID__
@@ -97,7 +97,7 @@ GraphExecutionState::~GraphExecutionState() {
 #endif  // __ANDROID__
 
   auto flib_def = std::make_unique<FunctionLibraryDefinition>(
-      OpRegistry::Global(), graph_def);
+      OpRegistry::Global(), graph_def.library());
 
   TF_RETURN_IF_ERROR(AddDefaultAttrsToGraphDef(&graph_def, *flib_def, 0));
 
@@ -115,8 +115,7 @@ GraphExecutionState::~GraphExecutionState() {
       auto base_graph = std::make_unique<Graph>(OpRegistry::Global());
       TF_RETURN_IF_ERROR(ConvertGraphDefToGraph({}, *ret->original_graph_def_,
                                                 base_graph.get()));
-      TF_RETURN_IF_ERROR(ret->InitBaseGraph(std::move(base_graph),
-                                            options.enable_tf2xla_mlir_bridge));
+      TF_RETURN_IF_ERROR(ret->InitBaseGraph(std::move(base_graph)));
     }
     *out_state = std::move(ret);
   } else {
@@ -125,14 +124,13 @@ GraphExecutionState::~GraphExecutionState() {
     auto base_graph = std::make_unique<Graph>(OpRegistry::Global());
     TF_RETURN_IF_ERROR(
         ConvertGraphDefToGraph({}, std::move(graph_def), base_graph.get()));
-    TF_RETURN_IF_ERROR(ret->InitBaseGraph(std::move(base_graph),
-                                          options.enable_tf2xla_mlir_bridge));
+    TF_RETURN_IF_ERROR(ret->InitBaseGraph(std::move(base_graph)));
     *out_state = std::move(ret);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-/* static */ absl::Status GraphExecutionState::MakeForPrunedGraph(
+/* static */ Status GraphExecutionState::MakeForPrunedGraph(
     const GraphExecutionState& base_execution_state,
     const GraphExecutionStateOptions& options,
     const BuildGraphOptions& subgraph_options,
@@ -179,10 +177,10 @@ GraphExecutionState::~GraphExecutionState() {
   TF_RETURN_IF_ERROR(ret->InitBaseGraph(std::move(base_graph)));
   TF_RETURN_IF_ERROR(ret->BuildGraph(subgraph_options, out_client_graph));
   *out_state = std::move(ret);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status GraphExecutionState::Extend(
+Status GraphExecutionState::Extend(
     const GraphDef& extension_def,
     std::unique_ptr<GraphExecutionState>* out) const {
   if (!session_options_->config.experimental()
@@ -287,7 +285,7 @@ absl::Status GraphExecutionState::Extend(
   // NOTE(mrry): Extend() is likely to be used for non-throughput-sensitive
   // interactive workloads, but in future we may want to transfer other
   // parts of the placement and/or cost model.
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 void GraphExecutionState::SaveStatefulNodes(Graph* graph) {
@@ -320,9 +318,9 @@ class TensorConnectionPruneRewrite : public subgraph::PruneRewrite {
       : subgraph::PruneRewrite(endpoint_name, nullptr /* device_info */),
         from_tensor_(std::move(from_tensor)) {}
 
-  absl::Status AddNode(Graph* g, NodeBuilder::NodeOut feed_tensor,
-                       Node** out_node) override {
-    absl::Status s;
+  Status AddNode(Graph* g, NodeBuilder::NodeOut feed_tensor,
+                 Node** out_node) override {
+    Status s;
     auto check_no_cycle_fn = [this, feed_tensor, &s](Node* n) {
       if (n == feed_tensor.node) {
         s.Update(errors::InvalidArgument(
@@ -346,7 +344,7 @@ class TensorConnectionPruneRewrite : public subgraph::PruneRewrite {
 
     (*out_node)->set_assigned_device_name(
         feed_tensor.node->assigned_device_name());
-    return absl::OkStatus();
+    return OkStatus();
   }
 
  private:
@@ -354,19 +352,18 @@ class TensorConnectionPruneRewrite : public subgraph::PruneRewrite {
 };
 
 template <class Map>
-absl::Status LookupDevice(
-    const DeviceSet& device_set, const string& tensor_name,
-    const Map& tensor2device,
-    const tensorflow::DeviceAttributes** out_device_attrs) {
+Status LookupDevice(const DeviceSet& device_set, const string& tensor_name,
+                    const Map& tensor2device,
+                    const tensorflow::DeviceAttributes** out_device_attrs) {
   *out_device_attrs = nullptr;
   if (tensor2device.empty()) {
     *out_device_attrs = &device_set.client_device()->attributes();
-    return absl::OkStatus();
+    return OkStatus();
   }
   const auto it = tensor2device.find(tensor_name);
   if (it == tensor2device.end()) {
     *out_device_attrs = &device_set.client_device()->attributes();
-    return absl::OkStatus();
+    return OkStatus();
   }
   DeviceNameUtils::ParsedName parsed_name;
   if (!DeviceNameUtils::ParseFullName(it->second, &parsed_name)) {
@@ -382,7 +379,7 @@ absl::Status LookupDevice(
                                    "' in CallableOptions does not exist");
   }
   *out_device_attrs = &device->attributes();
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 struct TensorAndDevice {
@@ -425,18 +422,16 @@ bool IsFeedAndFetchSupported(DataType dtype, const string& device_type) {
     case DT_INT8:
     case DT_UINT16:
     case DT_UINT8:
-    case DT_INT4:
-    case DT_UINT4:
       return true;
     default:
       return false;
   }
 }
 
-absl::Status ValidateFeedAndFetchDevices(
+Status ValidateFeedAndFetchDevices(
     const Graph& graph,
     const std::vector<TensorAndDevice>& tensors_and_devices) {
-  if (tensors_and_devices.empty()) return absl::OkStatus();
+  if (tensors_and_devices.empty()) return OkStatus();
   std::vector<bool> found(tensors_and_devices.size(), false);
   for (const Node* node : graph.nodes()) {
     // Linearly looping through all nodes and then all feed+fetch tensors isn't
@@ -468,12 +463,12 @@ absl::Status ValidateFeedAndFetchDevices(
           "in the Graph");
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status GetFeedShapeAndTypeFromAttribute(const NodeDef& node,
-                                              PartialTensorShape* shape,
-                                              DataType* type) {
+Status GetFeedShapeAndTypeFromAttribute(const NodeDef& node,
+                                        PartialTensorShape* shape,
+                                        DataType* type) {
   static const gtl::FlatSet<string>* const kHasExplicitShapeAttribute =
       CHECK_NOTNULL((new gtl::FlatSet<string>{
           "Placeholder", "PlaceholderV2", "PlaceholderWithDefault",
@@ -503,12 +498,12 @@ absl::Status GetFeedShapeAndTypeFromAttribute(const NodeDef& node,
     return errors::InvalidArgument("Could not determine shape for feed node: ",
                                    node.name(), " of type ", node.op());
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace
 
-absl::Status GraphExecutionState::PruneGraph(
+Status GraphExecutionState::PruneGraph(
     const BuildGraphOptions& options, Graph* graph,
     subgraph::RewriteGraphMetadata* out_rewrite_metadata) {
   std::vector<std::unique_ptr<subgraph::PruneRewrite>> feed_rewrites;
@@ -611,11 +606,10 @@ absl::Status GraphExecutionState::PruneGraph(
   for (int i = 0; i < options.callable_options.tensor_connection_size(); ++i) {
     out_rewrite_metadata->feed_types.pop_back();
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status GraphExecutionState::InitBaseGraph(
-    std::unique_ptr<Graph>&& new_graph, bool enable_tf2xla_mlir_bridge) {
+Status GraphExecutionState::InitBaseGraph(std::unique_ptr<Graph>&& new_graph) {
   // Save stateful placements before placing.
   RestoreStatefulNodes(new_graph.get());
 
@@ -625,7 +619,6 @@ absl::Status GraphExecutionState::InitBaseGraph(
   optimization_options.graph = &new_graph;
   optimization_options.flib_def = flib_def_.get();
   optimization_options.device_set = device_set_;
-  optimization_options.enable_tf2xla_mlir_bridge = enable_tf2xla_mlir_bridge;
 
   TF_RETURN_IF_ERROR(OptimizationPassRegistry::Global()->RunGrouping(
       OptimizationPassRegistry::PRE_PLACEMENT, optimization_options));
@@ -651,10 +644,10 @@ absl::Status GraphExecutionState::InitBaseGraph(
 
   SaveStatefulNodes(new_graph.get());
   graph_ = new_graph.release();
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status GraphExecutionState::OptimizeGraph(
+Status GraphExecutionState::OptimizeGraph(
     const BuildGraphOptions& options, const Graph& graph,
     const FunctionLibraryDefinition* flib_def,
     std::unique_ptr<Graph>* optimized_graph,
@@ -674,7 +667,7 @@ absl::Status GraphExecutionState::OptimizeGraph(
     // Add devices to the GrapplerItem
     // It's ok to skip invalid device annotations in Grappler.
     for (const Device* d : device_set_->devices()) {
-      absl::Status added_device = item.AddDevice(d->name());
+      Status added_device = item.AddDevice(d->name());
       if (!added_device.ok()) VLOG(3) << added_device.message();
     }
     VLOG(3) << "Grappler available devices: "
@@ -736,8 +729,8 @@ absl::Status GraphExecutionState::OptimizeGraph(
         // Try to get the type and shape of the feed node.
         PartialTensorShape partial_shape;
         DataType type;
-        absl::Status st = GetFeedShapeAndTypeFromAttribute(
-            node->def(), &partial_shape, &type);
+        Status st = GetFeedShapeAndTypeFromAttribute(node->def(),
+                                                     &partial_shape, &type);
 
         // Failed to get type and shape of the feed node.
         if (!st.ok()) {
@@ -783,11 +776,11 @@ absl::Status GraphExecutionState::OptimizeGraph(
         node_names.insert(node->name());
       }
     }
-    for (auto& feed : item.feed) {
+    for (const auto& feed : item.feed) {
       SafeTensorId tensor_id = ParseTensorName(feed.first);
       if (node_names.find(tensor_id.node()) == node_names.end()) {
         return errors::InvalidArgument("Invalid feed, no such node in graph: ",
-                                       std::move(feed.first));
+                                       feed.first);
       }
     }
     for (const auto& fetch : item.fetch) {
@@ -811,7 +804,7 @@ absl::Status GraphExecutionState::OptimizeGraph(
     Device* cpu_device = nullptr;
     for (const auto& device : device_set_->devices()) {
       if (device->parsed_name().id == 0 &&
-          absl::string_view(device->parsed_name().type) == "CPU" &&
+          StringPiece(device->parsed_name().type) == "CPU" &&
           device->GetAllocator(AllocatorAttributes()) != nullptr) {
         cpu_device = device;
       }
@@ -827,7 +820,7 @@ absl::Status GraphExecutionState::OptimizeGraph(
     // Optimized graph might have new functions specialized for it's
     // instantiation context (see Grappler function optimizer), and modified
     // function body for the existing functions.
-    *optimized_flib = std::make_unique<FunctionLibraryDefinition>(*flib_def);
+    optimized_flib->reset(new FunctionLibraryDefinition(*flib_def));
 
     for (const FunctionDef& fdef : new_graph.library().function()) {
       const string& func_name = fdef.signature().name();
@@ -854,15 +847,15 @@ absl::Status GraphExecutionState::OptimizeGraph(
     for (Node* node : optimized_graph->get()->nodes()) {
       node->set_assigned_device_name(node->requested_device());
     }
-    return absl::OkStatus();
+    return OkStatus();
   } else {
     return errors::InvalidArgument("Meta Optimizer disabled");
   }
 #endif  // IS_MOBILE_PLATFORM
 }
 
-absl::Status GraphExecutionState::BuildGraph(
-    const BuildGraphOptions& options, std::unique_ptr<ClientGraph>* out) {
+Status GraphExecutionState::BuildGraph(const BuildGraphOptions& options,
+                                       std::unique_ptr<ClientGraph>* out) {
   VLOG(1) << "BuildGraph";
   const uint64 start_time_usecs = Env::Default()->NowMicros();
   if (!graph_) {
@@ -877,15 +870,15 @@ absl::Status GraphExecutionState::BuildGraph(
   std::unique_ptr<Graph> optimized_graph;
   std::unique_ptr<FunctionLibraryDefinition> optimized_flib;
 
-  absl::Status s = OptimizeGraph(options, *graph_, flib_def_.get(),
-                                 &optimized_graph, &optimized_flib);
+  Status s = OptimizeGraph(options, *graph_, flib_def_.get(), &optimized_graph,
+                           &optimized_flib);
   if (!s.ok()) {
     VLOG(2) << "Grappler optimization failed. Error: " << s.message();
     // Simply copy the original graph and the function library if we couldn't
     // optimize it.
     optimized_graph.reset(new Graph(flib_def_.get()));
     CopyGraph(*graph_, optimized_graph.get());
-    optimized_flib = std::make_unique<FunctionLibraryDefinition>(*flib_def_);
+    optimized_flib.reset(new FunctionLibraryDefinition(*flib_def_));
   }
 
   subgraph::RewriteGraphMetadata rewrite_metadata;
@@ -979,7 +972,7 @@ absl::Status GraphExecutionState::BuildGraph(
   // TODO(vrv): We should check invariants of the graph here.
   metrics::UpdateGraphBuildTime(Env::Default()->NowMicros() - start_time_usecs);
   *out = std::move(dense_copy);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace tensorflow

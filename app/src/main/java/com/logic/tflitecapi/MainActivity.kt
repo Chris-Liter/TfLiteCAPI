@@ -19,9 +19,11 @@ import android.os.SystemClock
 import android.util.Base64
 import android.util.Log
 import android.util.Size
+import android.view.View
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.Toast
+import android.widget.ToggleButton
 import androidx.camera.core.AspectRatio
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
@@ -31,6 +33,8 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.logic.tflitecapi.databinding.ActivityMainBinding
@@ -117,14 +121,7 @@ class MainActivity : AppCompatActivity() , DetectorListener{
     private var sesionIniciada: Boolean = false
     private var cambio: Boolean = false
 
-    val retrofit = Retrofit.Builder()
-        .baseUrl("http://192.168.0.117:5000/")  // URL de tu servidor Flask
-        .addConverterFactory(GsonConverterFactory.create())
-        .build()
-    val apiService = retrofit.create(ApiService::class.java)
-
-
-    private lateinit var numeros: Button;
+    private lateinit var changeCPUGPU: ToggleButton
 
     var cocoNamesPath : String = ""
     var modelo : String = ""
@@ -146,6 +143,9 @@ class MainActivity : AppCompatActivity() , DetectorListener{
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(fragmento.root)
 
+        supportActionBar?.hide()
+
+
         // Example of a call to a native method
         fragmento.texto.text = stringFromJNI()
         fragmento.cambio.text = "Api Java"
@@ -158,14 +158,14 @@ class MainActivity : AppCompatActivity() , DetectorListener{
                 //fragmento.overlay.invalidate()
             }else {
                 fragmento.cambio.text = "Api Java"
-                LiberarRecursos()
+                //LiberarRecursos()
             }
         }
         //imagen = findViewById(R.id.imageView)
 
 
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-            val nnapiSupported = android.os.Build.SUPPORTED_ABIS.contains("arm64-v8a") // Asumiendo que tienes un dispositivo con ARM
+            val nnapiSupported = android.os.Build.SUPPORTED_ABIS.contains("arm64-v8a")
             if (nnapiSupported) {
                 println("GPU support available via NNAPI")
             } else {
@@ -179,7 +179,7 @@ class MainActivity : AppCompatActivity() , DetectorListener{
             setUpCamera()
         }
         if (allPermissionsGranted()) {
-            //setUpCamera()
+
         } else {
             this.let {
                 ActivityCompat.requestPermissions(
@@ -190,12 +190,21 @@ class MainActivity : AppCompatActivity() , DetectorListener{
             }
         }
 
-        numeros = findViewById(R.id.numeros)
+        changeCPUGPU = findViewById(R.id.CpuOrGpu)
 
-        numeros.setOnClickListener{
-            var intent: Intent = Intent(this, ClasificarNumeros::class.java)
-            startActivity(intent)
+        changeCPUGPU.setOnClickListener {
+            cambio = !cambio
+            if(cambio){
+                changeCPUGPU.text = "GPU"
+                //cambio = true
+                objectDetector = null
+            }else{
+                changeCPUGPU.text = "CPU"
+                //cambio = false
+                objectDetector = null
+            }
         }
+
 
     }
 
@@ -313,12 +322,11 @@ class MainActivity : AppCompatActivity() , DetectorListener{
             val modelFile = copyModelFromRawToInternalStorage(
                 context = this, // Usa `this` si estás en una actividad
                 rawResId = R.raw.mobilenetv1, // El ID del archivo en `res/raw`
-                outputFileName = "yolo11ncuantizado.tflite" // Nombre del archivo de salida
+                outputFileName = "mobilenetv1.tflite" // Nombre del archivo de salida
             )
 
             if(cambio) {
 
-                //modelo = copyRawFileToInternalStorage(this, R.raw.mobilenetv3_model, "mobilenetv3_model.tflite")
                 modelo = copyRawFileToInternalStorage(this, R.raw.model, "model.tflite")
                 cocoNamesPath = copyRawFileToInternalStorage(this, R.raw.coco2, "coco.names")
 
@@ -337,8 +345,20 @@ class MainActivity : AppCompatActivity() , DetectorListener{
                 //cocoNamesPath  = copyRawFileToInternalStorage(this, R.raw.coco, "coco.names")
 
                 //////////////////////////////////////////////////////////////////////////////////////////////////////
+//                objectDetector =
+//                    ObjectDetector.createFromFileAndOptions(modelFile, optionsBuilder.build())
+                modelo = copyRawFileToInternalStorage(this, R.raw.model, "model.tflite")
+                cocoNamesPath = copyRawFileToInternalStorage(this, R.raw.coco2, "coco.names")
+
+                sesionIniciada = CreateSession(modelo, cocoNamesPath, false)
+                if(sesionIniciada == false) {
+                    cambio = sesionIniciada
+                    fragmento.cambio.isActivated = false
+                }
+
                 objectDetector =
                     ObjectDetector.createFromFileAndOptions(modelFile, optionsBuilder.build())
+
             }
 
 
@@ -371,81 +391,42 @@ class MainActivity : AppCompatActivity() , DetectorListener{
             matriz.postRotate(90f)
             val imagenRotada = Bitmap.createBitmap(image, 0, 0, image.width, image.height, matriz, true)
 
-
-            //val results = detector(imagenRotada)
-            //val cadena = processBitmapToBase64(imagenRotada)
-
-            val outputStream = ByteArrayOutputStream()
-            imagenRotada.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
-            val byteArray = outputStream.toByteArray()
-            // Crear el archivo MultipartBody
-            val requestBody = byteArray.toRequestBody("image/jpeg".toMediaTypeOrNull())
-
-            val multipartBody = MultipartBody.Part.createFormData("image", "image.jpeg", requestBody)
-
-            val call = apiService.uploadFrame(multipartBody)
-            //val resultsList: MutableList<Results> = mutableListOf()
-            val numero = inferenceTime.milliseconds.toString()
-            val categoria : List<String> = mutableListOf()
-            try {
-                val response = call.execute()  // Llamada sincrónica
-                if (response.isSuccessful) {
-                    val body = response.body()?.string()  // La respuesta ya está en el cuerpo
-                    val gson = Gson()
-                    //val api: ApiResponse = gson.fromJson(body, ApiResponse::class.java)
-
-                    //val dec = api.categoria
-                    //resultsList.addAll(api.categoria)
-                    //runOnUiThread{
-                        fragmento.obje.text = body ?: "Nada"
-                    //}
-                    //results = resultsList
-
-                    Log.d("Retrofit", "Respuesta exitosa: $body")
-                } else {
-                    val error = response.errorBody()?.string()
-                    Log.e("Retrofit", "Error en la respuesta: $error")
-                }
-            } catch (e: Exception) {
-                Log.e("Retrofit", "Error en la solicitud: ${e.message}")
-            }
-
+            val results = detector(imagenRotada)
 
             inferenceTime = SystemClock.uptimeMillis() - inferenceTime
 
             fragmento.latencia.text = "$inferenceTime ms"
-            //fragmento.obje.text = results
-            //objectDetectorListener?.onResultsC(resultsList, inferenceTime, imagenRotada.height, imagenRotada.width)
+            objectDetectorListener?.onResultsC(results, inferenceTime, imagenRotada.height, imagenRotada.width)
         }
         else
         {
-            val tensorImage = imageProcessor.process(TensorImage.fromBitmap(image))
+//            val tensorImage = imageProcessor.process(TensorImage.fromBitmap(image))
+//
+//            val results= objectDetector?.detect(tensorImage)
+//
+//            inferenceTime = SystemClock.uptimeMillis() - inferenceTime
+//
+//            fragmento.latencia.text = "$inferenceTime ms"
+//            objectDetectorListener?.onResults(results, inferenceTime, tensorImage.height, tensorImage.width)
 
-            val results= objectDetector?.detect(tensorImage)
+            var inferenceTime = SystemClock.uptimeMillis()
+            val matriz: Matrix = Matrix()
+            matriz.postRotate(90f)
+            val imagenRotada = Bitmap.createBitmap(image, 0, 0, image.width, image.height, matriz, true)
+
+
+            val results = detector(imagenRotada)
 
             inferenceTime = SystemClock.uptimeMillis() - inferenceTime
 
             fragmento.latencia.text = "$inferenceTime ms"
-            objectDetectorListener?.onResults(results, inferenceTime, tensorImage.height, tensorImage.width)
+            objectDetectorListener?.onResultsC(results, inferenceTime, imagenRotada.height, imagenRotada.width)
 
         }
 
 
     }
 
-
-    fun processBitmapToBase64(bitmap: Bitmap): String{
-        val byteArrayOutputStream = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream)
-        val byteArray = byteArrayOutputStream.toByteArray()
-
-        if (byteArray.isEmpty()) {
-            Log.e("Error", "La imagen no se convirtió correctamente a bytes.")
-        } else {
-            Log.e("Si", "Tamaño de la imagen en bytes: ${byteArray.size}")
-        }
-        return Base64.encodeToString(byteArray, Base64.NO_WRAP)
-    }
 
     override fun onRequestPermissionsResult(
         requestCode: Int,
@@ -496,22 +477,18 @@ class MainActivity : AppCompatActivity() , DetectorListener{
     }
 
     /**
-     * A native method that is implemented by the 'guagua' native library,
+     * A native method that is implemented by the 'tflite' native library,
      * which is packaged with this application.
      */
     external fun stringFromJNI(): String
     external fun detector(bitmap: Bitmap): MutableList<Results> //String
     external fun CreateSession(model: String, labels: String, gpu: Boolean): Boolean
-    external fun LiberarRecursos()
+    //external fun LiberarRecursos()
 
     companion object {
         // Used to load the 'guagua' library on application startup.
         init {
             System.loadLibrary("tflitecapi")
-//            System.loadLibrary("libtensorflow_c")
-//            System.loadLibrary("libtensorflow_gpu_delegate")
-
-
         }
     }
 

@@ -28,9 +28,9 @@ limitations under the License.
 namespace tensorflow {
 namespace graph {
 
-absl::Status ValidateGraphDef(const GraphDef& graph_def,
-                              const OpRegistryInterface& op_registry) {
-  absl::Status s;
+Status ValidateGraphDef(const GraphDef& graph_def,
+                        const OpRegistryInterface& op_registry) {
+  Status s;
   const int version = graph_def.versions().producer();
   for (const NodeDef& node_def : graph_def.node()) {
     // Look up the OpDef for the node_def's op name.
@@ -43,15 +43,15 @@ absl::Status ValidateGraphDef(const GraphDef& graph_def,
   return s;
 }
 
-absl::Status ValidateGraphDefAgainstOpRegistry(
+Status ValidateGraphDefAgainstOpRegistry(
     const GraphDef& graph_def, const OpRegistryInterface& op_registry) {
   GraphDef copy(graph_def);
   TF_RETURN_IF_ERROR(AddDefaultAttrsToGraphDef(&copy, op_registry, 0));
   return ValidateGraphDef(copy, op_registry);
 }
 
-absl::Status ValidateGraphDefAgainstOpList(const GraphDef& graph_def,
-                                           const OpList& op_list) {
+Status ValidateGraphDefAgainstOpList(const GraphDef& graph_def,
+                                     const OpList& op_list) {
   OpListOpRegistry registry(&op_list);
   return ValidateGraphDefAgainstOpRegistry(graph_def, registry);
 }
@@ -61,7 +61,7 @@ void GetOpListForValidation(OpList* op_list, const OpRegistry& op_registry) {
   RemoveDescriptionsFromOpList(op_list);
 }
 
-absl::Status ValidateGraphHasNoCycle(const Graph& graph) {
+Status ValidateGraphHasNoCycle(const Graph& graph) {
   // A node is ready when all of its inputs have been visited.
   std::vector<const Node*> ready;
   std::vector<int> pending_count(graph.num_node_ids(), 0);
@@ -112,10 +112,10 @@ absl::Status ValidateGraphHasNoCycle(const Graph& graph) {
         graph.num_nodes() - processed,
         " nodes, including: ", absl::StrJoin(nodes_in_cycle, ", "));
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status VerifyNoDuplicateNodeNames(const GraphDef& graph) {
+Status VerifyNoDuplicateNodeNames(const GraphDef& graph) {
   absl::flat_hash_set<absl::string_view> nodes;
   for (const auto& node : graph.node()) {
     if (nodes.contains(node.name())) {
@@ -123,7 +123,7 @@ absl::Status VerifyNoDuplicateNodeNames(const GraphDef& graph) {
     }
     nodes.insert(node.name());
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace graph

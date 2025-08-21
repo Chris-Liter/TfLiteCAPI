@@ -22,7 +22,7 @@ limitations under the License.
 #include "tensorflow/core/platform/stacktrace.h"
 #include "tensorflow/core/platform/stream_executor.h"
 #include "tensorflow/core/protobuf/config.pb.h"
-#include "tsl/platform/thread_annotations.h"
+#include "tensorflow/tsl/platform/thread_annotations.h"
 
 namespace tensorflow {
 
@@ -144,7 +144,6 @@ void EventMgr::StopPollingLoop() {
 // While one or more events is outstanding, poll for completed events.  When no
 // events are outstanding, we sleep until one is enqueued.
 void EventMgr::PollLoop() {
-  ToFreeVector to_free;
   while (true) {
     bool events_still_pending;
     {
@@ -155,11 +154,9 @@ void EventMgr::PollLoop() {
       if (callbacks_.empty()) {
         events_pending_.wait(l);
       }
-      PollEvents(nullptr, &to_free);  // poll all streams
+      PollEvents(/*stream=*/nullptr);  // poll all streams
       events_still_pending = !callbacks_.empty();
     }
-    FreeMemory(to_free);
-    to_free.clear();
 
     if (events_still_pending) {
       Env::Default()->SleepForMicroseconds(polling_active_delay_usecs_);
@@ -175,12 +172,13 @@ void EventMgr::EnqueueCallback(se::Stream* stream, std::function<void()> func) {
   // Events are created on demand, and repeatedly reused.  There is no
   // limit placed here on the number of allocated Events.
   if (free_events_.empty()) {
-    free_events_.emplace_back(exec_->CreateEvent().value());
+    free_events_.push_back(std::make_unique<se::Event>(exec_));
+    free_events_.back()->Init();
   }
 
   std::unique_ptr<se::Event> e = std::move(free_events_.back());
   free_events_.pop_back();
-  stream->RecordEvent(e.get()).IgnoreError();
+  stream->ThenRecordEvent(e.get());
 
   bool was_empty = callbacks_.empty();
   callbacks_[stream].push_back({std::move(e), std::move(func)});
@@ -198,8 +196,7 @@ void EventMgr::EnqueueCallback(se::Stream* stream, std::function<void()> func) {
 // spikes of up to several hundred outstanding.  (If GPUKernelTracker
 // is used to cap pending kernels there should never be more than
 // that many.)
-void EventMgr::PollEvents(se::Stream* stream,
-                          absl::InlinedVector<InUse, 4UL>* to_free) {
+void EventMgr::PollEvents(se::Stream* stream /*=nullptr*/) {
   VLOG(2) << "PollEvents with one or more callbacks pending on "
           << callbacks_.size() << " streams and " << free_events_.size()
           << " unused event objects.";
@@ -232,7 +229,7 @@ void EventMgr::PollEvents(se::Stream* stream,
               break;
             case se::Event::Status::kComplete:
               free_events_.push_back(std::move(event));
-              to_free->push_back({nullptr, std::move(callback)});
+              threadpool_.Schedule(std::move(callback));
               // std::deque::erase() does invalidate iterators, so we can't
               // erase `it` here.  Instead, we'll wait until the end of the loop
               // over stream_callbacks and erase all of the completed events at

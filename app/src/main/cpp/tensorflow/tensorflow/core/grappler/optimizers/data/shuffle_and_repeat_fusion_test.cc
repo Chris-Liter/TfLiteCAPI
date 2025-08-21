@@ -123,8 +123,7 @@ TEST(ShuffleAndRepeatFusionTest, FuseShuffleV2AndRepeat) {
   NodeDef *buffer_size_node =
       graph_utils::AddScalarConstNode<int64_t>(128, &graph);
   NodeDef *seed_generator_node =
-      graph_utils::AddScalarConstNode<absl::string_view>("dummy_resource",
-                                                         &graph);
+      graph_utils::AddScalarConstNode<StringPiece>("dummy_resource", &graph);
   std::vector<string> shuffle_inputs(3);
   shuffle_inputs[0] = range_node->name();
   shuffle_inputs[1] = buffer_size_node->name();
@@ -191,8 +190,7 @@ TEST(ShuffleAndRepeatFusionTest, FuseShuffleV3AndRepeat) {
   NodeDef *seed_node = graph_utils::AddScalarConstNode<int64_t>(-1, &graph);
   NodeDef *seed2_node = graph_utils::AddScalarConstNode<int64_t>(-1, &graph);
   NodeDef *seed_generator_node =
-      graph_utils::AddScalarConstNode<absl::string_view>("dummy_resource",
-                                                         &graph);
+      graph_utils::AddScalarConstNode<StringPiece>("dummy_resource", &graph);
   std::vector<string> shuffle_inputs(5);
   shuffle_inputs[0] = range_node->name();
   shuffle_inputs[1] = buffer_size_node->name();

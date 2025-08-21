@@ -18,11 +18,9 @@ limitations under the License.
 #include <cstdint>
 #include <vector>
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
 #include "tensorflow/lite/core/interpreter.h"
 #include "tensorflow/lite/kernels/test_util.h"
-#include "tensorflow/lite/schema/schema_generated.h"
+#include "tensorflow/lite/testing/util.h"
 
 namespace tflite {
 namespace ops {

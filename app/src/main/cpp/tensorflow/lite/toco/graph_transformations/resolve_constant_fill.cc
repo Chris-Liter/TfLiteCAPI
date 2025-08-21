@@ -14,12 +14,10 @@ limitations under the License.
 ==============================================================================*/
 #include <vector>
 
-#include "absl/status/status.h"
-#include "tensorflow/core/platform/logging.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/lite/toco/graph_transformations/graph_transformations.h"
 #include "tensorflow/lite/toco/model.h"
 #include "tensorflow/lite/toco/tooling_util.h"
+#include "tensorflow/core/platform/logging.h"
 
 namespace toco {
 
@@ -50,7 +48,7 @@ bool ComputeFillArray(Model* model, FillOperator* op) {
   const auto fill_it = model->operators.begin() + op_index;
   auto* base_op = fill_it->get();
   if (base_op->type != OperatorType::kFill) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   auto* op = static_cast<FillOperator*>(base_op);
 
@@ -60,49 +58,49 @@ bool ComputeFillArray(Model* model, FillOperator* op) {
   auto& output_array = model->GetArray(op->outputs[0]);
   if (output_array.data_type == ArrayDataType::kNone) {
     // Yield until the output type has been set by PropagateArrayDataTypes
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   if (!output_array.has_shape()) {
     // Yield until the output shape has been set by PropagateFixedShapes
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   const auto& val_array = model->GetArray(op->inputs[1]);
   if (!val_array.has_shape()) {
     // Yield until the value shape has been resolved.
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   if (!IsConstantParameterArray(*model, op->inputs[1])) {
     // Yield until the value is constant.
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   CHECK_EQ(RequiredBufferSizeForShape(val_array.shape()), 1);
 
   switch (output_array.data_type) {
     case ArrayDataType::kFloat:
       if (!ComputeFillArray<ArrayDataType::kFloat>(model, op)) {
-        return absl::OkStatus();
+        return ::tensorflow::OkStatus();
       }
       break;
     case ArrayDataType::kUint8:
       if (!ComputeFillArray<ArrayDataType::kUint8>(model, op)) {
-        return absl::OkStatus();
+        return ::tensorflow::OkStatus();
       }
       break;
     case ArrayDataType::kInt32:
       if (!ComputeFillArray<ArrayDataType::kInt32>(model, op)) {
-        return absl::OkStatus();
+        return ::tensorflow::OkStatus();
       }
       break;
     case ArrayDataType::kInt64:
       if (!ComputeFillArray<ArrayDataType::kInt64>(model, op)) {
-        return absl::OkStatus();
+        return ::tensorflow::OkStatus();
       }
       break;
     case ArrayDataType::kComplex64:
       if (!ComputeFillArray<ArrayDataType::kComplex64>(model, op)) {
-        return absl::OkStatus();
+        return ::tensorflow::OkStatus();
       }
       break;
     default:
@@ -113,7 +111,7 @@ bool ComputeFillArray(Model* model, FillOperator* op) {
 
   DeleteOpAndArrays(model, op);
   *modified = true;
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 }  // namespace toco

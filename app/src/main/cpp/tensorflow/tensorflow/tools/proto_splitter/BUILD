@@ -1,18 +1,16 @@
-# Description:
-#   Utilities for splitting and joining large protos > 2GB.
-
-load("//tensorflow:pytype.default.bzl", "pytype_strict_library")
 load("//tensorflow:strict.default.bzl", "py_strict_test")
 
-# Placeholder: load py_proto_library
+# Description:
+#   Utilities for splitting and joining large protos > 2GB.
+load("//tensorflow:pytype.default.bzl", "pytype_strict_library")
+load(
+    "//tensorflow/core/platform:build_config.bzl",
+    "tf_proto_library",
+)
 load(
     "//tensorflow:tensorflow.bzl",
     "if_oss",
     "tf_cc_test",
-)
-load(
-    "//tensorflow/core/platform:build_config.bzl",
-    "tf_proto_library",
 )
 
 package(
@@ -20,6 +18,8 @@ package(
     default_visibility = [
         "__subpackages__",
         "//tensorflow:internal",
+        "//tensorflow/cc/experimental/image_format:__subpackages__",
+        "//tensorflow/cc/experimental/tf2:__subpackages__",
     ],
     licenses = ["notice"],
 )
@@ -27,12 +27,14 @@ package(
 tf_proto_library(
     name = "versions_proto",
     srcs = ["versions.proto"],
+    cc_api_version = 2,
     make_default_target_header_only = True,
 )
 
 tf_proto_library(
     name = "chunk_proto",
     srcs = ["chunk.proto"],
+    cc_api_version = 2,
     make_default_target_header_only = True,
     protodeps = [":versions_proto"],
 )
@@ -51,6 +53,7 @@ cc_library(
 #
 # py_proto_library(
 #     name = "versions_proto_py_pb2",
+#     api_version = 2,
 #     deps = [
 #         ":versions_proto",
 #     ],
@@ -58,6 +61,7 @@ cc_library(
 #
 # py_proto_library(
 #     name = "chunk_proto_py_pb2",
+#     api_version = 2,
 #     deps = [
 #         ":chunk_proto",
 #     ],
@@ -73,7 +77,7 @@ pytype_strict_library(
         ":util",
         ":version",
         ":versions_proto_py",
-        "//tensorflow/python/lib/io:file_io",
+        "//tensorflow/python/lib/io:lib",
         "@absl_py//absl/logging",
         "@riegeli_py//python/riegeli",
     ],
@@ -95,10 +99,8 @@ py_strict_test(
         ":chunk_proto_py",
         ":split",
         ":versions_proto_py",
-        #internal proto upb dep
         "//tensorflow/python/platform:client_testlib",
         "//tensorflow/tools/proto_splitter/testdata:test_message_proto_py",
-        "@absl_py//absl/testing:parameterized",
         "@riegeli_py//python/riegeli",
     ],
 )
@@ -133,7 +135,6 @@ py_strict_test(
         ":constants",
         ":split_graph_def",
         ":util",
-        #internal proto upb dep
         "//tensorflow/core:protos_all_py",
         "//tensorflow/python/platform:client_testlib",
         "//tensorflow/tools/proto_splitter/python:test_util",
@@ -151,7 +152,6 @@ py_strict_test(
     srcs = ["util_test.py"],
     deps = [
         ":util",
-        #internal proto upb dep
         "//tensorflow/python/platform:client_testlib",
         "//tensorflow/tools/proto_splitter/testdata:test_message_proto_py",
     ],
@@ -167,11 +167,10 @@ cc_library(
         ":chunk_proto_cc",
         "//tensorflow/core:lib",
         "//tensorflow/tools/proto_splitter/cc:util",
-        "@com_google_absl//absl/log",
+        "//tensorflow/tsl/platform:protobuf",
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
-        "@local_tsl//tsl/platform:protobuf",
         "@riegeli//riegeli/base:object",
         "@riegeli//riegeli/bytes:fd_reader",
         "@riegeli//riegeli/records:record_reader",
@@ -183,18 +182,11 @@ cc_library(
 cc_library(
     name = "merge",
     hdrs = ["merge.h"],
-    visibility = [
-        "//tensorflow:internal",
-        "//tensorflow/cc/experimental/tf2:__subpackages__",
-        "//tensorflow/cc/saved_model/image_format:__subpackages__",
-        "//waymo/onboard/ml/chauffeur_net/utils:__subpackages__",
-    ],
     deps = [
         ":chunk_proto_cc",
         ":merge_impl",
+        "//tensorflow/tsl/platform:protobuf",
         "@com_google_absl//absl/status",
-        "@com_google_absl//absl/strings:string_view",
-        "@local_tsl//tsl/platform:protobuf",
         "@riegeli//riegeli/bytes:fd_reader",
         "@riegeli//riegeli/records:record_reader",
     ] + if_oss([
@@ -237,11 +229,10 @@ tf_cc_test(
         "//tensorflow/tools/proto_splitter/cc:test_util",
         "//tensorflow/tools/proto_splitter/cc:util",
         "//tensorflow/tools/proto_splitter/testdata:test_message_proto_cc",
-        "@com_google_absl//absl/strings",
+        "//tensorflow/tsl/platform:env",
+        "//tensorflow/tsl/platform:protobuf",
+        "//tensorflow/tsl/platform:statusor",
         "@com_google_googletest//:gtest_main",
-        "@local_tsl//tsl/platform:env",
-        "@local_tsl//tsl/platform:protobuf",
-        "@local_tsl//tsl/platform:statusor",
     ] + if_oss([
         "//tensorflow/tools/proto_splitter:protos_impl",
     ]),

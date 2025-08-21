@@ -84,6 +84,7 @@ def get_all_v2_names():
   visitor.do_not_descend_map['tf'].append('contrib')
   visitor.private_map['tf.compat'] = ['v1', 'v2']
   traverse.traverse(tf.compat.v2, visitor)
+  traverse.traverse(tf.compat.v2.estimator, visitor)
   return v2_names
 
 
@@ -160,7 +161,9 @@ def collect_function_renames():
   visitor.private_map['tf.compat'] = ['v1', 'v2']
   traverse.traverse(tf.version, visitor)
   traverse.traverse(tf.compat.v1, visitor)
+  traverse.traverse(tf.compat.v1.estimator, visitor)
   traverse.traverse(tf.compat.v2, visitor)
+  traverse.traverse(tf.compat.v2.estimator, visitor)
 
   return renames
 

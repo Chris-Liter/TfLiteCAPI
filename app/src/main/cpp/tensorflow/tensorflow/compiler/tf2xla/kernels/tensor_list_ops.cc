@@ -15,32 +15,31 @@ limitations under the License.
 
 // XLA TensorList operators.
 
-#include <cstdint>
+#include <limits>
 #include <utility>
 #include <vector>
 
-#include "absl/status/status.h"
-#include "absl/status/statusor.h"
 #include "tensorflow/compiler/tf2xla/kernels/gather_op_helpers.h"
 #include "tensorflow/compiler/tf2xla/kernels/tensor_list_utils.h"
 #include "tensorflow/compiler/tf2xla/shape_util.h"
 #include "tensorflow/compiler/tf2xla/type_util.h"
+#include "tensorflow/compiler/tf2xla/xla_helpers.h"
 #include "tensorflow/compiler/tf2xla/xla_op_kernel.h"
 #include "tensorflow/compiler/tf2xla/xla_op_registry.h"
-#include "xla/hlo/builder/value_inference.h"
-#include "xla/hlo/builder/xla_builder.h"
-#include "xla/shape.h"
-#include "xla/shape_util.h"
-#include "xla/util.h"
-#include "xla/xla_data.pb.h"
+#include "tensorflow/compiler/xla/client/xla_builder.h"
+#include "tensorflow/compiler/xla/literal.h"
+#include "tensorflow/compiler/xla/status_macros.h"
+#include "tensorflow/compiler/xla/xla_data.pb.h"
+#include "tensorflow/core/framework/bounds_check.h"
 #include "tensorflow/core/framework/op_kernel.h"
-#include "tensorflow/core/framework/op_requires.h"
-#include "tensorflow/core/framework/tensor_shape.h"
-#include "tensorflow/core/framework/types.pb.h"
+#include "tensorflow/core/framework/partial_tensor_shape.h"
+#include "tensorflow/core/framework/register_types.h"
+#include "tensorflow/core/framework/tensor.h"
+#include "tensorflow/core/framework/tensor_types.h"
+#include "tensorflow/core/framework/types.h"
 #include "tensorflow/core/lib/core/errors.h"
 #include "tensorflow/core/lib/core/status.h"
 #include "tensorflow/core/platform/types.h"
-#include "tsl/platform/errors.h"
 
 namespace tensorflow {
 
@@ -50,7 +49,7 @@ namespace {
 // may carry and returns them in a 2D vector: XlaOp[ElementSize][DimSize]. If a
 // dimension is static, a constant dimension is returned. If a dim is dynamic, a
 // dynamic XlaOp representing the dynamic size is returned.
-absl::StatusOr<std::vector<std::vector<xla::XlaOp>>> GetTensorListDynamicDims(
+StatusOr<std::vector<std::vector<xla::XlaOp>>> GetTensorListDynamicDims(
     XlaOpKernelContext* ctx, const xla::Shape& element_shape,
     const xla::Shape& list_shape, int64_t num_elements) {
   std::vector<int64_t> dynamic_sizes;
@@ -102,8 +101,7 @@ class TensorListLengthOp : public XlaOpKernel {
   }
 
  private:
-  TensorListLengthOp(const TensorListLengthOp&) = delete;
-  void operator=(const TensorListLengthOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(TensorListLengthOp);
 };
 
 REGISTER_XLA_OP(Name("TensorListLength").IsMetadataOp(), TensorListLengthOp);
@@ -111,29 +109,28 @@ REGISTER_XLA_OP(Name("TensorListLength").IsMetadataOp(), TensorListLengthOp);
 // "input" is the shape input for EmptyTensorList/TensorListReserve ops.
 // If "input" is a compile time constant and not "unknown rank" (-1), return
 // its value in "*shape".
-absl::Status TryGetElementShapeFromInput(XlaOpKernelContext* ctx,
-                                         xla::XlaOp input,
-                                         xla::PrimitiveType dtype,
-                                         bool* got_shape, xla::Shape* shape) {
+Status TryGetElementShapeFromInput(XlaOpKernelContext* ctx, xla::XlaOp input,
+                                   xla::PrimitiveType dtype, bool* got_shape,
+                                   xla::Shape* shape) {
   auto is_compile_time_constant_or = input.builder()->IsConstant(input);
   TF_RETURN_IF_ERROR(is_compile_time_constant_or.status());
 
   bool is_compile_time_constant = is_compile_time_constant_or.value();
   if (!is_compile_time_constant) {
     *got_shape = false;
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   PartialTensorShape partial_shape;
   TF_RETURN_IF_ERROR(ctx->ConstantInputAsPartialShape(0, &partial_shape));
   if (!partial_shape.IsFullyDefined()) {
     *got_shape = false;
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   *shape = xla::ShapeUtil::MakeShape(dtype, partial_shape.dim_sizes());
   *got_shape = true;
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 class TensorListReserveOp : public XlaOpKernel {
@@ -205,8 +202,7 @@ class TensorListReserveOp : public XlaOpKernel {
  private:
   DataType dtype_;
 
-  TensorListReserveOp(const TensorListReserveOp&) = delete;
-  void operator=(const TensorListReserveOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(TensorListReserveOp);
 };
 
 REGISTER_XLA_OP(Name("TensorListReserve")
@@ -280,8 +276,7 @@ class EmptyTensorListOp : public XlaOpKernel {
  private:
   DataType dtype_;
 
-  EmptyTensorListOp(const EmptyTensorListOp&) = delete;
-  void operator=(const EmptyTensorListOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(EmptyTensorListOp);
 };
 
 REGISTER_XLA_OP(Name("EmptyTensorList")
@@ -343,8 +338,7 @@ class TensorListElementShapeOp : public XlaOpKernel {
  private:
   DataType shape_type_;
 
-  TensorListElementShapeOp(const TensorListElementShapeOp&) = delete;
-  void operator=(const TensorListElementShapeOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(TensorListElementShapeOp);
 };
 
 REGISTER_XLA_OP(Name("TensorListElementShape").IsMetadataOp(),
@@ -383,8 +377,7 @@ class TensorListGetItemOp : public XlaOpKernel {
  private:
   DataType dtype_;
 
-  TensorListGetItemOp(const TensorListGetItemOp&) = delete;
-  void operator=(const TensorListGetItemOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(TensorListGetItemOp);
 };
 
 REGISTER_XLA_OP(Name("TensorListGetItem"), TensorListGetItemOp);
@@ -437,8 +430,7 @@ class TensorListGatherOp : public XlaOpKernel {
  private:
   DataType dtype_;
 
-  TensorListGatherOp(const TensorListGatherOp&) = delete;
-  void operator=(const TensorListGatherOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(TensorListGatherOp);
 };
 
 REGISTER_XLA_OP(Name("TensorListGather"), TensorListGatherOp);
@@ -468,8 +460,7 @@ class TensorListStackOp : public XlaOpKernel {
   }
 
  private:
-  TensorListStackOp(const TensorListStackOp&) = delete;
-  void operator=(const TensorListStackOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(TensorListStackOp);
 };
 
 REGISTER_XLA_OP(Name("TensorListStack"), TensorListStackOp);
@@ -524,8 +515,7 @@ class TensorListConcatOp : public XlaOpKernel {
   }
 
  private:
-  TensorListConcatOp(const TensorListConcatOp&) = delete;
-  void operator=(const TensorListConcatOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(TensorListConcatOp);
 };
 
 REGISTER_XLA_OP(Name("TensorListConcatV2"), TensorListConcatOp);
@@ -583,8 +573,7 @@ class TensorListSplitOp : public XlaOpKernel {
  private:
   DataType dtype_;
 
-  TensorListSplitOp(const TensorListSplitOp&) = delete;
-  void operator=(const TensorListSplitOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(TensorListSplitOp);
 };
 
 REGISTER_XLA_OP(Name("TensorListSplit")
@@ -609,8 +598,7 @@ class TensorListFromTensorOp : public XlaOpKernel {
   }
 
  private:
-  TensorListFromTensorOp(const TensorListFromTensorOp&) = delete;
-  void operator=(const TensorListFromTensorOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(TensorListFromTensorOp);
 };
 
 REGISTER_XLA_OP(
@@ -645,8 +633,7 @@ class TensorListSetItemOp : public XlaOpKernel {
   }
 
  private:
-  TensorListSetItemOp(const TensorListSetItemOp&) = delete;
-  void operator=(const TensorListSetItemOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(TensorListSetItemOp);
 };
 
 REGISTER_XLA_OP(Name("TensorListSetItem"), TensorListSetItemOp);
@@ -673,8 +660,7 @@ class TensorListPushBackOp : public XlaOpKernel {
   }
 
  private:
-  TensorListPushBackOp(const TensorListPushBackOp&) = delete;
-  void operator=(const TensorListPushBackOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(TensorListPushBackOp);
 };
 
 REGISTER_XLA_OP(Name("TensorListPushBack").AllowVariantTypes(),
@@ -710,8 +696,7 @@ class TensorListPopBackOp : public XlaOpKernel {
  private:
   DataType dtype_;
 
-  TensorListPopBackOp(const TensorListPopBackOp&) = delete;
-  void operator=(const TensorListPopBackOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(TensorListPopBackOp);
 };
 
 REGISTER_XLA_OP(Name("TensorListPopBack").AllowVariantTypes(),

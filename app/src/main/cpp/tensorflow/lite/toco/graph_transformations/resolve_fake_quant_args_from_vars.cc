@@ -18,12 +18,10 @@ limitations under the License.
 #include <unordered_map>
 #include <vector>
 
-#include "absl/status/status.h"
-#include "tensorflow/core/platform/logging.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/lite/toco/graph_transformations/graph_transformations.h"
 #include "tensorflow/lite/toco/model.h"
 #include "tensorflow/lite/toco/tooling_util.h"
+#include "tensorflow/core/platform/logging.h"
 
 namespace toco {
 
@@ -34,13 +32,13 @@ namespace toco {
   const auto fakequant_it = model->operators.begin() + op_index;
   auto* fakequant_base_op = fakequant_it->get();
   if (fakequant_base_op->type != OperatorType::kFakeQuant) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   auto* fakequant_op = static_cast<FakeQuantOperator*>(fakequant_base_op);
 
   if (fakequant_op->minmax) {
     // Already resolved.
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   CHECK_EQ(fakequant_op->inputs.size(), 3);
@@ -48,7 +46,7 @@ namespace toco {
   // resolved to constant arrays.
   for (int i = 1; i <= 2; i++) {
     if (!IsConstantParameterArray(*model, fakequant_op->inputs[i])) {
-      return absl::OkStatus();
+      return ::tensorflow::OkStatus();
     }
   }
 
@@ -81,7 +79,7 @@ namespace toco {
   }
   fakequant_op->inputs.resize(1);
   *modified = true;
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 }  // namespace toco

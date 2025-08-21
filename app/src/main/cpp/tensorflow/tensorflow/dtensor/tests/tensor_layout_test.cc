@@ -21,17 +21,10 @@ limitations under the License.
 #include <string>
 #include <vector>
 
-#include <gmock/gmock.h>
-#include "absl/container/inlined_vector.h"
-#include "absl/strings/match.h"
-#include "mlir/IR/BuiltinTypeInterfaces.h"  // from @llvm-project
+#include "mlir/IR/BuiltinTypes.h"  // from @llvm-project
 #include "tensorflow/core/platform/test.h"
-#include "tensorflow/core/platform/types.h"
-#include "tensorflow/dtensor/cc/dstatus.h"
 #include "tensorflow/dtensor/proto/layout.pb.h"
-#include "tsl/platform/errors.h"
-#include "tsl/platform/status_matchers.h"
-#include "tsl/platform/statusor.h"
+#include "tensorflow/tsl/platform/status_matchers.h"
 
 namespace tensorflow {
 namespace dtensor {

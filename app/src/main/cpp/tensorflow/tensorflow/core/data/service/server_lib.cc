@@ -23,7 +23,6 @@ limitations under the License.
 
 #include "grpcpp/server.h"
 #include "grpcpp/server_builder.h"
-#include "absl/strings/str_cat.h"
 #include "tensorflow/core/data/service/common.pb.h"
 #include "tensorflow/core/data/service/credentials_factory.h"
 #include "tensorflow/core/data/service/export.pb.h"
@@ -32,18 +31,13 @@ limitations under the License.
 #include "tensorflow/core/data/service/grpc_worker_impl.h"
 #include "tensorflow/core/data/service/worker_client.h"
 #include "tensorflow/core/platform/errors.h"
-#include "tensorflow/core/platform/str_util.h"
 
 namespace tensorflow {
 namespace data {
 
 namespace {
-
-// See `WorkerConfig` docs.
 constexpr char kPortPlaceholder[] = "%port%";
-constexpr char kDataTransferPortPlaceholder[] = "%dts_port%";
-
-}  // namespace
+}
 
 GrpcDataServerBase::GrpcDataServerBase(
     int port, const std::string& protocol, const std::string& server_type,
@@ -54,13 +48,13 @@ GrpcDataServerBase::GrpcDataServerBase(
       bound_port_(port),
       server_options_(std::move(options)) {}
 
-absl::Status GrpcDataServerBase::Start() {
+Status GrpcDataServerBase::Start() {
   if (stopped_) {
     return errors::FailedPrecondition(
         "Server cannot be started after it has been stopped.");
   }
   if (started_) {
-    return absl::OkStatus();
+    return OkStatus();
   }
   ::grpc::ServerBuilder builder;
   for (std::unique_ptr<::grpc::ServerBuilderOption>& option : server_options_) {
@@ -87,7 +81,7 @@ absl::Status GrpcDataServerBase::Start() {
   started_ = true;
   LOG(INFO) << "Started tf.data " << server_type_
             << " running at 0.0.0.0:" << BoundPort();
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 void GrpcDataServerBase::Stop() {
@@ -127,13 +121,11 @@ void DispatchGrpcDataServer::AddDataServiceToBuilder(
   service_ = std::make_unique<GrpcDispatcherImpl>(config_, builder).release();
 }
 
-absl::Status DispatchGrpcDataServer::StartServiceInternal() {
+Status DispatchGrpcDataServer::StartServiceInternal() {
   return service_->Start();
 }
 
-void DispatchGrpcDataServer::StopServiceInternal() { service_->Stop(); }
-
-absl::Status DispatchGrpcDataServer::NumWorkers(int* num_workers) {
+Status DispatchGrpcDataServer::NumWorkers(int* num_workers) {
   GetWorkersRequest req;
   GetWorkersResponse resp;
   ::grpc::ServerContext ctx;
@@ -142,10 +134,10 @@ absl::Status DispatchGrpcDataServer::NumWorkers(int* num_workers) {
     return grpc_util::WrapError("Failed to get workers", s);
   }
   *num_workers = resp.workers_size();
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status DispatchGrpcDataServer::SnapshotStreams(
+Status DispatchGrpcDataServer::SnapshotStreams(
     const std::string& path, std::vector<SnapshotStreamInfoWrapper>* streams) {
   GetSnapshotStreamsRequest req;
   req.set_path(path);
@@ -158,7 +150,7 @@ absl::Status DispatchGrpcDataServer::SnapshotStreams(
   for (const auto& stream : resp.streams()) {
     streams->push_back(SnapshotStreamInfoWrapper(stream));
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 size_t DispatchGrpcDataServer::NumActiveIterations() {
@@ -192,16 +184,16 @@ void WorkerGrpcDataServer::MaybeStartAlternativeDataTransferServer(
       config_.data_transfer_protocol() == kGrpcTransferProtocol) {
     return;
   }
-  absl::Status s = DataTransferServer::Build(config_.data_transfer_protocol(),
-                                             service_->get_element_getter(),
-                                             &transfer_server_);
+  Status s = DataTransferServer::Build(config_.data_transfer_protocol(),
+                                       service_->get_element_getter(),
+                                       &transfer_server_);
   if (!s.ok()) {
     LOG(ERROR) << "failed to build " << config_.data_transfer_protocol()
                << " server for worker " << config_.worker_address() << ": "
                << s;
     return;
   }
-  s = transfer_server_->Start(config_);
+  s = transfer_server_->Start();
   if (!s.ok()) {
     LOG(ERROR) << "failed to start " << config_.data_transfer_protocol()
                << " server for worker " << config_.worker_address() << ": "
@@ -214,11 +206,11 @@ void WorkerGrpcDataServer::MaybeStartAlternativeDataTransferServer(
             << config_.worker_address();
   DataTransferServerInfo alternative_transfer_server;
   alternative_transfer_server.set_protocol(config_.data_transfer_protocol());
-  alternative_transfer_server.set_address(str_util::StringReplace(
-      config_.data_transfer_address(), kDataTransferPortPlaceholder,
-      absl::StrCat(transfer_server_->Port()),
-      /*replace_all=*/false));
-  absl::StatusOr<std::string> compatibility_info =
+  alternative_transfer_server.set_address(
+      str_util::StringReplace(config_.data_transfer_address(), kPortPlaceholder,
+                              absl::StrCat(transfer_server_->Port()),
+                              /*replace_all=*/false));
+  StatusOr<std::string> compatibility_info =
       transfer_server_->GetCompatibilityInfo();
   if (!compatibility_info.ok()) {
     LOG(ERROR)
@@ -229,14 +221,10 @@ void WorkerGrpcDataServer::MaybeStartAlternativeDataTransferServer(
     return;
   }
   alternative_transfer_server.set_compatibility_info(*compatibility_info);
-  alternative_transfer_server.set_fall_back_to_grpc_at_client_creation_time(
-      transfer_server_->FallBackToGrpcAtClientCreationTime());
-  alternative_transfer_server.set_fall_back_to_grpc_at_get_element_time(
-      transfer_server_->FallBackToGrpcAtGetElementTime());
   transfer_servers.push_back(alternative_transfer_server);
 }
 
-absl::Status WorkerGrpcDataServer::StartServiceInternal() {
+Status WorkerGrpcDataServer::StartServiceInternal() {
   std::string base_address = config_.worker_address();
   if (base_address.empty()) {
     base_address = absl::StrCat("localhost:", kPortPlaceholder);
@@ -250,12 +238,12 @@ absl::Status WorkerGrpcDataServer::StartServiceInternal() {
   std::vector<DataTransferServerInfo> transfer_servers = {grpc_transfer_server};
   MaybeStartAlternativeDataTransferServer(transfer_servers);
   TF_RETURN_IF_ERROR(service_->Start(worker_address, transfer_servers));
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 void WorkerGrpcDataServer::StopServiceInternal() { service_->Stop(); }
 
-absl::Status WorkerGrpcDataServer::NumTasks(int* num_tasks) {
+Status WorkerGrpcDataServer::NumTasks(int* num_tasks) {
   GetWorkerTasksRequest req;
   GetWorkerTasksResponse resp;
   ::grpc::ServerContext ctx;
@@ -264,10 +252,10 @@ absl::Status WorkerGrpcDataServer::NumTasks(int* num_tasks) {
     return grpc_util::WrapError("Failed to get tasks", s);
   }
   *num_tasks = resp.tasks_size();
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status WorkerGrpcDataServer::SnapshotTaskProgresses(
+Status WorkerGrpcDataServer::SnapshotTaskProgresses(
     std::vector<SnapshotTaskProgressWrapper>* snapshot_task_progresses) {
   GetSnapshotTaskProgressesRequest req;
   GetSnapshotTaskProgressesResponse resp;
@@ -279,7 +267,7 @@ absl::Status WorkerGrpcDataServer::SnapshotTaskProgresses(
   for (const auto& progress : resp.snapshot_task_progresses()) {
     snapshot_task_progresses->push_back(SnapshotTaskProgressWrapper(progress));
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 ServerStateExport WorkerGrpcDataServer::ExportState() const {
@@ -288,18 +276,16 @@ ServerStateExport WorkerGrpcDataServer::ExportState() const {
   return server_state_export;
 }
 
-absl::Status NewDispatchServer(
-    const experimental::DispatcherConfig& config,
-    std::unique_ptr<DispatchGrpcDataServer>& out_server) {
+Status NewDispatchServer(const experimental::DispatcherConfig& config,
+                         std::unique_ptr<DispatchGrpcDataServer>& out_server) {
   out_server = std::make_unique<DispatchGrpcDataServer>(config);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status NewWorkerServer(
-    const experimental::WorkerConfig& config,
-    std::unique_ptr<WorkerGrpcDataServer>& out_server) {
+Status NewWorkerServer(const experimental::WorkerConfig& config,
+                       std::unique_ptr<WorkerGrpcDataServer>& out_server) {
   out_server = std::make_unique<WorkerGrpcDataServer>(config);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace data

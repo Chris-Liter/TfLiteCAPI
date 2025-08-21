@@ -13,10 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 #include <cmath>
-
-#include "absl/status/status.h"
 #include "tensorflow/core/platform/logging.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/lite/toco/graph_transformations/graph_transformations.h"
 #include "tensorflow/lite/toco/model.h"
 #include "tensorflow/lite/toco/tooling_util.h"
@@ -50,7 +47,7 @@ void FillRangeOutput(const Array& start_array, const Array& limit_array,
   const auto it = model->operators.begin() + op_index;
   auto* base_op = it->get();
   if (base_op->type != OperatorType::kRange) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   auto* op = static_cast<RangeOperator*>(base_op);
 
@@ -58,23 +55,23 @@ void FillRangeOutput(const Array& start_array, const Array& limit_array,
   const auto& start_array = model->GetArray(op->inputs[0]);
   if (!start_array.has_shape()) {
     // Yield until all input dims have been resolved.
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   const auto& limit_array = model->GetArray(op->inputs[1]);
   if (!limit_array.has_shape()) {
     // Yield until all input dims have been resolved.
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   const auto& delta_array = model->GetArray(op->inputs[2]);
   if (!delta_array.has_shape()) {
     // Yield until all input dims have been resolved.
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   for (const auto& input : op->inputs) {
     if (!IsConstantParameterArray(*model, input)) {
       // yield if any input is mutable
-      return absl::OkStatus();
+      return ::tensorflow::OkStatus();
     }
   }
 
@@ -82,7 +79,7 @@ void FillRangeOutput(const Array& start_array, const Array& limit_array,
   auto& output_array = model->GetArray(op->outputs[0]);
   if (output_array.data_type == ArrayDataType::kNone) {
     // Yield until the output type has been set by PropagateArrayDataTypes
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   CHECK_EQ(RequiredBufferSizeForShape(start_array.shape()), 1)
@@ -110,7 +107,7 @@ void FillRangeOutput(const Array& start_array, const Array& limit_array,
 
   DeleteOpAndArrays(model, op);
   *modified = true;
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 }  // namespace toco

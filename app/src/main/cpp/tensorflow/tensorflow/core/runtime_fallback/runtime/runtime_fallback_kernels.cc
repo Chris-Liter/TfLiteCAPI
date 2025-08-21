@@ -19,20 +19,12 @@ limitations under the License.
 #include "tensorflow/core/runtime_fallback/runtime/runtime_fallback_kernels.h"
 
 #include <algorithm>
-#include <cassert>
-#include <cstddef>
-#include <cstdint>
-#include <cstdio>
-#include <cstring>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "absl/log/check.h"
-#include "absl/log/log.h"
-#include "absl/status/status.h"
-#include "absl/strings/match.h"
-#include "absl/strings/string_view.h"
+#include "absl/strings/str_split.h"
+#include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/STLExtras.h"
@@ -48,7 +40,6 @@ limitations under the License.
 #include "tensorflow/core/common_runtime/eager/tensor_handle.h"
 #include "tensorflow/core/common_runtime/function.h"
 #include "tensorflow/core/framework/node_def.pb.h"
-#include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/platform/errors.h"
 #include "tensorflow/core/platform/status.h"
 #include "tensorflow/core/profiler/lib/traceme.h"
@@ -144,7 +135,7 @@ static AsyncValueRef<RuntimeFallbackTensor> CreateRuntimeFallbackTensor(
     TensorHandle* handle, HostContext* host) {
   OwnedTensorHandle th(handle);
   int rank;
-  absl::Status status = th->NumDims(&rank);
+  tensorflow::Status status = th->NumDims(&rank);
   if (!status.ok())
     return tfrt::MakeErrorAsyncValueRef(tfrt::StrCat(
         "error getting rank from TF tensor handle: ", status.message()));
@@ -253,7 +244,7 @@ OwnedTFTensor MoveDHTToTFTensor(DenseHostTensor&& dht, HostContext* host) {
   return tf_tensor;
 }
 
-static absl::Status DecodeDenseAttrToTensorInterface(
+static tensorflow::Status DecodeDenseAttrToTensorInterface(
     const DenseAttr& dense_attr, HostContext* host,
     tensorflow::TensorInterface* result) {
   Expected<DenseHostTensor> dht =
@@ -266,7 +257,7 @@ static absl::Status DecodeDenseAttrToTensorInterface(
   tensorflow::Tensor t;
   TF_RETURN_IF_ERROR(TF_TensorToTensor(tf_tensor.get(), &t));
   *result = tensorflow::TensorInterface(std::move(t));
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Handle attributes.
@@ -277,11 +268,11 @@ static absl::Status DecodeDenseAttrToTensorInterface(
 // Note we currently do not support the following attribute value types:
 // TFE_OpSetAttrFunction
 // TFE_OpSetAttrFunctionName
-static absl::Status PrepareAttributes(EagerOperation* eager_op,
-                                      const OpAttrsRef& attrs,
-                                      HostContext* host,
-                                      EagerContext* eager_ctx) {
-  absl::Status status;
+static tensorflow::Status PrepareAttributes(EagerOperation* eager_op,
+                                            const OpAttrsRef& attrs,
+                                            HostContext* host,
+                                            EagerContext* eager_ctx) {
+  tensorflow::Status status;
   attrs.IterateEntries([eager_op, eager_ctx, status_ptr = &status, host,
                         &attrs](const OpAttrsRawEntry& entry) {
     // TFE does not expect a device attribute.
@@ -459,12 +450,13 @@ static absl::Status PrepareAttributes(EagerOperation* eager_op,
   return status;
 }
 
-absl::Status CallEagerExecute(
-    const tfrt::ExecutionContext& exec_ctx, EagerContext* eager_ctx,
-    const char* op_name, const char* device_name,
-    llvm::ArrayRef<TensorHandle*> input_tensor_handles, const OpAttrsRef& attrs,
-    llvm::MutableArrayRef<tensorflow::AbstractTensorHandle*>
-        result_tensor_handles) {
+Status CallEagerExecute(const tfrt::ExecutionContext& exec_ctx,
+                        EagerContext* eager_ctx, const char* op_name,
+                        const char* device_name,
+                        llvm::ArrayRef<TensorHandle*> input_tensor_handles,
+                        const OpAttrsRef& attrs,
+                        llvm::MutableArrayRef<tensorflow::AbstractTensorHandle*>
+                            result_tensor_handles) {
   assert(eager_ctx != nullptr && "EagerContext is NULL");
 
   // Create TF EagerOperation.
@@ -484,7 +476,7 @@ absl::Status CallEagerExecute(
   TF_RETURN_IF_ERROR(eager_op->Execute(
       absl::MakeSpan(result_tensor_handles.data(), num_retvals), &num_retvals));
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 static bool ShouldAddHostContextAttr(const char* op_name) {
@@ -500,7 +492,7 @@ AsyncValueRef<Chain> RuntimeFallbackExecute(
     const char* op_name, const char* device_name,
     llvm::ArrayRef<Tensor*> arguments, const OpAttrsRef& attrs,
     llvm::MutableArrayRef<RCReference<AsyncValue>> results) {
-  auto emit_error = [&exec_ctx, results](const absl::Status& status) {
+  auto emit_error = [&exec_ctx, results](const tensorflow::Status& status) {
     // Set the correct TFRT error code according to the error propagated from
     // runtime fallback execution.
     auto error = EmitErrorAsync(exec_ctx, status);
@@ -519,7 +511,7 @@ AsyncValueRef<Chain> RuntimeFallbackExecute(
   int num_retvals = results.size();
   llvm::SmallVector<tensorflow::AbstractTensorHandle*, 4> result_tensor_handles(
       num_retvals);
-  absl::Status status;
+  Status status;
   if (!ShouldAddHostContextAttr(op_name)) {
     status =
         CallEagerExecute(exec_ctx, eager_ctx, op_name, device_name,
@@ -690,7 +682,7 @@ static void RuntimeFallbackKernel(
   int num_retvals = output_tensors.size();
   llvm::SmallVector<tensorflow::AbstractTensorHandle*, 4> retvals(num_retvals);
 
-  absl::Status status = eager_op->Execute(
+  tensorflow::Status status = eager_op->Execute(
       absl::MakeSpan(retvals.data(), num_retvals), &num_retvals);
   TFD_REPORT_AND_RETURN_IF_ERROR(handler, status);
 
@@ -843,9 +835,10 @@ void CoreRTTensorHandleToFallbackTensorInternal(
 void CoreRTTensorHandleToFallbackTensor(
     RemainingArguments args, RemainingResults results, StringAttr device,
     const tfrt::ExecutionContext& exec_ctx) {
-  tsl::profiler::TraceMe trace_me("corert_tensorhandle_to_fallback_tensor");
+  tensorflow::profiler::TraceMe trace_me(
+      "corert_tensorhandle_to_fallback_tensor");
   trace_me.AppendMetadata([request_id = exec_ctx.request_ctx()->id()]() {
-    return tsl::profiler::TraceMeEncode({{"id", request_id}});
+    return tensorflow::profiler::TraceMeEncode({{"id", request_id}});
   });
 
   CoreRTTensorHandleToFallbackTensorInternal(args.values(), results.values(),
@@ -883,9 +876,10 @@ static void FallbackTensorToCoreRTTensorHandleInternal(
 void FallbackTensorToCoreRTTensorHandle(
     RemainingArguments args, RemainingResults results, StringAttr device,
     const tfrt::ExecutionContext& exec_ctx) {
-  tsl::profiler::TraceMe trace_me("fallback_tensor_to_corert_tensorhandle");
+  tensorflow::profiler::TraceMe trace_me(
+      "fallback_tensor_to_corert_tensorhandle");
   trace_me.AppendMetadata([request_id = exec_ctx.request_ctx()->id()]() {
-    return tsl::profiler::TraceMeEncode({{"id", request_id}});
+    return tensorflow::profiler::TraceMeEncode({{"id", request_id}});
   });
 
   FallbackTensorToCoreRTTensorHandleInternal(args.values(), results.values(),
@@ -943,8 +937,7 @@ static void RuntimeFallbackExecuteOp(
 
   // Get device.
   Device* device = nullptr;
-  absl::Status s =
-      eager_ctx->local_device_mgr()->LookupDevice(device_name, &device);
+  Status s = eager_ctx->local_device_mgr()->LookupDevice(device_name, &device);
   if (!s.ok()) {
     // The device name can be invalid in certain cases. Use default CPU device.
     VLOG(1) << s.message() << " using default CPU device.";
@@ -994,7 +987,7 @@ static void RuntimeFallbackExecuteOp(
     auto& runtime_fallback_tensor =
         tfrt_tensor_results[i]->get<RuntimeFallbackTensor>();
     const tensorflow::Tensor* tf_tensor = nullptr;
-    absl::Status s =
+    tensorflow::Status s =
         runtime_fallback_tensor.GetTensorHandle()->Tensor(&tf_tensor);
     DCHECK(s.ok()) << s;
     results[i] =
@@ -1048,7 +1041,7 @@ static OwnedTensorHandle ConvertTFRTTensorToTFTensorHandle(
 
 static llvm::Expected<tfrt::Value> ConvertTFTensorHandleToTFRTTensor(
     OwnedTensorHandle tensor_handle, HostContext* host) {
-  absl::Status status;
+  tensorflow::Status status;
   // Resolve ensures Tensor is on host CPU.
   OwnedAbstractTensorInterface tensor_interface{
       tensor_handle->Resolve(&status)};

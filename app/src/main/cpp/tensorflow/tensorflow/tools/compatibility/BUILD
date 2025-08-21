@@ -33,7 +33,6 @@ py_strict_test(
     srcs_version = "PY3",
     deps = [
         ":ast_edits",
-        # copybara:uncomment "//third_party/py/google/protobuf:use_fast_cpp_protos",
         "//tensorflow/python/framework:test_lib",
         "//tensorflow/python/platform:client_testlib",
     ],
@@ -68,7 +67,6 @@ py_strict_test(
     deps = [
         ":ast_edits",
         ":tf_upgrade_lib",
-        # copybara:uncomment "//third_party/py/google/protobuf:use_fast_cpp_protos",
         "//tensorflow/python/framework:test_lib",
         "//tensorflow/python/platform:client_testlib",
     ],
@@ -104,7 +102,6 @@ py_strict_test(
     srcs_version = "PY3",
     deps = [
         ":all_renames_v2",
-        # copybara:uncomment "//third_party/py/google/protobuf:use_fast_cpp_protos",
         "//tensorflow/python/framework:test_lib",
         "//tensorflow/python/platform:client_testlib",
     ],
@@ -168,16 +165,14 @@ py_strict_test(
     deps = [
         ":ast_edits",
         ":tf_upgrade_v2_lib",
-        # copybara:uncomment "//third_party/py/google/protobuf:use_fast_cpp_protos",
         "@six_archive//:six",
         # copybara:uncomment "//third_party/py/tensorflow:tensorflow_compat_v1_estimator",
         # copybara:uncomment "//third_party/py/tensorflow:tensorflow_compat_v2_estimator",
         "//tensorflow:tensorflow_py",
         "//tensorflow/python/framework:test_lib",
         "//tensorflow/python/platform:client_testlib",
-        "//tensorflow/python/util:tf_decorator_py",
+        "//tensorflow/python/util:tf_decorator",
         "//tensorflow/python/util:tf_export",
-        "//tensorflow/python/util:tf_inspect",
         "//tensorflow/tools/common:public_api",
         "//tensorflow/tools/common:traverse",
         "@absl_py//absl/testing:parameterized",
@@ -192,7 +187,6 @@ py_strict_test(
     deps = [
         ":ast_edits",
         ":tf_upgrade_v2_safety_lib",
-        # copybara:uncomment "//third_party/py/google/protobuf:use_fast_cpp_protos",
         "//tensorflow/python/framework:test_lib",
         "//tensorflow/python/platform:client_testlib",
     ],

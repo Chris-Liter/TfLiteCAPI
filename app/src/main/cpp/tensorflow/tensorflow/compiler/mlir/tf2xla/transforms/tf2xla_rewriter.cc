@@ -14,19 +14,16 @@ limitations under the License.
 ==============================================================================*/
 #include "tensorflow/compiler/mlir/tf2xla/transforms/tf2xla_rewriter.h"
 
-#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
+#include "absl/container/inlined_vector.h"
 #include "absl/memory/memory.h"
-#include "absl/status/status.h"
-#include "absl/status/statusor.h"
-#include "absl/strings/str_cat.h"
-#include "absl/strings/str_replace.h"
-#include "absl/types/span.h"
+#include "absl/strings/string_view.h"
 #include "llvm/ADT/DenseSet.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallVector.h"
@@ -63,20 +60,18 @@ limitations under the License.
 #include "tensorflow/compiler/tf2xla/xla_expression.h"
 #include "tensorflow/compiler/tf2xla/xla_helpers.h"
 #include "tensorflow/compiler/tf2xla/xla_op_registry.h"
-#include "xla/hlo/builder/xla_builder.h"
-#include "xla/hlo/builder/xla_computation.h"
-#include "xla/hlo/ir/hlo_instruction.h"
-#include "xla/hlo/ir/hlo_opcode.h"
-#include "xla/hlo/translate/hlo_to_mhlo/hlo_function_importer.h"
-#include "xla/hlo/translate/hlo_to_mhlo/hlo_to_mlir_hlo.h"
-#include "xla/hlo/translate/mhlo_to_hlo/type_to_shape.h"
-#include "xla/mlir_hlo/mhlo/IR/hlo_ops.h"
-#include "xla/service/hlo.pb.h"
-#include "xla/xla.pb.h"
-#include "xla/xla_data.pb.h"
+#include "tensorflow/compiler/xla/client/xla_builder.h"
+#include "tensorflow/compiler/xla/client/xla_computation.h"
+#include "tensorflow/compiler/xla/hlo/ir/hlo_instruction.h"
+#include "tensorflow/compiler/xla/hlo/ir/hlo_opcode.h"
+#include "tensorflow/compiler/xla/mlir_hlo/mhlo/IR/hlo_ops.h"
+#include "tensorflow/compiler/xla/service/hlo.pb.h"
+#include "tensorflow/compiler/xla/translate/hlo_to_mhlo/hlo_function_importer.h"
+#include "tensorflow/compiler/xla/translate/hlo_to_mhlo/hlo_to_mlir_hlo.h"
+#include "tensorflow/compiler/xla/translate/mhlo_to_hlo/type_to_shape.h"
+#include "tensorflow/compiler/xla/xla_data.pb.h"
 #include "tensorflow/core/common_runtime/process_function_library_runtime.h"
 #include "tensorflow/core/framework/attr_value.pb.h"
-#include "tensorflow/core/framework/function.pb.h"
 #include "tensorflow/core/framework/op.h"
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/framework/resource_mgr.h"
@@ -85,10 +80,10 @@ limitations under the License.
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/protobuf/config.pb.h"
 #include "tensorflow/core/public/session_options.h"
-#include "tsl/platform/env.h"
-#include "tsl/platform/errors.h"
-#include "tsl/platform/status.h"
-#include "tsl/platform/statusor.h"
+#include "tensorflow/tsl/platform/env.h"
+#include "tensorflow/tsl/platform/errors.h"
+#include "tensorflow/tsl/platform/status.h"
+#include "tensorflow/tsl/platform/statusor.h"
 
 namespace mlir {
 namespace mhlo {
@@ -98,22 +93,6 @@ using ::mlir::ModuleOp;
 using ::tensorflow::Tensor;
 using ::tsl::StatusOr;
 using ::xla::XlaComputation;
-
-// The OpOrArgLocNameMapper adds invalid characters to the name of the op when
-// concatenating locations. This version removes those characters to make the
-// name valid for NodeDef.
-class OpOrArgLocNameMapperWithoutInvalidCharacters
-    : public tensorflow::OpOrArgLocNameMapper {
- public:
-  OpOrArgLocNameMapperWithoutInvalidCharacters() = default;
-  ~OpOrArgLocNameMapperWithoutInvalidCharacters() override = default;
-
- protected:
-  std::string GetName(tensorflow::OpOrVal op_or_val) override {
-    std::string name = OpOrArgLocNameMapper::GetName(op_or_val);
-    return absl::StrReplaceAll(name, {{";", "."}});
-  }
-};
 
 static std::unique_ptr<tensorflow::StaticDeviceMgr> CreateDeviceMgr(
     const std::string& device_type) {
@@ -146,8 +125,6 @@ Tf2XlaRewriter::Tf2XlaRewriter(Operation* op, PatternRewriter& rewriter,
     : op_(op),
       device_type_(device_type),
       rewriter_(rewriter),
-      name_mapper_(
-          std::make_unique<OpOrArgLocNameMapperWithoutInvalidCharacters>()),
       context_(nullptr),
       xla_builder_(op_->getName().getStringRef().str()) {}
 
@@ -155,7 +132,7 @@ Tf2XlaRewriter::~Tf2XlaRewriter() {
   if (context_) context_->Unref();
 }
 
-absl::StatusOr<mhlo::TupleOp> Tf2XlaRewriter::ImportXlaComputation(
+tsl::StatusOr<mhlo::TupleOp> Tf2XlaRewriter::ImportXlaComputation(
     XlaComputation& computation) {
   xla::DebugOptions debug_options;
   TF_ASSIGN_OR_RETURN(auto hlo_module_config,
@@ -228,7 +205,7 @@ LogicalResult Tf2XlaRewriter::PrepareParams() {
   // concurrently running each of the MLIR functions create a new device.
   step_container_ = std::make_unique<tensorflow::ScopedStepContainer>(
       /*step_id=*/0, cleanup);
-  absl::Status status = step_container_->Create(
+  tsl::Status status = step_container_->Create(
       device_->resource_manager(),
       tensorflow::XlaContext::kXlaContextResourceName, context_);
   if (!status.ok()) {
@@ -237,7 +214,7 @@ LogicalResult Tf2XlaRewriter::PrepareParams() {
   }
   params_.step_container = step_container_.get();
 
-  absl::StatusOr<int64_t> version_or = tensorflow::GetTfGraphProducerVersion(
+  tsl::StatusOr<int64_t> version_or = tensorflow::GetTfGraphProducerVersion(
       op_->getParentOfType<mlir::ModuleOp>());
   if (!version_or.ok()) {
     return emitError(op_->getLoc()) << version_or.status().ToString();
@@ -255,13 +232,13 @@ LogicalResult Tf2XlaRewriter::PrepareParams() {
 // Returns true if the given type is a ranked tensor type with static or
 // bounded dimensions.
 bool IsBounded(Type ty) {
-  auto ranked_ty = mlir::dyn_cast<RankedTensorType>(ty);
+  auto ranked_ty = ty.dyn_cast<RankedTensorType>();
   if (!ranked_ty) return false;
 
   if (ranked_ty.hasStaticShape()) return true;
 
   auto encoding =
-      mlir::dyn_cast_or_null<TypeExtensionsAttr>(ranked_ty.getEncoding());
+      ranked_ty.getEncoding().dyn_cast_or_null<TypeExtensionsAttr>();
   if (!encoding) return false;
 
   for (int i = 0; i < ranked_ty.getRank(); ++i) {
@@ -276,11 +253,10 @@ bool IsBounded(Type ty) {
 bool HasSymbolRefAttr(Operation* op) {
   for (const auto& attr : op->getAttrs()) {
     Attribute attr_value = attr.getValue();
-    if (mlir::isa<SymbolRefAttr>(attr_value)) {
+    if (attr_value.isa<SymbolRefAttr>()) {
       return true;
-    } else if (auto array_attr = mlir::dyn_cast<ArrayAttr>(attr_value)) {
-      if (!array_attr.empty() &&
-          mlir::isa<SymbolRefAttr>(*array_attr.begin())) {
+    } else if (auto array_attr = attr_value.dyn_cast<ArrayAttr>()) {
+      if (!array_attr.empty() && array_attr.begin()->isa<SymbolRefAttr>()) {
         return true;
       }
     }
@@ -301,6 +277,11 @@ LogicalResult Tf2XlaRewriter::PrepareKernelInputs(
     tensorflow::XlaExpression expr = GetExprForOperand(operand, op_, idx);
     tensorflow::XlaExpression::Kind kind = expr.kind();
     if (kind == tensorflow::XlaExpression::Kind::kInvalid) return failure();
+    if (required_consts.count(idx) &&
+        kind != tensorflow::XlaExpression::Kind::kConstant) {
+      return op_->emitRemark()
+             << "lowering requires operand #" << idx << " to be a constant";
+    }
     expressions.push_back(expr);
 
     if (!tensorflow::DataTypeCanUseMemcpy(expr.dtype())) {
@@ -329,7 +310,7 @@ LogicalResult Tf2XlaRewriter::PrepareKernelInputs(
 
 LogicalResult Tf2XlaRewriter::LegalizeOp() {
   for (Type ty : op_->getOperandTypes()) {
-    auto ranked_ty = mlir::dyn_cast<ShapedType>(ty);
+    auto ranked_ty = ty.dyn_cast<ShapedType>();
     // Only bounded operands are supported in the XLA builders.
     if (!IsBounded(ranked_ty)) {
       return op_->emitRemark()
@@ -342,7 +323,7 @@ LogicalResult Tf2XlaRewriter::LegalizeOp() {
   }
 
   auto nodedef_or = tensorflow::ConvertTFDialectOpToNodeDef(
-      op_, name_mapper_->GetUniqueName(op_),
+      op_, name_mapper_.GetUniqueName(op_),
       /*ignore_unregistered_attrs=*/true);
   if (!nodedef_or.ok()) {
     return op_->emitRemark() << "failed to convert op to NodeDef: "
@@ -352,7 +333,7 @@ LogicalResult Tf2XlaRewriter::LegalizeOp() {
   if (failed(PrepareParams())) return failure();
 
   std::shared_ptr<const tensorflow::NodeProperties> props;
-  absl::Status status = tensorflow::NodeProperties::CreateFromNodeDef(
+  tsl::Status status = tensorflow::NodeProperties::CreateFromNodeDef(
       *nodedef_or.value(),
       params_.function_library->GetFunctionLibraryDefinition(), &props);
   if (!status.ok()) {
@@ -411,11 +392,11 @@ LogicalResult Tf2XlaRewriter::LegalizeOp() {
 
   if (failed(VerifyOpResults(op_context))) return failure();
 
-  absl::StatusOr<mhlo::TupleOp> tuple_result_or_status =
-      CompileWithHloImporter(op_context);
-  if (!tuple_result_or_status.ok()) {
-    return op_->emitRemark() << tuple_result_or_status.status().ToString();
-  }
+    StatusOr<mhlo::TupleOp> tuple_result_or_status =
+        CompileWithHloImporter(op_context);
+    if (!tuple_result_or_status.ok()) {
+      return op_->emitRemark() << tuple_result_or_status.status().ToString();
+    }
     mhlo::TupleOp tuple_result = tuple_result_or_status.value();
 
     llvm::SmallVector<Value> output_values;
@@ -427,7 +408,7 @@ LogicalResult Tf2XlaRewriter::LegalizeOp() {
   return success();
 }
 
-absl::StatusOr<mhlo::TupleOp> Tf2XlaRewriter::CompileWithHloImporter(
+tsl::StatusOr<mhlo::TupleOp> Tf2XlaRewriter::CompileWithHloImporter(
     tensorflow::OpKernelContext& op_context) {
   // XLA can only return a single value. Wrap all output op return values
   // in a Tuple op that gets unpacked later.

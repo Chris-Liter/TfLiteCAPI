@@ -10,9 +10,8 @@
 # consumers of the tf_gen_op_wrapper_py rule would be simplified if we don't
 # hard code the ops/ directory.
 
-load("//tensorflow:py.default.bzl", "py_library")
-load("//tensorflow:strict.default.bzl", "py_strict_library")
 load("//tensorflow:tensorflow.bzl", "tf_gen_op_wrapper_py")
+load("//tensorflow:strict.default.bzl", "py_strict_library")
 
 # This is a private function only intended to be used in this directory, no need to
 # document all its args for public consumption.
@@ -23,7 +22,7 @@ def tf_gen_op_wrapper_private_py(
         deps = [],
         require_shape_functions = False,
         visibility = [],
-        py_lib_rule = py_library):
+        py_lib_rule = native.py_library):
     if not name.endswith("_gen"):
         fail("name must end in _gen")
     new_name = name[:-4]

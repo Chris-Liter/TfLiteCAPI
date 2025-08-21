@@ -17,13 +17,11 @@ limitations under the License.
 #include <unordered_map>
 #include <vector>
 
-#include "absl/status/status.h"
-#include "tensorflow/core/platform/logging.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/lite/toco/graph_transformations/graph_transformations.h"
 #include "tensorflow/lite/toco/graph_transformations/remove_trivial_passthrough.h"
 #include "tensorflow/lite/toco/model.h"
 #include "tensorflow/lite/toco/tooling_util.h"
+#include "tensorflow/core/platform/logging.h"
 
 namespace toco {
 
@@ -33,7 +31,7 @@ namespace toco {
   *modified = false;
   auto* squeeze_op = model->operators[op_index].get();
   if (squeeze_op->type != OperatorType::kSqueeze) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   DCHECK_EQ(squeeze_op->inputs.size(), 1);
   DCHECK_EQ(squeeze_op->outputs.size(), 1);
@@ -48,10 +46,10 @@ namespace toco {
           LogName(*squeeze_op));
 
       *modified = RemoveTrivialPassthroughOp(this, model, op_index);
-      return absl::OkStatus();
+      return ::tensorflow::OkStatus();
     }
   }
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 }  // namespace toco

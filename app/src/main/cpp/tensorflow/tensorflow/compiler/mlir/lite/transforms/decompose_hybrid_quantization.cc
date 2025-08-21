@@ -26,12 +26,11 @@ limitations under the License.
 
 #include <utility>
 
-#include "mlir/Dialect/Quant/IR/QuantTypes.h"  // from @llvm-project
+#include "mlir/Dialect/Quant/QuantTypes.h"  // from @llvm-project
 #include "mlir/IR/BuiltinAttributes.h"  // from @llvm-project
 #include "mlir/IR/BuiltinOps.h"  // from @llvm-project
 #include "mlir/IR/BuiltinTypes.h"  // from @llvm-project
 #include "mlir/Pass/Pass.h"  // from @llvm-project
-#include "mlir/Support/LLVM.h"  // from @llvm-project
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/lite/ir/tfl_ops.h"
 #include "tensorflow/compiler/mlir/lite/transforms/passes.h"
@@ -63,20 +62,20 @@ class DequantizeConverter : public OpRewritePattern<SrcOp> {
     bool allTypesFp = true;
     bool allTypesQuantizedOrInt = true;
     for (auto operand : op->getOperands()) {
-      ShapedType type = mlir::dyn_cast<ShapedType>(operand.getType());
+      ShapedType type = operand.getType().template dyn_cast<ShapedType>();
       if (!type) continue;
-      allTypesFp &= !mlir::isa<quant::QuantizedType>(type.getElementType());
+      allTypesFp &= !type.getElementType().isa<quant::QuantizedType>();
       allTypesQuantizedOrInt &=
-          (mlir::isa<quant::QuantizedType>(type.getElementType()) ||
-           mlir::isa<IntegerType>(type.getElementType()));
+          (type.getElementType().isa<quant::QuantizedType>() ||
+           type.getElementType().isa<IntegerType>());
     }
 
     for (auto result : op->getResults()) {
-      ShapedType type = mlir::cast<ShapedType>(result.getType());
-      allTypesFp &= !mlir::isa<quant::QuantizedType>(type.getElementType());
+      ShapedType type = result.getType().template cast<ShapedType>();
+      allTypesFp &= !type.getElementType().isa<quant::QuantizedType>();
       allTypesQuantizedOrInt &=
-          (mlir::isa<quant::QuantizedType>(type.getElementType()) ||
-           mlir::isa<IntegerType>(type.getElementType()));
+          (type.getElementType().isa<quant::QuantizedType>() ||
+           type.getElementType().isa<IntegerType>());
     }
 
     // If all quantized or floating point then types are consistent.

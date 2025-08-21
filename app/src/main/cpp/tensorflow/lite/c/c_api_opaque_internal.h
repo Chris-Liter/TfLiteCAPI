@@ -15,6 +15,8 @@ limitations under the License.
 #ifndef TENSORFLOW_LITE_C_C_API_OPAQUE_INTERNAL_H_
 #define TENSORFLOW_LITE_C_C_API_OPAQUE_INTERNAL_H_
 
+#include <memory>
+
 #include "tensorflow/lite/core/api/op_resolver.h"
 #include "tensorflow/lite/core/c/common.h"
 
@@ -29,33 +31,42 @@ namespace internal {
 
 class CommonOpaqueConversionUtil {
  public:
-  CommonOpaqueConversionUtil() = delete;
-
-  // Obtain (or create) a 'TfLiteOperator' object that corresponds
+  // Obtain (or create) a 'TfLiteRegistrationExternal' object that corresponds
   // to the provided 'registration' argument, and return the address of the
   // external registration.  We loosely define that a
-  // 'TfLiteOperator' object "corresponds" to a 'TfLiteRegistration'
+  // 'TfLiteRegistrationExternal' object "corresponds" to a 'TfLiteRegistration'
   // object when calling any function pointer (like 'prepare') on the
-  // 'TfLiteOperator' object calls into the corresponding function
+  // 'TfLiteRegistrationExternal' object calls into the corresponding function
   // pointer of the 'TfLiteRegistration' object.
   //
   // The specified 'context' or 'op_resolver' object is used to store the
-  // 'TfLiteOperator*' pointers. The 'TfLiteOperator*'
+  // 'TfLiteRegistrationExternal*' pointers. The 'TfLiteRegistrationExternal*'
   // pointer will be deallocated when that object gets destroyed.  I.e., the
   // caller of this function should not deallocate the object pointed to by the
-  // return value of 'ObtainOperator'.
+  // return value of 'ObtainRegistrationExternal'.
   //
   // We also need to provide the 'node_index' that the 'registration'
-  // corresponds to, so that the 'TfLiteOperator' can store that
+  // corresponds to, so that the 'TfLiteRegistrationExternal' can store that
   // index within its fields.  If the registration does not yet correspond
   // to a specific node index, then 'node_index' should be -1.
-  static TfLiteOperator* ObtainOperator(TfLiteContext* context,
-                                        const TfLiteRegistration* registration,
-                                        int node_index);
+  static TfLiteRegistrationExternal* ObtainRegistrationExternal(
+      TfLiteContext* context, const TfLiteRegistration* registration,
+      int node_index);
+
+  // Get a shared_ptr to the RegistrationExternalsCache from an OpResolver.
+  // This is used to allow the InterpreterBuilder and OpResolver to share
+  // the same RegistrationExternalsCache, so that the RegistrationExternal
+  // objects in it can persist for the lifetimes of both the InterpreterBuilder
+  // and OpResolver.
+  static std::shared_ptr<::tflite::internal::RegistrationExternalsCache>
+  GetSharedCache(const ::tflite::OpResolver& op_resolver) {
+    return op_resolver.registration_externals_cache_;
+  }
 
  private:
-  static TfLiteOperator* CachedObtainOperator(
-      ::tflite::internal::OperatorsCache* registration_externals_cache,
+  static TfLiteRegistrationExternal* CachedObtainRegistrationExternal(
+      ::tflite::internal::RegistrationExternalsCache*
+          registration_externals_cache,
       const TfLiteRegistration* registration, int node_index);
 };
 

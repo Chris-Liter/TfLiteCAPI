@@ -31,6 +31,7 @@ limitations under the License.
 #include "tensorflow/core/framework/register_types.h"
 #include "tensorflow/core/graph/algorithm.h"
 #include "tensorflow/core/platform/macros.h"
+#include "tensorflow/core/platform/tracing.h"
 #include "tensorflow/core/profiler/lib/traceme.h"
 #include "tensorflow/core/util/device_name_utils.h"
 
@@ -51,7 +52,7 @@ void ArgOp::Compute(OpKernelContext* ctx) {
 
   auto validate_type = [this](const Tensor& val) {
     if (val.dtype() == dtype_) {
-      return absl::OkStatus();
+      return OkStatus();
     } else {
       return errors::InvalidArgument("Type mismatch: actual ",
                                      DataTypeString(val.dtype()),
@@ -105,8 +106,6 @@ TF_CALL_QUANTIZED_TYPES(REGISTER);
 TF_CALL_bool(REGISTER);
 TF_CALL_float8_e5m2(REGISTER);
 TF_CALL_float8_e4m3fn(REGISTER);
-TF_CALL_int4(REGISTER);
-TF_CALL_uint4(REGISTER);
 
 REGISTER_KERNEL_BUILDER(
     Name(kDeviceArgOp).Device(DEVICE_DEFAULT).TypeConstraint<int32>("T"),
@@ -147,8 +146,6 @@ REGISTER(Variant);
 TF_CALL_bool(REGISTER);
 TF_CALL_float8_e5m2(REGISTER);
 TF_CALL_float8_e4m3fn(REGISTER);
-TF_CALL_int4(REGISTER);
-TF_CALL_uint4(REGISTER);
 
 REGISTER_KERNEL_BUILDER(Name(kRetOp)
                             .Device(DEVICE_DEFAULT)
@@ -255,29 +252,26 @@ class SymbolicGradientOp : public AsyncOpKernel {
       args.push_back(ctx->input(i));
     }
     std::vector<Tensor>* rets = new std::vector<Tensor>;
-    tsl::profiler::TraceMe trace_me("SymbolicGradientOp");
-    lib->Run(
-        opts, handle, args, rets,
-        [ctx, done, rets](const absl::Status& status) {
-          if (!status.ok()) {
-            ctx->SetStatus(status);
-          } else if (rets->size() != ctx->num_outputs()) {
-            ctx->SetStatus(errors::InvalidArgument(
-                "SymGrad expects to return ", ctx->num_outputs(),
-                " tensor(s), but get ", rets->size(), " tensor(s) instead."));
-          } else {
-            for (size_t i = 0; i < rets->size(); ++i) {
-              ctx->set_output(i, std::move((*rets)[i]));
-            }
-          }
-          delete rets;
-          done();
-        });
+    profiler::TraceMe trace_me("SymbolicGradientOp");
+    lib->Run(opts, handle, args, rets, [ctx, done, rets](const Status& status) {
+      if (!status.ok()) {
+        ctx->SetStatus(status);
+      } else if (rets->size() != ctx->num_outputs()) {
+        ctx->SetStatus(errors::InvalidArgument(
+            "SymGrad expects to return ", ctx->num_outputs(),
+            " tensor(s), but get ", rets->size(), " tensor(s) instead."));
+      } else {
+        for (size_t i = 0; i < rets->size(); ++i) {
+          ctx->set_output(i, std::move((*rets)[i]));
+        }
+      }
+      delete rets;
+      done();
+    });
   }
 
  private:
-  SymbolicGradientOp(const SymbolicGradientOp&) = delete;
-  void operator=(const SymbolicGradientOp&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(SymbolicGradientOp);
 };
 
 REGISTER_KERNEL_BUILDER(Name(kGradientOp).Device(DEVICE_CPU),
@@ -321,12 +315,12 @@ void RemoteCallOp::ComputeAsync(OpKernelContext* ctx, DoneCallback done) {
       handle = cached_entry->second;
     } else {
       VLOG(1) << "Instantiating " << func_name << " on " << target_device;
-      tsl::profiler::TraceMe activity(
+      profiler::TraceMe activity(
           [&] {
             return strings::StrCat("RemoteCall: Instantiate: ", func_name,
                                    " on ", target_device);
           },
-          tsl::profiler::TraceMeLevel::kInfo);
+          profiler::TraceMeLevel::kInfo);
       FunctionLibraryRuntime::InstantiateOptions instantiate_opts;
       const auto* config = (ctx->function_library())
                                ? ctx->function_library()->config_proto()
@@ -400,25 +394,24 @@ void RemoteCallOp::ComputeAsync(OpKernelContext* ctx, DoneCallback done) {
   auto* rets = new std::vector<Tensor>;
   VLOG(1) << "Running " << func_name << " on " << target_device
           << " with handle: " << handle;
-  tsl::profiler::TraceMe trace_me(
+  profiler::TraceMe trace_me(
       [&] {
-        return tsl::profiler::TraceMeEncode(
+        return profiler::TraceMeEncode(
             "RemoteCallOp",
             {{"func_name", func_name}, {"device", target_device}});
       },
-      tsl::profiler::TraceMeLevel::kInfo);
+      profiler::TraceMeLevel::kInfo);
   lib->Run(
       opts, handle, args, rets,
       [rets, done = std::move(done), func_name, ctx, cancel_mgr,
-       target_device =
-           std::move(function_target.first)](const absl::Status& status) {
-        tsl::profiler::TraceMe activity(
+       target_device = std::move(function_target.first)](const Status& status) {
+        profiler::TraceMe activity(
             [&] {
-              return tsl::profiler::TraceMeEncode(
+              return profiler::TraceMeEncode(
                   "RemoteCallOpDone",
                   {{"func_name", func_name}, {"device", target_device}});
             },
-            tsl::profiler::TraceMeLevel::kInfo);
+            profiler::TraceMeLevel::kInfo);
         if (!status.ok()) {
           ctx->SetStatus(status);
         } else {
@@ -434,13 +427,13 @@ void RemoteCallOp::ComputeAsync(OpKernelContext* ctx, DoneCallback done) {
 
 string RemoteCallOp::TraceString(const OpKernelContext& ctx,
                                  bool verbose) const {
-  string trace_string = tsl::profiler::TraceMeOp(
+  string trace_string = profiler::TraceMeOp(
       strings::StrCat(name_view(), "__", func_.name()), type_string_view());
   if (verbose) {
     string shape = ShapeTraceString(ctx);
     if (!shape.empty()) {
-      trace_string = tsl::profiler::TraceMeEncode(std::move(trace_string),
-                                                  {{"shape", shape}});
+      trace_string =
+          profiler::TraceMeEncode(std::move(trace_string), {{"shape", shape}});
     }
   }
   return trace_string;

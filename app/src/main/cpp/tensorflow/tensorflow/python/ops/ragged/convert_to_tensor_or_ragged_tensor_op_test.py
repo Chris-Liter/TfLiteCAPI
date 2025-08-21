@@ -130,8 +130,7 @@ class RaggedConvertToTensorOrRaggedTensorTest(test_util.TensorFlowTestCase,
           value=ragged_factory_ops.constant_value([['a', 'b'], ['c']],
                                                   dtype=str),
           dtype=dtypes.int32,
-          message=(r"invalid literal for int\(\) with base 10: "
-                   r"('a'|np.str_\('a'\))")),
+          message=r"invalid literal for int\(\) with base 10: 'a'"),
   ])
   def testConvertRaggedTensorValueError(self,
                                         value,
@@ -217,8 +216,7 @@ class RaggedConvertToTensorOrRaggedTensorTest(test_util.TensorFlowTestCase,
       dict(
           value=np.array([['a', 'b'], ['c', 'd']], dtype=str),
           dtype=dtypes.int32,
-          message=(r"invalid literal for int\(\) with base 10: "
-                   r"('a'|np.str_\('a'\))")),
+          message=r"invalid literal for int\(\) with base 10: 'a'"),
   ])
   def testConvertNumpyArrayError(self,
                                  value,

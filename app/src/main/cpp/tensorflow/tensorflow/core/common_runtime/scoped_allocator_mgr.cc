@@ -19,9 +19,9 @@ limitations under the License.
 
 namespace tensorflow {
 
-absl::Status ScopedAllocatorContainer::AddScopedAllocator(
+Status ScopedAllocatorContainer::AddScopedAllocator(
     const Tensor& backing_tensor, int32_t scope_id, const string& scope_name,
-    const absl::Span<const ScopedAllocator::Field>& fields,
+    const gtl::ArraySlice<ScopedAllocator::Field>& fields,
     int32_t expected_call_count) {
   VLOG(1) << "AddScopedAllocator " << mgr_->device_name()
           << " step_id_=" << step_id_ << " scope_id=" << scope_id;
@@ -53,7 +53,7 @@ absl::Status ScopedAllocatorContainer::AddScopedAllocator(
     allocators_[f.scope_id] = ScopedAllocatorContainer::SAField(
         i, new ScopedAllocatorInstance(sa, i));
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 ScopedAllocator* ScopedAllocatorContainer::GetAllocator(int32_t scope_id) {
@@ -150,10 +150,10 @@ ScopedAllocatorContainer* ScopedAllocatorMgr::GetContainer(int64_t step_id) {
   return sac;
 }
 
-absl::Status ScopedAllocatorMgr::AddScopedAllocator(
+Status ScopedAllocatorMgr::AddScopedAllocator(
     const Tensor& backing_tensor, int64_t step_id, int32_t scope_id,
     const string& scope_name,
-    const absl::Span<const ScopedAllocator::Field>& fields,
+    const gtl::ArraySlice<ScopedAllocator::Field>& fields,
     int32_t expected_call_count) {
   ScopedAllocatorContainer* sac = GetContainer(step_id);
   return sac->AddScopedAllocator(backing_tensor, scope_id, scope_name, fields,
@@ -162,7 +162,7 @@ absl::Status ScopedAllocatorMgr::AddScopedAllocator(
 
 /*static*/
 size_t ScopedAllocatorMgr::PopulateFields(
-    int32_t scope_id, const absl::Span<const TensorShape>& shapes,
+    int32_t scope_id, const gtl::ArraySlice<TensorShape>& shapes,
     const DataType dtype, std::vector<ScopedAllocator::Field>* fields) {
   const int32_t num_fields = static_cast<int32>(shapes.size());
   fields->resize(num_fields);

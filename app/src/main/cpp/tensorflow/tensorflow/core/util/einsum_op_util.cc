@@ -27,10 +27,10 @@ limitations under the License.
 
 namespace tensorflow {
 
-absl::Status ValidateEinsumEquation(
-    const string& equation, absl::InlinedVector<string, 2UL>* input_subscripts,
-    string* output_subscript) {
-  absl::InlinedVector<string, 2UL> inputs_and_output_subscripts =
+Status ValidateEinsumEquation(const string& equation,
+                              gtl::InlinedVector<string, 2>* input_subscripts,
+                              string* output_subscript) {
+  gtl::InlinedVector<string, 2> inputs_and_output_subscripts =
       absl::StrSplit(equation, "->");
   if (inputs_and_output_subscripts.size() != 2) {
     return errors::InvalidArgument(
@@ -44,7 +44,7 @@ absl::Status ValidateEinsumEquation(
         "Expecting 1 or 2 input subscripts in equation '", equation,
         "' but got: ", input_subscripts->size());
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Returns the EinsumDimensionType given whether the corresponding label is
@@ -81,13 +81,14 @@ void MapToLabels(const string& subscript, Labels* labels,
   }
 }
 
-absl::Status ParseEinsumEquation(
-    const string& equation, OperandLabels* input_labels, Labels* output_labels,
-    std::vector<EinsumDimensionType>* label_types,
-    OperandLabelCounts* input_label_counts, LabelCounts* output_label_counts,
-    absl::InlinedVector<bool, 2UL>* input_has_ellipsis,
-    bool* output_has_ellipsis) {
-  absl::InlinedVector<string, 2UL> input_str;
+Status ParseEinsumEquation(const string& equation, OperandLabels* input_labels,
+                           Labels* output_labels,
+                           std::vector<EinsumDimensionType>* label_types,
+                           OperandLabelCounts* input_label_counts,
+                           LabelCounts* output_label_counts,
+                           gtl::InlinedVector<bool, 2>* input_has_ellipsis,
+                           bool* output_has_ellipsis) {
+  gtl::InlinedVector<string, 2> input_str;
   string output_str;
   TF_RETURN_IF_ERROR(ValidateEinsumEquation(equation, &input_str, &output_str));
 
@@ -134,7 +135,7 @@ absl::Status ParseEinsumEquation(
                   (*input_label_counts)[1][label] == 0;
     (*label_types)[label] = GetDimensionType(removed, unique);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace tensorflow

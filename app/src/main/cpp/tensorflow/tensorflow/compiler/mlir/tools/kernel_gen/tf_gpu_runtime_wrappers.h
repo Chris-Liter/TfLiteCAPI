@@ -18,12 +18,9 @@ limitations under the License.
 
 #include "absl/container/flat_hash_map.h"
 #include "mlir/ExecutionEngine/RunnerUtils.h"  // from @llvm-project
-#include "tensorflow/core/framework/resource_base.h"
 #include "tensorflow/core/framework/resource_op_kernel.h"
 #include "tensorflow/core/platform/mutex.h"
-#include "tensorflow/core/platform/status.h"
-#include "tsl/platform/hash.h"
-#include "tsl/platform/thread_annotations.h"
+#include "tensorflow/tsl/platform/hash.h"
 
 #if GOOGLE_CUDA
 #include "third_party/gpus/cuda/include/cuda.h"
@@ -49,7 +46,7 @@ class GPURuntimeCache : public tensorflow::ResourceBase {
 
   ~GPURuntimeCache() override;
   static constexpr const char* kDefaultResourceName = "mlir-gpu-runtime-cache";
-  static absl::Status Create(GPURuntimeCache** dst);
+  static tensorflow::Status Create(GPURuntimeCache** dst);
   std::string DebugString() const override;
 
   // Assumes that no two modules are loaded from the same memory location over

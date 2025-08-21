@@ -16,18 +16,12 @@ limitations under the License.
 #include "tensorflow/dtensor/mlir/expansions/optional_spmd_expander.h"
 
 #include "llvm/ADT/SmallVector.h"
-#include "mlir/IR/Builders.h"  // from @llvm-project
-#include "mlir/IR/BuiltinTypes.h"  // from @llvm-project
-#include "mlir/IR/Operation.h"  // from @llvm-project
-#include "mlir/IR/Types.h"  // from @llvm-project
-#include "mlir/Support/LLVM.h"  // from @llvm-project
-#include "tensorflow/compiler/mlir/tensorflow/ir/tf_ops.h"
+#include "llvm/Support/FormatVariadic.h"
+#include "tensorflow/dtensor/cc/constants.h"
 #include "tensorflow/dtensor/cc/dstatus.h"
-#include "tensorflow/dtensor/cc/tensor_layout.h"
 #include "tensorflow/dtensor/mlir/dtensor_location.h"
 #include "tensorflow/dtensor/mlir/layout_parsing.h"
 #include "tensorflow/dtensor/mlir/shape_utils.h"
-#include "tensorflow/dtensor/mlir/spmd_expander_common.h"
 #include "tensorflow/dtensor/mlir/value_utils.h"
 
 namespace tensorflow {
@@ -45,7 +39,7 @@ StatusOr<mlir::Operation*> OptionalGetValueSPMDExpander::ExpandOp(
 
   for (int i = 0; i < original_op->getNumResults(); ++i) {
     mlir::TensorType global_output_type =
-        mlir::cast<mlir::TensorType>(original_op.getResult(i).getType());
+        original_op.getResult(i).getType().cast<mlir::TensorType>();
     TF_ASSIGN_OR_RETURN(
         mlir::TensorType local_type,
         LocalTypeFromGlobalType(output_layouts[i], global_output_type));

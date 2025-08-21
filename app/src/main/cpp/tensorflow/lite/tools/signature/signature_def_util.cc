@@ -14,22 +14,19 @@ limitations under the License.
 ==============================================================================*/
 #include "tensorflow/lite/tools/signature/signature_def_util.h"
 
-#include <cstddef>
-#include <cstdint>
 #include <map>
 #include <memory>
 #include <string>
 #include <utility>
 
-#include "absl/status/status.h"
-#include "flatbuffers/flatbuffer_builder.h"  // from @flatbuffers
+#include "absl/memory/memory.h"
+#include "flatbuffers/flatbuffers.h"  // from @flatbuffers
 #include "flatbuffers/flexbuffers.h"  // from @flatbuffers
-#include "flatbuffers/vector.h"  // from @flatbuffers
 #include "tensorflow/core/lib/core/errors.h"
 #include "tensorflow/core/platform/errors.h"
 #include "tensorflow/core/protobuf/meta_graph.pb.h"
+#include "tensorflow/lite/core/model_builder.h"
 #include "tensorflow/lite/schema/schema_generated.h"
-#include "tsl/platform/status.h"
 
 namespace tflite {
 namespace {
@@ -65,7 +62,7 @@ Status ReadSignatureDefMap(const Model* model, const Metadata* metadata,
     const std::string key = signature_defs.Keys()[i].AsString().c_str();
     (*map)[key] = signature_defs[key].AsString().c_str();
   }
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 }  // namespace
@@ -108,7 +105,7 @@ Status SetSignatureDefMap(const Model* model,
   *model_data_with_signature_def =
       std::string(reinterpret_cast<const char*>(builder.GetBufferPointer()),
                   builder.GetSize());
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 bool HasSignatureDef(const Model* model, const std::string& signature_key) {
@@ -121,7 +118,7 @@ bool HasSignatureDef(const Model* model, const std::string& signature_key) {
   }
   SerializedSignatureDefMap signature_defs;
   if (ReadSignatureDefMap(model, metadata, &signature_defs) !=
-      absl::OkStatus()) {
+      ::tensorflow::OkStatus()) {
     return false;
   }
   return (signature_defs.find(signature_key) != signature_defs.end());
@@ -137,7 +134,7 @@ Status GetSignatureDefMap(const Model* model,
   if (metadata) {
     SerializedSignatureDefMap signature_defs;
     auto status = ReadSignatureDefMap(model, metadata, &signature_defs);
-    if (status != absl::OkStatus()) {
+    if (status != ::tensorflow::OkStatus()) {
       return tensorflow::errors::Internal("Error reading signature def map: ",
                                           status.message());
     }
@@ -151,7 +148,7 @@ Status GetSignatureDefMap(const Model* model,
     }
     *signature_def_map = retrieved_signature_def_map;
   }
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 Status ClearSignatureDefMap(const Model* model, std::string* model_data) {
@@ -175,7 +172,7 @@ Status ClearSignatureDefMap(const Model* model, std::string* model_data) {
   *model_data =
       std::string(reinterpret_cast<const char*>(builder.GetBufferPointer()),
                   builder.GetSize());
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 }  // namespace tflite

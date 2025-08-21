@@ -15,8 +15,6 @@ limitations under the License.
 #include "tensorflow/core/framework/common_shape_fns.h"
 #include "tensorflow/core/framework/op.h"
 #include "tensorflow/core/framework/op_kernel.h"
-#include "tensorflow/core/framework/tensor.h"
-#include "tensorflow/core/framework/types.h"
 
 namespace tensorflow {
 namespace tf_mlrt {
@@ -41,8 +39,7 @@ class TestAsyncIdentityKernel : public AsyncOpKernel {
   }
 
  private:
-  TestAsyncIdentityKernel(const TestAsyncIdentityKernel&) = delete;
-  void operator=(const TestAsyncIdentityKernel&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(TestAsyncIdentityKernel);
 };
 
 REGISTER_KERNEL_BUILDER(Name("TestAsyncIdentity").Device(DEVICE_CPU),

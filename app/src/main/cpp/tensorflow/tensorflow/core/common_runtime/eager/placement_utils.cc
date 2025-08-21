@@ -33,7 +33,7 @@ namespace eager {
 // These ops are not pinnable since they generate data. It can be slower to
 // generate and then copy the data instead of just generating the data on the
 // device directly.
-static bool IsPinnableOp(absl::string_view op_name) {
+static bool IsPinnableOp(StringPiece op_name) {
   static const gtl::FlatSet<string>* unpinnable_ops = new gtl::FlatSet<string>({
       "RandomUniform",
       "RandomUniformInt",
@@ -51,10 +51,10 @@ static bool IsPinnableOp(absl::string_view op_name) {
 }
 // Validate if the remote device with the given incarnation is valid in the
 // remote device manager of the current eager context.
-static absl::Status ValidateTensorHandleRemoteDevice(
-    EagerContext* ctx, int64_t device_incarnation) {
+static Status ValidateTensorHandleRemoteDevice(EagerContext* ctx,
+                                               int64_t device_incarnation) {
   if (ctx->remote_device_mgr()->ContainsDevice(device_incarnation)) {
-    return absl::OkStatus();
+    return OkStatus();
   }
   return errors::InvalidArgument(
       "Resource input tensor contains an invalid device. This might happen "
@@ -62,14 +62,14 @@ static absl::Status ValidateTensorHandleRemoteDevice(
       "workers have been restarted.");
 }
 
-bool IsColocationExempt(absl::string_view op_name) {
+bool IsColocationExempt(StringPiece op_name) {
   const auto& exempt_ops = InputColocationExemptionRegistry::Global()->Get();
   return exempt_ops.find(string(op_name)) != exempt_ops.end();
 }
 
-bool IsFunction(absl::string_view op_name) {
+bool IsFunction(StringPiece op_name) {
   const OpDef* op_def = nullptr;
-  absl::Status s = OpDefForOp(string(op_name), &op_def);
+  Status s = OpDefForOp(string(op_name), &op_def);
   if (!s.ok()) {
     if (!absl::IsNotFound(s)) {
       LOG(WARNING) << "Looking up OpDef failed with error: " << s;
@@ -80,14 +80,14 @@ bool IsFunction(absl::string_view op_name) {
   return false;
 }
 
-absl::Status MaybePinSmallOpsToCpu(
-    bool* result, absl::string_view op_name,
+Status MaybePinSmallOpsToCpu(
+    bool* result, StringPiece op_name,
     absl::Span<ImmediateExecutionTensorHandle* const> args,
-    absl::string_view cpu_device_name) {
+    StringPiece cpu_device_name) {
   if (IsFunction(op_name) || IsColocationExempt(op_name) ||
       !IsPinnableOp(op_name)) {
     *result = false;
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   // Ops without inputs are usually ops that generate a tensor in some way and
@@ -95,12 +95,12 @@ absl::Status MaybePinSmallOpsToCpu(
   // - for e.g. VarHandleOp or _Recv).
   if (args.empty()) {
     *result = false;
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   int i = 0;
   for (auto* arg : args) {
-    absl::Status s;
+    Status s;
     const char* device_name = arg->DeviceName(&s);
     DataType dtype = arg->DataType();
     TF_RETURN_IF_ERROR(s);
@@ -111,19 +111,19 @@ absl::Status MaybePinSmallOpsToCpu(
     // Input is on CPU.
     if (device_name != cpu_device_name) {
       *result = false;
-      return absl::OkStatus();
+      return OkStatus();
     }
 
     if (dtype != DataType::DT_INT32 && dtype != DataType::DT_INT64) {
       *result = false;
-      return absl::OkStatus();
+      return OkStatus();
     }
 
     int64_t num_elements;
     TF_RETURN_IF_ERROR(arg->NumElements(&num_elements));
     if (num_elements > 64) {
       *result = false;
-      return absl::OkStatus();
+      return OkStatus();
     }
     i++;
   }
@@ -134,13 +134,12 @@ absl::Status MaybePinSmallOpsToCpu(
            << " to be on the CPU since all input tensors have an "
               "int32/int64 dtype, and are small (less than 64 elements).";
   *result = true;
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status MaybePinToResourceDevice(Device** device,
-                                      const EagerOperation& op) {
+Status MaybePinToResourceDevice(Device** device, const EagerOperation& op) {
   if (op.colocation_exempt()) {
-    return absl::OkStatus();
+    return OkStatus();
   }
   EagerContext& ctx = op.EagerContext();
   const absl::InlinedVector<TensorHandle*, 4>* inputs;
@@ -171,14 +170,14 @@ absl::Status MaybePinToResourceDevice(Device** device,
                  << resource_device->name() << " because input #" << i
                  << " is a resource in this device.";
         *device = resource_device;
-        return absl::OkStatus();
+        return OkStatus();
         // No point in looking at other inputs. If there are other resources,
         // they must have the same device and we already declared the op to be
         // ineligible for CPU pinning.
       }
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace eager

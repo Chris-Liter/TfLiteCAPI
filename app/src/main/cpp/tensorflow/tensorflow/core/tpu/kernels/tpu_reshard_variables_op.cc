@@ -25,11 +25,11 @@ limitations under the License.
 #include "tensorflow/compiler/jit/xla_tensor.h"
 #include "tensorflow/compiler/tf2xla/shape_util.h"
 #include "tensorflow/compiler/tf2xla/tf2xla_util.h"
-#include "xla/service/maybe_owning_device_memory.h"
-#include "xla/stream_executor/device_memory_allocator.h"
-#include "xla/stream_executor/tpu/tpu_executor.h"
-#include "xla/stream_executor/tpu/tpu_executor_interface.h"
-#include "xla/stream_executor/tpu/tpu_node_context.h"
+#include "tensorflow/compiler/xla/service/maybe_owning_device_memory.h"
+#include "tensorflow/compiler/xla/stream_executor/device_memory_allocator.h"
+#include "tensorflow/compiler/xla/stream_executor/tpu/tpu_executor.h"
+#include "tensorflow/compiler/xla/stream_executor/tpu/tpu_executor_interface.h"
+#include "tensorflow/compiler/xla/stream_executor/tpu/tpu_node_context.h"
 #include "tensorflow/core/framework/allocator.h"
 #include "tensorflow/core/framework/node_def_util.h"
 #include "tensorflow/core/framework/op.h"
@@ -67,7 +67,7 @@ void TPUReshardVariablesOpKernel::ComputeAsync(OpKernelContext* context,
   done();
 }
 
-absl::Status TPUReshardVariablesOpKernel::DoWork(OpKernelContext* context) {
+Status TPUReshardVariablesOpKernel::DoWork(OpKernelContext* context) {
   VLOG(1) << "Cloud TPU: TPUReshardVariablesOpKernel::DoWork";
   TF_RET_CHECK(context->input_dtype(num_vars_) == DT_STRING);
   const Tensor* new_format_key;
@@ -75,13 +75,12 @@ absl::Status TPUReshardVariablesOpKernel::DoWork(OpKernelContext* context) {
   TF_RETURN_IF_ERROR(reshard_util::CheckIsValidKey(*new_format_key));
 
   TF_RET_CHECK(context->input_dtype(num_vars_ + 1) == DT_RESOURCE);
-  ResourceHandle handle;
-  TF_RETURN_IF_ERROR(HandleFromInput(context, num_vars_ + 1, &handle));
+  const ResourceHandle& handle = HandleFromInput(context, num_vars_ + 1);
   core::RefCountPtr<Var> format_state_var;
   TF_RETURN_IF_ERROR(LookupOrCreateResource<Var>(
       context, handle, &format_state_var, [new_format_key](Var** ptr) {
         *ptr = new Var(new_format_key->dtype());
-        return absl::OkStatus();
+        return OkStatus();
       }));
   mutex_lock ml(*format_state_var->mu());
   const bool initialized = format_state_var->is_initialized;
@@ -99,7 +98,7 @@ absl::Status TPUReshardVariablesOpKernel::DoWork(OpKernelContext* context) {
       (initialized && format_state_var->tensor()->vec<tstring>()(2) ==
                           new_format_key->vec<tstring>()(2))) {
     VLOG(1) << "Sharding unchanged, nothing to do.";
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   if (!state_is_default) {
@@ -121,10 +120,10 @@ absl::Status TPUReshardVariablesOpKernel::DoWork(OpKernelContext* context) {
   // Change the state.
   *format_state_var->tensor() = *new_format_key;
   format_state_var->is_initialized = true;
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status TPUReshardVariablesOpKernel::DoTpuExecute(
+Status TPUReshardVariablesOpKernel::DoTpuExecute(
     OpKernelContext* context, const Tensor& format_key,
     tpu::CompilationCacheFetchTarget fetch_target) {
   const XlaDevice::Metadata* metadata;
@@ -136,15 +135,14 @@ absl::Status TPUReshardVariablesOpKernel::DoTpuExecute(
   TF_ASSIGN_OR_RETURN(std::unique_ptr<tpu::TpuNodeContext> node_interfaces,
                       tpu::TpuNodeContext::Create(device_ordinal));
 
-  tsl::profiler::TraceMe trace_me(
+  profiler::TraceMe trace_me(
       [device_ordinal] {
-        return tsl::profiler::TraceMeEncode(
-            "TPUReshardVariablesOpKernel",
-            {{"device_ordinal", device_ordinal}});
+        return profiler::TraceMeEncode("TPUReshardVariablesOpKernel",
+                                       {{"device_ordinal", device_ordinal}});
       },
       /*level=*/2);
-  tsl::profiler::TraceMe trace_me_init("TPUReshardVariablesOpKernel::Init",
-                                       /*level=*/2);
+  profiler::TraceMe trace_me_init("TPUReshardVariablesOpKernel::Init",
+                                  /*level=*/2);
 
   string rendezvous_key_base;
   std::unique_ptr<tpu::CompilationCacheEntryRef> entry_ref;
@@ -154,7 +152,7 @@ absl::Status TPUReshardVariablesOpKernel::DoTpuExecute(
   if (entry.tpu_program_group() == nullptr) {
     VLOG(2) << "Sharding/unsharding program does not exist, so this is default "
                "sharding.";
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   const tpu::TpuProgramGroupInterface* tpu_program_group =
@@ -175,8 +173,7 @@ absl::Status TPUReshardVariablesOpKernel::DoTpuExecute(
   std::vector<VariableInfo> variables;
   for (int i = 0; i < num_vars_; ++i) {
     TF_RET_CHECK(context->input_dtype(i) == DT_RESOURCE);
-    ResourceHandle handle;
-    TF_RETURN_IF_ERROR(HandleFromInput(context, i, &handle));
+    const ResourceHandle& handle = HandleFromInput(context, i);
     Var* variable;
     TF_RETURN_IF_ERROR(LookupResource(context, handle, &variable));
     variables.push_back(VariableInfo(i, handle.name(), variable));
@@ -206,7 +203,7 @@ absl::Status TPUReshardVariablesOpKernel::DoTpuExecute(
                                                      shaped_buffer)) {
     TF_RETURN_IF_ERROR(transfer_manager->WriteRootTupleIndexTable(
         transfer_stream_ptr.get(), shaped_buffer));
-    TF_RETURN_IF_ERROR(stream->WaitFor(transfer_stream_ptr.get()));
+    stream->ThenWaitFor(transfer_stream_ptr.get());
   } else {
     TF_RETURN_IF_ERROR(
         transfer_manager->WriteRootTupleIndexTable(stream, shaped_buffer));
@@ -216,8 +213,9 @@ absl::Status TPUReshardVariablesOpKernel::DoTpuExecute(
   TF_RET_CHECK(!executable->has_session_module())
       << "session module not supported in sharding/unsharding program.";
 
-  TF_ASSIGN_OR_RETURN(std::shared_ptr<se::Event> definition_event,
-                      stream->parent()->CreateEvent());
+  auto definition_event = std::make_shared<se::Event>(stream->parent());
+  TF_RET_CHECK(definition_event->Init())
+      << "TPU definition event initialization failed";
 
   trace_me_init.Stop();
 
@@ -245,7 +243,7 @@ absl::Status TPUReshardVariablesOpKernel::DoTpuExecute(
                  transfer_stream_ptr.get(),
                  tpu_program_group->tpu_program(core_index)));
 
-  TF_RETURN_IF_ERROR(stream->RecordEvent(definition_event.get()));
+  stream->ThenRecordEvent(definition_event.get());
 
   // Assign the new buffers to the variables.
   xla::ScopedShapedBuffer result = output.ConsumeResult();

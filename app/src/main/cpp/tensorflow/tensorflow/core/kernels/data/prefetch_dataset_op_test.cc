@@ -46,14 +46,14 @@ class PrefetchDatasetParams : public DatasetParams {
     return {CreateTensor<int64_t>(TensorShape({}), {buffer_size_})};
   }
 
-  absl::Status GetInputNames(std::vector<string>* input_names) const override {
+  Status GetInputNames(std::vector<string>* input_names) const override {
     input_names->clear();
     input_names->emplace_back(PrefetchDatasetOp::kInputDataset);
     input_names->emplace_back(PrefetchDatasetOp::kBufferSize);
-    return absl::OkStatus();
+    return OkStatus();
   }
 
-  absl::Status GetAttributes(AttributeVector* attr_vector) const override {
+  Status GetAttributes(AttributeVector* attr_vector) const override {
     attr_vector->clear();
     attr_vector->emplace_back("output_types", output_dtypes_);
     attr_vector->emplace_back("output_shapes", output_shapes_);
@@ -61,7 +61,7 @@ class PrefetchDatasetParams : public DatasetParams {
     attr_vector->emplace_back("legacy_autotune", legacy_autotune_);
     attr_vector->emplace_back("buffer_size_min", buffer_size_min_);
     attr_vector->emplace_back("metadata", "");
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   string dataset_type() const override {

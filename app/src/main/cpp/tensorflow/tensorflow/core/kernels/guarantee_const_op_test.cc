@@ -30,7 +30,7 @@ namespace {
 
 class GuaranteeConstOpTest : public OpsTestBase {
  protected:
-  absl::Status Init(DataType input_type) {
+  Status Init(DataType input_type) {
     TF_CHECK_OK(NodeDefBuilder("op", "GuaranteeConst")
                     .Input(FakeInput(input_type))
                     .Finalize(node_def()));

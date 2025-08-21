@@ -2,7 +2,7 @@ path: "tensorflow.autograph.experimental"
 tf_module {
   member {
     name: "Feature"
-    mtype: "<class \'enum.EnumType\'>"
+    mtype: "<class \'enum.EnumMeta\'>"
   }
   member_method {
     name: "do_not_convert"

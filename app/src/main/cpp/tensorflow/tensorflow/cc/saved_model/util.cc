@@ -42,7 +42,7 @@ std::set<std::string> GetMapKeys(
   return keys;
 }
 
-absl::Status GetInputValues(
+Status GetInputValues(
     const SignatureDef& signature,
     const ::google::protobuf::Map<std::string, ::tensorflow::TensorProto>& request_inputs,
     std::vector<std::pair<string, Tensor>>& inputs) {
@@ -86,7 +86,7 @@ absl::Status GetInputValues(
         absl::StrJoin(seen_request_inputs, ","),
         ", request input: ", absl::StrJoin(GetMapKeys(request_inputs), ",")));
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace saved_model

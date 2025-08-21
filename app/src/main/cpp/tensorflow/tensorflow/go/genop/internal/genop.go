@@ -39,7 +39,7 @@ import "C"
 import (
 	"fmt"
 	"io"
-	"os"
+	"io/ioutil"
 	"path"
 	"reflect"
 	"sort"
@@ -96,7 +96,7 @@ func registeredOps() (*odpb.OpList, *apiDefMap, error) {
 }
 
 func updateAPIDefs(m *apiDefMap, dir string) error {
-	files, err := os.ReadDir(dir)
+	files, err := ioutil.ReadDir(dir)
 	if err != nil {
 		return err
 	}
@@ -104,7 +104,7 @@ func updateAPIDefs(m *apiDefMap, dir string) error {
 		if file.IsDir() || !strings.HasSuffix(file.Name(), ".pbtxt") {
 			continue
 		}
-		data, err := os.ReadFile(path.Join(dir, file.Name()))
+		data, err := ioutil.ReadFile(path.Join(dir, file.Name()))
 		if err != nil {
 			return fmt.Errorf("failed to read %q: %v", file.Name(), err)
 		}

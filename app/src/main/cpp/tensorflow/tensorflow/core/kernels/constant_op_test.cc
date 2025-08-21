@@ -60,7 +60,7 @@ void ConstantOpTest::PersistentMemoryTrackingTest(bool on_gpu) {
   std::unique_ptr<Device> device(DeviceFactory::NewDevice(
       device_string, {}, "/job:worker/replica:0/task:0"));
 
-  absl::Status status;
+  Status status;
   std::unique_ptr<OpKernel> op(CreateOpKernel(device_type, device.get(),
                                               cpu_allocator(), const_node,
                                               TF_GRAPH_DEF_VERSION, &status));

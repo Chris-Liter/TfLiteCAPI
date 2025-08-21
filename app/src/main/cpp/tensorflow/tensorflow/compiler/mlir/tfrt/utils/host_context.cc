@@ -15,7 +15,6 @@ limitations under the License.
 
 #include "tensorflow/compiler/mlir/tfrt/utils/host_context.h"
 
-#include <cstdint>
 #include <memory>
 
 #include "tensorflow/core/platform/logging.h"

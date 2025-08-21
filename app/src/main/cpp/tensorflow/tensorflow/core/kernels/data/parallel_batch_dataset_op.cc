@@ -137,20 +137,19 @@ class ParallelBatchDatasetOp::Dataset : public DatasetBase {
     return n / batch_size_ + (n % batch_size_ == 0 || drop_remainder_ ? 0 : 1);
   }
 
-  absl::Status InputDatasets(
-      std::vector<const DatasetBase*>* inputs) const override {
+  Status InputDatasets(std::vector<const DatasetBase*>* inputs) const override {
     inputs->push_back(input_);
-    return absl::OkStatus();
+    return OkStatus();
   }
 
-  absl::Status CheckExternalState() const override {
+  Status CheckExternalState() const override {
     return input_->CheckExternalState();
   }
 
  protected:
-  absl::Status AsGraphDefInternal(SerializationContext* ctx,
-                                  DatasetGraphDefBuilder* b,
-                                  Node** output) const override {
+  Status AsGraphDefInternal(SerializationContext* ctx,
+                            DatasetGraphDefBuilder* b,
+                            Node** output) const override {
     // Input: input_dataset
     Node* input_graph_node = nullptr;
     TF_RETURN_IF_ERROR(b->AddInputDataset(ctx, input_, &input_graph_node));
@@ -167,7 +166,7 @@ class ParallelBatchDatasetOp::Dataset : public DatasetBase {
     Node* drop_remainder = nullptr;
     TF_RETURN_IF_ERROR(b->AddScalar(drop_remainder_, &drop_remainder));
 
-    std::vector<std::pair<absl::string_view, AttrValue>> attrs;
+    std::vector<std::pair<StringPiece, AttrValue>> attrs;
     // Attr: parallel_copy
     AttrValue parallel_copy_attr;
     b->BuildAttrValue(parallel_copy_, &parallel_copy_attr);
@@ -182,7 +181,7 @@ class ParallelBatchDatasetOp::Dataset : public DatasetBase {
         this,
         {input_graph_node, batch_size, num_parallel_calls, drop_remainder},
         attrs, output));
-    return absl::OkStatus();
+    return OkStatus();
   }
 
  private:
@@ -204,7 +203,7 @@ class ParallelBatchDatasetOp::Dataset : public DatasetBase {
 
     bool SymbolicCheckpointCompatible() const override { return true; }
 
-    absl::Status Initialize(IteratorContext* ctx) override {
+    Status Initialize(IteratorContext* ctx) override {
       mutex_lock l(*mu_);
       interleave_depth_ = ctx->interleave_depth();
 
@@ -230,12 +229,12 @@ class ParallelBatchDatasetOp::Dataset : public DatasetBase {
       if (ctx->warm_start() && !ctx->is_restoring()) {
         EnsureThreadsStarted(ctx);
       }
-      return absl::OkStatus();
+      return OkStatus();
     }
 
-    absl::Status GetNextInternal(IteratorContext* ctx,
-                                 std::vector<Tensor>* out_tensors,
-                                 bool* end_of_sequence) override {
+    Status GetNextInternal(IteratorContext* ctx,
+                           std::vector<Tensor>* out_tensors,
+                           bool* end_of_sequence) override {
       std::shared_ptr<BatchResult> result;
       {
         mutex_lock l(*mu_);
@@ -250,9 +249,9 @@ class ParallelBatchDatasetOp::Dataset : public DatasetBase {
         }
       }
 
-      tsl::profiler::TraceMe traceme([&] {
-        return tsl::profiler::TraceMeEncode("ParallelBatchConsume",
-                                            {{"element_id", result->uid}});
+      profiler::TraceMe traceme([&] {
+        return profiler::TraceMeEncode("ParallelBatchConsume",
+                                       {{"element_id", result->uid}});
       });
       mutex_lock l(result->mu);
       // Deallocate tensors allocated for the output.
@@ -267,7 +266,7 @@ class ParallelBatchDatasetOp::Dataset : public DatasetBase {
           ProcessBatch(dataset()->batch_size_, result->num_elements,
                        dataset()->drop_remainder_, result->status, ctx,
                        out_tensors, end_of_sequence, &result->output));
-      return absl::OkStatus();
+      return OkStatus();
     }
 
    protected:
@@ -280,8 +279,8 @@ class ParallelBatchDatasetOp::Dataset : public DatasetBase {
                                 /*max=*/ctx->runner_threadpool_size())});
     }
 
-    absl::Status SaveInternal(SerializationContext* ctx,
-                              IteratorStateWriter* writer) override {
+    Status SaveInternal(SerializationContext* ctx,
+                        IteratorStateWriter* writer) override {
       if (ctx->symbolic_checkpoint()) {
         return writer->WriteScalar(prefix(), kBatchResultsSize, 0);
       }
@@ -297,11 +296,11 @@ class ParallelBatchDatasetOp::Dataset : public DatasetBase {
       for (size_t i = 0; i < batch_results_.size(); ++i) {
         TF_RETURN_IF_ERROR(WriteBatchResult(writer, i));
       }
-      return absl::OkStatus();
+      return OkStatus();
     }
 
-    absl::Status RestoreInternal(IteratorContext* ctx,
-                                 IteratorStateReader* reader) override {
+    Status RestoreInternal(IteratorContext* ctx,
+                           IteratorStateReader* reader) override {
       mutex_lock l(*mu_);
       DCHECK(!runner_thread_);
       TF_RETURN_IF_ERROR(RestoreInput(ctx, reader, input_impl_));
@@ -315,7 +314,7 @@ class ParallelBatchDatasetOp::Dataset : public DatasetBase {
       if (ctx->warm_start()) {
         EnsureThreadsStarted(ctx);
       }
-      return absl::OkStatus();
+      return OkStatus();
     }
 
     TraceMeMetadata GetTraceMeMetadata() const override {
@@ -345,7 +344,7 @@ class ParallelBatchDatasetOp::Dataset : public DatasetBase {
       explicit BatchResult(IteratorContext* ctx)
           : end_of_input(false),
             num_elements(0),
-            status(absl::OkStatus()),
+            status(OkStatus()),
             call_finished(false),
             output_allocated(false),
             uid(tensorflow::EnvTime::NowNanos()),
@@ -355,7 +354,7 @@ class ParallelBatchDatasetOp::Dataset : public DatasetBase {
       bool end_of_input TF_GUARDED_BY(mu);
       int64_t num_elements TF_GUARDED_BY(mu);
       std::vector<Tensor> output TF_GUARDED_BY(mu);
-      absl::Status status TF_GUARDED_BY(mu);
+      Status status TF_GUARDED_BY(mu);
       bool call_finished TF_GUARDED_BY(&Iterator::mu_);
       bool output_allocated TF_GUARDED_BY(mu);
       const int64_t uid = -1;
@@ -377,9 +376,9 @@ class ParallelBatchDatasetOp::Dataset : public DatasetBase {
     void CallBatching(std::shared_ptr<IteratorContext> ctx,
                       const std::shared_ptr<BatchResult>& result)
         TF_LOCKS_EXCLUDED(*mu_) {
-      tsl::profiler::TraceMe traceme([&] {
-        return tsl::profiler::TraceMeEncode("ParallelBatchProduce",
-                                            {{"element_id", result->uid}});
+      profiler::TraceMe traceme([&] {
+        return profiler::TraceMeEncode("ParallelBatchProduce",
+                                       {{"element_id", result->uid}});
       });
 
       if (!input_impl_) {
@@ -389,14 +388,15 @@ class ParallelBatchDatasetOp::Dataset : public DatasetBase {
 
       // Each row of `batch_elements` is a tuple of tensors from the input
       // iterator.
-      std::vector<std::vector<Tensor>> batch_elements;
-      batch_elements.reserve(dataset()->reserve_size_);
+      auto batch_elements =
+          std::make_shared<std::vector<std::vector<Tensor>>>();
+      batch_elements->reserve(dataset()->reserve_size_);
 
       bool end_of_input = false;
       for (int i = 0; i < dataset()->batch_size_ && !end_of_input; ++i) {
         std::vector<Tensor> batch_element_tuple;
-        absl::Status status = input_impl_->GetNext(
-            ctx.get(), &batch_element_tuple, &end_of_input);
+        Status status = input_impl_->GetNext(ctx.get(), &batch_element_tuple,
+                                             &end_of_input);
         {
           mutex_lock l(result->mu);
           result->end_of_input = result->end_of_input || end_of_input;
@@ -405,7 +405,7 @@ class ParallelBatchDatasetOp::Dataset : public DatasetBase {
           if (result->end_of_input || !result->status.ok()) break;
         }
         if (!end_of_input) {
-          batch_elements.emplace_back(std::move(batch_element_tuple));
+          batch_elements->emplace_back(std::move(batch_element_tuple));
           mutex_lock l(result->mu);
           result->num_elements++;
         } else {
@@ -413,34 +413,32 @@ class ParallelBatchDatasetOp::Dataset : public DatasetBase {
         }
       }
 
-      if (batch_elements.empty()) {
+      if (batch_elements->empty()) {
         CallCompleted(ctx, result);
         return;
       }
 
-      auto copy_elements_fn = [this, ctx, result,
-                               batch_elements =
-                                   std::move(batch_elements)]() mutable {
-        absl::Status status;
+      auto copy_elements_fn = [this, ctx, result, batch_elements]() {
+        Status status;
         {
           mutex_lock l(result->mu);
-          status = CopyBatch(AnyContext(ctx.get()), std::move(batch_elements),
-                             dataset()->parallel_copy_, &result->output);
+          auto allocation_callback =
+              [this, ctx, result]()
+                  TF_EXCLUSIVE_LOCKS_REQUIRED(&BatchResult::mu) {
+                    result->output_allocated = true;
+                    RecordBufferEnqueue(ctx.get(), result->output);
+                    return OkStatus();
+                  };
+          status = CopyBatch(CopyBatchParams(ctx.get()), *batch_elements,
+                             dataset()->parallel_copy_,
+                             std::move(allocation_callback), &result->output);
           result->status.Update(status);
-
-          if (result->status.ok()) {
-            result->output_allocated = true;
-            RecordBufferEnqueue(ctx.get(), result->output);
-          } else {
-            result->output.clear();
-            result->output_allocated = false;
-          }
         }
         CallCompleted(ctx, result);
         return status;
       };
 
-      (*ctx->runner())(std::move(copy_elements_fn));
+      (*ctx->runner())(copy_elements_fn);
     }
 
     void CancelThreads(bool wait) TF_LOCKS_EXCLUDED(mu_) {
@@ -544,9 +542,8 @@ class ParallelBatchDatasetOp::Dataset : public DatasetBase {
       return true;
     }
 
-    absl::Status ReadBatchResult(IteratorContext* ctx,
-                                 IteratorStateReader* reader, size_t index)
-        TF_EXCLUSIVE_LOCKS_REQUIRED(*mu_) {
+    Status ReadBatchResult(IteratorContext* ctx, IteratorStateReader* reader,
+                           size_t index) TF_EXCLUSIVE_LOCKS_REQUIRED(*mu_) {
       batch_results_.push_back(std::make_shared<BatchResult>(ctx));
       std::shared_ptr<BatchResult> result = batch_results_.back();
       string batch_prefix = strings::StrCat(kBatchResults, "_", index);
@@ -569,10 +566,10 @@ class ParallelBatchDatasetOp::Dataset : public DatasetBase {
       if (result->output_allocated) {
         RecordBufferEnqueue(ctx, result->output);
       }
-      return absl::OkStatus();
+      return OkStatus();
     }
 
-    absl::Status WriteBatchResult(IteratorStateWriter* writer, size_t index)
+    Status WriteBatchResult(IteratorStateWriter* writer, size_t index)
         TF_EXCLUSIVE_LOCKS_REQUIRED(*mu_) {
       std::shared_ptr<BatchResult> result = batch_results_[index];
       string batch_prefix = strings::StrCat(kBatchResults, "_", index);
@@ -600,7 +597,7 @@ class ParallelBatchDatasetOp::Dataset : public DatasetBase {
       TF_RETURN_IF_ERROR(
           WriteStatus(prefix(), strings::StrCat(batch_prefix, "_", kStatus),
                       result->status, writer));
-      return absl::OkStatus();
+      return OkStatus();
     }
 
     // Used for coordination between the main thread and the runner thread.

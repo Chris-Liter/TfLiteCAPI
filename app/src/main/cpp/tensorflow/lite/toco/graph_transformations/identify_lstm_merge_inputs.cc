@@ -18,9 +18,8 @@ limitations under the License.
 #include <utility>
 #include <vector>
 
-#include "absl/log/check.h"
-#include "absl/status/status.h"
-#include "tensorflow/core/platform/status.h"
+#include "absl/memory/memory.h"
+#include "absl/strings/string_view.h"
 #include "tensorflow/lite/toco/graph_transformations/graph_transformations.h"
 #include "tensorflow/lite/toco/graph_transformations/lstm_utils.h"
 #include "tensorflow/lite/toco/model.h"
@@ -28,21 +27,22 @@ limitations under the License.
 
 namespace toco {
 
-absl::Status MergeLstmCellInputs::Run(Model* model, std::size_t op_index,
-                                      bool* modified) {
+::tensorflow::Status MergeLstmCellInputs::Run(Model* model,
+                                              std::size_t op_index,
+                                              bool* modified) {
   *modified = false;
   // Find lstm cell.
   auto op_it = model->operators.begin() + op_index;
   auto src_op = op_it->get();
   if (src_op->type != OperatorType::kLstmCell) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   // Already a compact LstmCell. Do not need to merge cell inputs.
   const auto* src_lstm_op = static_cast<LstmCellOperator*>(src_op);
   if (src_lstm_op->kernel_type != LstmCellOperator::KERNEL_FULL ||
       src_lstm_op->inputs.size() != kExtendedLstmInputCount) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   // Identify prev_activ_input, prev_state_input as required Op inputs,
@@ -50,12 +50,12 @@ absl::Status MergeLstmCellInputs::Run(Model* model, std::size_t op_index,
   std::string prev_activ_input;
   if (!GetMatchingRnnArray(model, src_op->outputs[kOutputTensor],
                            &prev_activ_input)) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   std::string prev_state_input;
   if (!GetMatchingRnnArray(model, src_op->outputs[kCellStateTensor],
                            &prev_state_input)) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   // Get LstmCell's cell, input, output size.
@@ -175,7 +175,7 @@ absl::Status MergeLstmCellInputs::Run(Model* model, std::size_t op_index,
   DeleteOpAndArrays(model, src_op);
 
   *modified = true;
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 }  // namespace toco

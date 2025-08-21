@@ -13,7 +13,7 @@ py_strict_library(
         "//tensorflow/python/autograph/core:converter",
         "//tensorflow/python/autograph/lang:directives",
         "//tensorflow/python/autograph/pyct:templates",
-        "@pypi_gast//:pkg",
+        "@gast_archive//:gast",
     ],
 )
 
@@ -39,7 +39,7 @@ py_strict_library(
         "//tensorflow/python/autograph/core:converter",
         "//tensorflow/python/autograph/pyct:parser",
         "//tensorflow/python/autograph/pyct:templates",
-        "@pypi_gast//:pkg",
+        "@gast_archive//:gast",
     ],
 )
 
@@ -65,7 +65,7 @@ py_strict_library(
         "//tensorflow/python/autograph/core:converter",
         "//tensorflow/python/autograph/pyct:parser",
         "//tensorflow/python/autograph/pyct:templates",
-        "@pypi_gast//:pkg",
+        "@gast_archive//:gast",
     ],
 )
 
@@ -80,7 +80,7 @@ py_strict_library(
         "//tensorflow/python/autograph/pyct:qual_names",
         "//tensorflow/python/autograph/pyct:templates",
         "//tensorflow/python/autograph/utils:ag_logging",
-        "@pypi_gast//:pkg",
+        "@gast_archive//:gast",
     ],
 )
 
@@ -93,7 +93,7 @@ py_strict_library(
         "//tensorflow/python/autograph/lang:directives",
         "//tensorflow/python/autograph/pyct:anno",
         "//tensorflow/python/util:tf_inspect",
-        "@pypi_gast//:pkg",
+        "@gast_archive//:gast",
     ],
 )
 
@@ -105,7 +105,7 @@ py_strict_library(
         "//tensorflow/python/autograph/core:converter",
         "//tensorflow/python/autograph/pyct:anno",
         "//tensorflow/python/autograph/pyct:templates",
-        "@pypi_gast//:pkg",
+        "@gast_archive//:gast",
     ],
 )
 
@@ -127,7 +127,7 @@ py_strict_library(
         "//tensorflow/python/autograph/pyct/static_analysis:liveness",
         "//tensorflow/python/autograph/pyct/static_analysis:reaching_definitions",
         "//tensorflow/python/autograph/pyct/static_analysis:reaching_fndefs",
-        "@pypi_gast//:pkg",
+        "@gast_archive//:gast",
     ],
 )
 
@@ -143,7 +143,7 @@ py_strict_library(
         "//tensorflow/python/autograph/pyct:templates",
         "//tensorflow/python/autograph/pyct/static_analysis:activity",
         "//tensorflow/python/autograph/pyct/static_analysis:annos",
-        "@pypi_gast//:pkg",
+        "@gast_archive//:gast",
     ],
 )
 
@@ -160,7 +160,7 @@ py_strict_library(
         "//tensorflow/python/autograph/pyct:templates",
         "//tensorflow/python/autograph/pyct/static_analysis:activity",
         "//tensorflow/python/autograph/pyct/static_analysis:annos",
-        "@pypi_gast//:pkg",
+        "@gast_archive//:gast",
     ],
 )
 
@@ -176,7 +176,7 @@ py_strict_library(
         "//tensorflow/python/autograph/pyct:templates",
         "//tensorflow/python/autograph/pyct/static_analysis:activity",
         "//tensorflow/python/autograph/pyct/static_analysis:annos",
-        "@pypi_gast//:pkg",
+        "@gast_archive//:gast",
     ],
 )
 
@@ -187,7 +187,7 @@ py_strict_library(
     deps = [
         "//tensorflow/python/autograph/core:converter",
         "//tensorflow/python/autograph/pyct:templates",
-        "@pypi_gast//:pkg",
+        "@gast_archive//:gast",
     ],
 )
 
@@ -200,7 +200,6 @@ py_strict_test(
         ":asserts",
         ":functions",
         ":return_statements",
-        #internal proto upb dep
         "//tensorflow/python/autograph/core:test_lib",
         "//tensorflow/python/framework:constant_op",
         "//tensorflow/python/framework:errors",
@@ -215,7 +214,6 @@ py_strict_test(
     srcs_version = "PY3",
     deps = [
         ":break_statements",
-        #internal proto upb dep
         "//tensorflow/python/autograph/core:test_lib",
         "//tensorflow/python/autograph/pyct:anno",
         "//tensorflow/python/platform:client_testlib",
@@ -230,7 +228,6 @@ py_strict_test(
     deps = [
         ":call_trees",
         ":functions",
-        #internal proto upb dep
         "//tensorflow/python/autograph/core:test_lib",
         "//tensorflow/python/platform:client_testlib",
     ],
@@ -243,7 +240,6 @@ py_strict_test(
     srcs_version = "PY3",
     deps = [
         ":conditional_expressions",
-        #internal proto upb dep
         "//tensorflow/python/autograph/core:test_lib",
         "//tensorflow/python/platform:client_testlib",
     ],
@@ -256,7 +252,6 @@ py_strict_test(
     srcs_version = "PY3",
     deps = [
         ":continue_statements",
-        #internal proto upb dep
         "//tensorflow/python/autograph/core:test_lib",
         "//tensorflow/python/framework:ops",
         "//tensorflow/python/platform:client_testlib",
@@ -272,8 +267,6 @@ py_strict_test(
         ":break_statements",
         ":continue_statements",
         ":control_flow",
-        #internal proto upb dep
-        "//third_party/py/numpy",
         "//tensorflow/python/autograph/core:test_lib",
         "//tensorflow/python/eager:def_function",
         "//tensorflow/python/framework:constant_op",
@@ -283,6 +276,7 @@ py_strict_test(
         "//tensorflow/python/framework:tensor_util",
         "//tensorflow/python/platform:client_testlib",
         "//tensorflow/python/util:nest",
+        "//third_party/py/numpy",
     ],
 )
 
@@ -293,7 +287,6 @@ py_strict_test(
     srcs_version = "PY3",
     deps = [
         ":directives",
-        #internal proto upb dep
         "//tensorflow/python/autograph/core:test_lib",
         "//tensorflow/python/autograph/lang:directives",
         "//tensorflow/python/autograph/pyct:anno",
@@ -308,7 +301,6 @@ py_strict_test(
     deps = [
         ":functions",
         ":return_statements",
-        #internal proto upb dep
         "//tensorflow/python/autograph/core:ag_ctx",
         "//tensorflow/python/autograph/core:converter",
         "//tensorflow/python/autograph/core:test_lib",
@@ -326,7 +318,6 @@ py_strict_test(
     deps = [
         ":directives",
         ":lists",
-        #internal proto upb dep
         "//tensorflow/python/autograph/core:test_lib",
         "//tensorflow/python/autograph/lang:directives",
         "//tensorflow/python/autograph/lang:special_functions",
@@ -345,7 +336,6 @@ py_strict_test(
     srcs_version = "PY3",
     deps = [
         ":logical_expressions",
-        #internal proto upb dep
         "//tensorflow/python/autograph/core:test_lib",
         "//tensorflow/python/framework:constant_op",
         "//tensorflow/python/framework:test_lib",
@@ -361,7 +351,6 @@ py_strict_test(
     deps = [
         ":functions",
         ":return_statements",
-        #internal proto upb dep
         "//tensorflow/python/autograph/core:test_lib",
         "//tensorflow/python/framework:ops",
         "//tensorflow/python/platform:client_testlib",
@@ -376,7 +365,6 @@ py_strict_test(
     deps = [
         ":directives",
         ":slices",
-        #internal proto upb dep
         "//tensorflow/python/autograph/core:test_lib",
         "//tensorflow/python/autograph/lang:directives",
         "//tensorflow/python/framework:constant_op",
@@ -393,7 +381,6 @@ py_strict_test(
     srcs_version = "PY3",
     deps = [
         ":variables",
-        #internal proto upb dep
         "//tensorflow/python/autograph/core:test_lib",
         "//tensorflow/python/platform:client_testlib",
     ],

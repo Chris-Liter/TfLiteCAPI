@@ -20,7 +20,7 @@ limitations under the License.
 
 namespace tensorflow {
 
-absl::Status StatefulRandomShape(shape_inference::InferenceContext* c) {
+Status StatefulRandomShape(shape_inference::InferenceContext* c) {
   using shape_inference::ShapeHandle;
   // Check algorithm shape
   ShapeHandle unused;
@@ -29,7 +29,7 @@ absl::Status StatefulRandomShape(shape_inference::InferenceContext* c) {
   ShapeHandle out;
   TF_RETURN_IF_ERROR(c->MakeShapeFromShapeTensor(2, &out));
   c->set_output(0, out);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 #define REGISTER_STATEFUL_OP(name, default_dtype) \
@@ -61,7 +61,7 @@ REGISTER_OP("StatefulUniformInt")
       // Check inputs
       ShapeHandle unused;
       TF_RETURN_IF_ERROR(c->WithRank(c->input(1), 0, &unused));
-      absl::Status s = c->WithRank(c->input(3), 0, &unused);
+      Status s = c->WithRank(c->input(3), 0, &unused);
       if (!s.ok()) {
         return errors::InvalidArgument(
             "minval must be a scalar; got a tensor of shape ",
@@ -77,7 +77,7 @@ REGISTER_OP("StatefulUniformInt")
       ShapeHandle out;
       TF_RETURN_IF_ERROR(c->MakeShapeFromShapeTensor(2, &out));
       c->set_output(0, out);
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 REGISTER_OP("RngSkip")
@@ -88,7 +88,7 @@ REGISTER_OP("RngSkip")
       shape_inference::ShapeHandle unused;
       TF_RETURN_IF_ERROR(c->WithRank(c->input(1), 0, &unused));
       TF_RETURN_IF_ERROR(c->WithRank(c->input(2), 0, &unused));
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 REGISTER_OP("RngReadAndSkip")
@@ -101,7 +101,7 @@ REGISTER_OP("RngReadAndSkip")
       TF_RETURN_IF_ERROR(c->WithRank(c->input(1), 0, &unused));
       TF_RETURN_IF_ERROR(c->WithRank(c->input(2), 0, &unused));
       c->set_output(0, c->MakeShape({RNG_MAX_COUNTER_SIZE + RNG_KEY_SIZE}));
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 REGISTER_OP("NonDeterministicInts")
@@ -115,7 +115,7 @@ REGISTER_OP("NonDeterministicInts")
       ShapeHandle out;
       TF_RETURN_IF_ERROR(c->MakeShapeFromShapeTensor(0, &out));
       c->set_output(0, out);
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 REGISTER_OP("StatefulRandomBinomial")
@@ -134,7 +134,7 @@ REGISTER_OP("StatefulRandomBinomial")
       ShapeHandle out;
       TF_RETURN_IF_ERROR(c->MakeShapeFromShapeTensor(2, &out));
       c->set_output(0, out);
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 // Register the deprecated 'StatefulStandardNormal' op. This op is a short-lived
@@ -153,7 +153,7 @@ REGISTER_OP("StatefulStandardNormal")
       ShapeHandle out;
       TF_RETURN_IF_ERROR(c->MakeShapeFromShapeTensor(1, &out));
       c->set_output(0, out);
-      return absl::OkStatus();
+      return OkStatus();
     });
 
 }  // namespace tensorflow

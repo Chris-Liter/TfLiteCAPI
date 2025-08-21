@@ -26,9 +26,9 @@ limitations under the License.
 #include "tensorflow/core/platform/byte_order.h"
 #include "tensorflow/core/platform/cpu_info.h"
 #include "tensorflow/core/platform/logging.h"
+#include "tensorflow/core/platform/tracing.h"
 #include "tensorflow/core/platform/types.h"
 #include "tensorflow/core/util/util.h"
-#include "tsl/platform/tracing.h"
 
 namespace tensorflow {
 
@@ -166,15 +166,14 @@ thread::ThreadPool* NewThreadPoolFromSessionOptions(
 }
 
 void SchedClosure(absl::AnyInvocable<void()> closure) {
-  if (!tsl::tracing::EventCollector::IsEnabled()) {
+  if (!tracing::EventCollector::IsEnabled()) {
     return Env::Default()->SchedClosure(std::move(closure));
   }
-  uint64 id = tsl::tracing::GetUniqueArg();
-  tsl::tracing::RecordEvent(tsl::tracing::EventCategory::kScheduleClosure, id);
+  uint64 id = tracing::GetUniqueArg();
+  tracing::RecordEvent(tracing::EventCategory::kScheduleClosure, id);
 
   Env::Default()->SchedClosure([id, closure = std::move(closure)]() mutable {
-    tsl::tracing::ScopedRegion region(tsl::tracing::EventCategory::kRunClosure,
-                                      id);
+    tracing::ScopedRegion region(tracing::EventCategory::kRunClosure, id);
     closure();
   });
 }

@@ -70,10 +70,11 @@ void ReadInputData(const ParsedTocoFlags& parsed_toco_flags,
 }
 }  // namespace
 
-absl::Status Convert(const std::string& graph_def_contents,
-                     const TocoFlags& toco_flags, const ModelFlags& model_flags,
-                     std::string* output_file_contents,
-                     int64_t* arithmetic_ops_count = nullptr) {
+tensorflow::Status Convert(const std::string& graph_def_contents,
+                           const TocoFlags& toco_flags,
+                           const ModelFlags& model_flags,
+                           std::string* output_file_contents,
+                           int64_t* arithmetic_ops_count = nullptr) {
   std::unique_ptr<Model> model =
       Import(toco_flags, model_flags, graph_def_contents);
   TF_RETURN_IF_ERROR(TransformWithStatus(toco_flags, model.get()));
@@ -82,11 +83,11 @@ absl::Status Convert(const std::string& graph_def_contents,
   if (arithmetic_ops_count != nullptr) {
     *arithmetic_ops_count = model->ArithmeticOpsCount();
   }
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
-absl::Status Convert(const ParsedTocoFlags& parsed_toco_flags,
-                     const ParsedModelFlags& parsed_model_flags) {
+tensorflow::Status Convert(const ParsedTocoFlags& parsed_toco_flags,
+                           const ParsedModelFlags& parsed_model_flags) {
   ModelFlags model_flags;
   ReadModelFlagsFromCommandLineFlags(parsed_model_flags, &model_flags);
 
@@ -104,7 +105,7 @@ absl::Status Convert(const ParsedTocoFlags& parsed_toco_flags,
   TF_RETURN_IF_ERROR(
       port::file::SetContents(parsed_toco_flags.output_file.value(),
                               output_file_contents, port::file::Defaults()));
-  return absl::Status();
+  return tensorflow::Status();
 }
 
 }  // namespace toco

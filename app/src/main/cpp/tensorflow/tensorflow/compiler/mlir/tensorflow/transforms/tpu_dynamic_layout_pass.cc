@@ -86,7 +86,7 @@ bool IsSupportedInputOp(
       resource_alias_analysis.GetResourceAliases(resource_iterator);
 
   auto is_generator = [](Value val) {
-    if (mlir::isa<BlockArgument>(val)) return true;
+    if (val.isa<BlockArgument>()) return true;
     Operation* definition = val.getDefiningOp();
     return definition->getNumOperands() == 0 &&
            definition->getNumResults() == 1;
@@ -99,7 +99,7 @@ bool IsSupportedInputOp(
     if (!is_generator(alias)) return true;
 
     StringAttr device;
-    if (auto arg = mlir::dyn_cast<BlockArgument>(alias)) {
+    if (auto arg = alias.dyn_cast<BlockArgument>()) {
       device = func.getArgAttrOfType<mlir::StringAttr>(arg.getArgNumber(),
                                                        kFuncDeviceAttr);
     } else {
@@ -186,8 +186,10 @@ bool HandleReplicatedInputs(
         BuildCopyWithLayout(execute_launch, compile_launch, get_layout,
                             entry.value().get(), &builder);
 
-    auto device_list = mlir::cast<ArrayAttr>(
-        replicate.getDevices().value().get(execute_launch.getDevice()));
+    auto device_list = replicate.getDevices()
+                           .value()
+                           .get(execute_launch.getDevice())
+                           .cast<ArrayAttr>();
     copy_with_layout->setAttr(kDeviceAttr,
                               device_list.getValue()[entry.index()]);
 
@@ -223,7 +225,7 @@ void HandleCompileAndExecutes(
     for (const auto& input_and_idx : llvm::enumerate(execute.getArgs())) {
       Value input = input_and_idx.value();
       const int64_t execute_arg_index = input_and_idx.index();
-      if (auto block_arg = mlir::dyn_cast<BlockArgument>(input)) {
+      if (auto block_arg = input.dyn_cast<BlockArgument>()) {
         // For a block argument, consider transforms only when it is a
         // replicated input (defining ops will be outside the replicate node).
         if (maybe_replicate != block_arg.getParentRegion()->getParentOp() ||

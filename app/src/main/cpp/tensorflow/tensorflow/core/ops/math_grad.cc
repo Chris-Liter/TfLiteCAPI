@@ -25,7 +25,7 @@ namespace tensorflow {
 typedef FunctionDefHelper FDH;
 
 // Cwise binary ops
-absl::Status GradForUnaryCwise(FunctionDef* g, std::vector<FDH::Node> nodes) {
+Status GradForUnaryCwise(FunctionDef* g, std::vector<FDH::Node> nodes) {
   for (auto& n : nodes) {
     if (n.attr.empty()) {
       n.attr = {{"T", "$T"}};
@@ -40,10 +40,10 @@ absl::Status GradForUnaryCwise(FunctionDef* g, std::vector<FDH::Node> nodes) {
       {{"T: {half, float, double}"}},
       // Nodes
       nodes);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status AbsGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status AbsGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForUnaryCwise(g, {
       {{"sign"}, "Sign", {"x"}, {}, {"dy"}},
@@ -53,7 +53,7 @@ absl::Status AbsGrad(const AttrSlice& attrs, FunctionDef* g) {
 }
 REGISTER_OP_GRADIENT("Abs", AbsGrad);
 
-absl::Status NegGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status NegGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForUnaryCwise(g, {
       {{"dx"}, "Neg", {"dy"}},
@@ -62,7 +62,7 @@ absl::Status NegGrad(const AttrSlice& attrs, FunctionDef* g) {
 }
 REGISTER_OP_GRADIENT("Neg", NegGrad);
 
-absl::Status InvGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status InvGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForUnaryCwise(g, {
       {{"y"}, "Reciprocal", {"x"}},
@@ -75,7 +75,7 @@ absl::Status InvGrad(const AttrSlice& attrs, FunctionDef* g) {
 REGISTER_OP_GRADIENT("Inv", InvGrad);
 REGISTER_OP_GRADIENT("Reciprocal", InvGrad);
 
-absl::Status SquareGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status SquareGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForUnaryCwise(g, {
       FDH::Const("c", int64_t{2}),
@@ -87,7 +87,7 @@ absl::Status SquareGrad(const AttrSlice& attrs, FunctionDef* g) {
 }
 REGISTER_OP_GRADIENT("Square", SquareGrad);
 
-absl::Status SqrtGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status SqrtGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForUnaryCwise(g, {
       {{"y"}, "Sqrt", {"x"}},
@@ -101,7 +101,7 @@ absl::Status SqrtGrad(const AttrSlice& attrs, FunctionDef* g) {
 }
 REGISTER_OP_GRADIENT("Sqrt", SqrtGrad);
 
-absl::Status RsqrtGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status RsqrtGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForUnaryCwise(g, {
       {{"x_inv"}, "Reciprocal", {"x"}, {}, {"dy"}},
@@ -116,7 +116,7 @@ absl::Status RsqrtGrad(const AttrSlice& attrs, FunctionDef* g) {
 }
 REGISTER_OP_GRADIENT("Rsqrt", RsqrtGrad);
 
-absl::Status ExpGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status ExpGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForUnaryCwise(g, {
       {{"y"}, "Exp", {"x"}},
@@ -126,7 +126,7 @@ absl::Status ExpGrad(const AttrSlice& attrs, FunctionDef* g) {
 }
 REGISTER_OP_GRADIENT("Exp", ExpGrad);
 
-absl::Status Expm1Grad(const AttrSlice& attrs, FunctionDef* g) {
+Status Expm1Grad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForUnaryCwise(g, {
       {{"y"}, "Exp", {"x"}},
@@ -136,7 +136,7 @@ absl::Status Expm1Grad(const AttrSlice& attrs, FunctionDef* g) {
 }
 REGISTER_OP_GRADIENT("Expm1", Expm1Grad);
 
-absl::Status LogGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status LogGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForUnaryCwise(g, {
       {{"x_inv"}, "Reciprocal", {"x"}, {}, {"dy"}},
@@ -146,7 +146,7 @@ absl::Status LogGrad(const AttrSlice& attrs, FunctionDef* g) {
 }
 REGISTER_OP_GRADIENT("Log", LogGrad);
 
-absl::Status Log1pGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status Log1pGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForUnaryCwise(g, {
       FDH::Const("const", 1.0f),
@@ -158,7 +158,7 @@ absl::Status Log1pGrad(const AttrSlice& attrs, FunctionDef* g) {
 }
 REGISTER_OP_GRADIENT("Log1p", Log1pGrad);
 
-absl::Status SinhGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status SinhGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForUnaryCwise(g, {
       {{"cosh"}, "Cosh", {"x"}, {}, {"dy"}},
@@ -168,7 +168,7 @@ absl::Status SinhGrad(const AttrSlice& attrs, FunctionDef* g) {
 }
 REGISTER_OP_GRADIENT("Sinh", SinhGrad);
 
-absl::Status CoshGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status CoshGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForUnaryCwise(g, {
       {{"sinh"}, "Sinh", {"x"}, {}, {"dy"}},
@@ -178,7 +178,7 @@ absl::Status CoshGrad(const AttrSlice& attrs, FunctionDef* g) {
 }
 REGISTER_OP_GRADIENT("Cosh", CoshGrad);
 
-absl::Status TanhGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status TanhGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForUnaryCwise(g, {
       {{"y"}, "Tanh", {"x"}},
@@ -192,7 +192,7 @@ absl::Status TanhGrad(const AttrSlice& attrs, FunctionDef* g) {
 }
 REGISTER_OP_GRADIENT("Tanh", TanhGrad);
 
-absl::Status AsinhGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status AsinhGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForUnaryCwise(g, {
       {{"y"}, "Asinh", {"x"}},
@@ -203,7 +203,7 @@ absl::Status AsinhGrad(const AttrSlice& attrs, FunctionDef* g) {
 }
 REGISTER_OP_GRADIENT("Asinh", AsinhGrad);
 
-absl::Status AcoshGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status AcoshGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForUnaryCwise(g, {
       {{"y"}, "Acosh", {"x"}},
@@ -214,7 +214,7 @@ absl::Status AcoshGrad(const AttrSlice& attrs, FunctionDef* g) {
 }
 REGISTER_OP_GRADIENT("Acosh", AcoshGrad);
 
-absl::Status AtanhGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status AtanhGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForUnaryCwise(g, {
     {{"x2"}, "Square", {"x"}},
@@ -228,7 +228,7 @@ absl::Status AtanhGrad(const AttrSlice& attrs, FunctionDef* g) {
 }
 REGISTER_OP_GRADIENT("Atanh", AtanhGrad);
 
-absl::Status SigmoidGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status SigmoidGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForUnaryCwise(g, {
       {{"y"}, "Sigmoid", {"x"}},
@@ -242,7 +242,7 @@ absl::Status SigmoidGrad(const AttrSlice& attrs, FunctionDef* g) {
 }
 REGISTER_OP_GRADIENT("Sigmoid", SigmoidGrad);
 
-absl::Status SignGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status SignGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForUnaryCwise(g, {
       {{"s"}, "Shape", {"x"}},
@@ -254,7 +254,7 @@ absl::Status SignGrad(const AttrSlice& attrs, FunctionDef* g) {
 }
 REGISTER_OP_GRADIENT("Sign", SignGrad);
 
-absl::Status SinGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status SinGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForUnaryCwise(g, {
       {{"cos"}, "Cos", {"x"}, {}, {"dy"}},
@@ -264,7 +264,7 @@ absl::Status SinGrad(const AttrSlice& attrs, FunctionDef* g) {
 }
 REGISTER_OP_GRADIENT("Sin", SinGrad);
 
-absl::Status CosGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status CosGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForUnaryCwise(g, {
       {{"sin"}, "Sin", {"x"}, {}, {"dy"}},
@@ -275,7 +275,7 @@ absl::Status CosGrad(const AttrSlice& attrs, FunctionDef* g) {
 }
 REGISTER_OP_GRADIENT("Cos", CosGrad);
 
-absl::Status AcosGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status AcosGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForUnaryCwise(g, {
     {{"x2"}, "Square", {"x"}},
@@ -291,7 +291,7 @@ absl::Status AcosGrad(const AttrSlice& attrs, FunctionDef* g) {
 }
 REGISTER_OP_GRADIENT("Acos", AcosGrad);
 
-absl::Status AsinGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status AsinGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForUnaryCwise(g, {
     {{"x2"}, "Square", {"x"}},
@@ -306,7 +306,7 @@ absl::Status AsinGrad(const AttrSlice& attrs, FunctionDef* g) {
 }
 REGISTER_OP_GRADIENT("Asin", AsinGrad);
 
-absl::Status AtanGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status AtanGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForUnaryCwise(g, {
     {{"x2"}, "Square", {"x"}},
@@ -320,7 +320,7 @@ absl::Status AtanGrad(const AttrSlice& attrs, FunctionDef* g) {
 }
 REGISTER_OP_GRADIENT("Atan", AtanGrad);
 
-absl::Status TanGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status TanGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForUnaryCwise(g, {
     {{"cosx"}, "Cos", {"x"}},
@@ -332,7 +332,7 @@ absl::Status TanGrad(const AttrSlice& attrs, FunctionDef* g) {
 }
 REGISTER_OP_GRADIENT("Tan", TanGrad);
 
-absl::Status RealGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status RealGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForUnaryCwise(g, {
       FDH::Const("zero", 0.f),
@@ -342,7 +342,7 @@ absl::Status RealGrad(const AttrSlice& attrs, FunctionDef* g) {
 }
 REGISTER_OP_GRADIENT("Real", RealGrad);
 
-absl::Status ImagGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status ImagGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForUnaryCwise(g, {
       FDH::Const("zero", 0.f),
@@ -352,7 +352,7 @@ absl::Status ImagGrad(const AttrSlice& attrs, FunctionDef* g) {
 }
 REGISTER_OP_GRADIENT("Imag", ImagGrad);
 
-absl::Status AngleGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status AngleGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForUnaryCwise(g, {
       {{"re"}, "Real", {"x"}},
@@ -366,7 +366,7 @@ absl::Status AngleGrad(const AttrSlice& attrs, FunctionDef* g) {
 }
 REGISTER_OP_GRADIENT("Angle", AngleGrad);
 
-absl::Status ConjGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status ConjGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForUnaryCwise(g, {
       {{"dx"}, "Conj", {"dy"}},
@@ -375,7 +375,7 @@ absl::Status ConjGrad(const AttrSlice& attrs, FunctionDef* g) {
 }
 REGISTER_OP_GRADIENT("Conj", ConjGrad);
 
-absl::Status CastGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status CastGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   *g = FDH::Define(
       // Arg defs
@@ -386,7 +386,7 @@ absl::Status CastGrad(const AttrSlice& attrs, FunctionDef* g) {
       {{"SrcT: type"}, {"DstT: type"}},
       // Nodes
       {{{"dx"}, "Cast", {"dy"}, {{"SrcT", "$DstT"}, {"DstT", "$SrcT"}}}});
-  return absl::OkStatus();
+  return OkStatus();
   // clang-format on
 }
 REGISTER_OP_GRADIENT("Cast", CastGrad);
@@ -395,7 +395,7 @@ REGISTER_OP_GRADIENT("Cast", CastGrad);
 //
 // TODO(zhifengc): This can be arrange as a function in the standard
 // library.
-absl::Status GradForBinaryCwise(FunctionDef* g, std::vector<FDH::Node> body) {
+Status GradForBinaryCwise(FunctionDef* g, std::vector<FDH::Node> body) {
   // clang-format off
   std::vector<FDH::Node> nodes = {
     {{"sx"}, "Shape", {"x"}},
@@ -427,10 +427,10 @@ absl::Status GradForBinaryCwise(FunctionDef* g, std::vector<FDH::Node> body) {
       {{"T: {half, float, double}"}},
       // Nodes
       nodes);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status AddGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status AddGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForBinaryCwise(g, {
       {{"gx"}, "Identity", {"dz"}},
@@ -441,7 +441,7 @@ absl::Status AddGrad(const AttrSlice& attrs, FunctionDef* g) {
 REGISTER_OP_GRADIENT("Add", AddGrad);
 REGISTER_OP_GRADIENT("AddV2", AddGrad);
 
-absl::Status SubGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status SubGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForBinaryCwise(g, {
       {{"gx"}, "Identity", {"dz"}},
@@ -451,7 +451,7 @@ absl::Status SubGrad(const AttrSlice& attrs, FunctionDef* g) {
 }
 REGISTER_OP_GRADIENT("Sub", SubGrad);
 
-absl::Status MulGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status MulGrad(const AttrSlice& attrs, FunctionDef* g) {
   DataType T;
   TF_RETURN_IF_ERROR(GetNodeAttr(attrs, "T", &T));
   if (T == DT_COMPLEX64 || T == DT_COMPLEX128) {
@@ -473,7 +473,7 @@ absl::Status MulGrad(const AttrSlice& attrs, FunctionDef* g) {
 }
 REGISTER_OP_GRADIENT("Mul", MulGrad);
 
-absl::Status MulNoNanGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status MulNoNanGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForBinaryCwise(g, {
       {{"gx"}, "MulNoNan", {"y", "dz"}},  // y * dz
@@ -483,7 +483,7 @@ absl::Status MulNoNanGrad(const AttrSlice& attrs, FunctionDef* g) {
 }
 REGISTER_OP_GRADIENT("MulNoNan", MulGrad);
 
-absl::Status DivGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status DivGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForBinaryCwise(g, {
       {{"gx"}, "Div", {"dz", "y"}},
@@ -496,7 +496,7 @@ absl::Status DivGrad(const AttrSlice& attrs, FunctionDef* g) {
 }
 REGISTER_OP_GRADIENT("Div", DivGrad);
 
-absl::Status RealDivGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status RealDivGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForBinaryCwise(g, {
       {{"gx"}, "RealDiv", {"dz", "y"}},
@@ -509,7 +509,7 @@ absl::Status RealDivGrad(const AttrSlice& attrs, FunctionDef* g) {
 }
 REGISTER_OP_GRADIENT("RealDiv", RealDivGrad);
 
-absl::Status DivNoNanGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status DivNoNanGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForBinaryCwise(g, {
       {{"gx"}, "DivNoNan", {"dz", "y"}},
@@ -522,7 +522,7 @@ absl::Status DivNoNanGrad(const AttrSlice& attrs, FunctionDef* g) {
 }
 REGISTER_OP_GRADIENT("DivNoNan", DivNoNanGrad);
 
-absl::Status PowGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status PowGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   std::vector<FDH::Node> nodes = {
     {{"z"}, "Pow", {"x", "y"}},
@@ -563,7 +563,7 @@ absl::Status PowGrad(const AttrSlice& attrs, FunctionDef* g) {
 }
 REGISTER_OP_GRADIENT("Pow", PowGrad);
 
-absl::Status XlogyGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status XlogyGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForBinaryCwise(g, {
       {{"zeros"}, "ZerosLike", {"x"}},
@@ -579,7 +579,7 @@ absl::Status XlogyGrad(const AttrSlice& attrs, FunctionDef* g) {
 }
 REGISTER_OP_GRADIENT("Xlogy", XlogyGrad);
 
-absl::Status Xlog1pyGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status Xlog1pyGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForBinaryCwise(g, {
       FDH::Const("const", 1.0f),
@@ -598,7 +598,7 @@ absl::Status Xlog1pyGrad(const AttrSlice& attrs, FunctionDef* g) {
 }
 REGISTER_OP_GRADIENT("Xlog1py", Xlog1pyGrad);
 
-absl::Status XdivyGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status XdivyGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForBinaryCwise(g, {
       {{"zeros"}, "ZerosLike", {"x"}},
@@ -616,7 +616,7 @@ absl::Status XdivyGrad(const AttrSlice& attrs, FunctionDef* g) {
 }
 REGISTER_OP_GRADIENT("Xdivy", XdivyGrad);
 
-absl::Status SquaredDifferenceGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status SquaredDifferenceGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForBinaryCwise(g, {
       FDH::Const("c", int64_t{2}),
@@ -630,8 +630,8 @@ absl::Status SquaredDifferenceGrad(const AttrSlice& attrs, FunctionDef* g) {
 }
 REGISTER_OP_GRADIENT("SquaredDifference", SquaredDifferenceGrad);
 
-absl::Status MaximumMinimumGradHelper(const string& comparator,
-                                      const AttrSlice& attrs, FunctionDef* g) {
+Status MaximumMinimumGradHelper(const string& comparator,
+                                const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForBinaryCwise(g, {
       {{"c"}, comparator, {"x", "y"}, {}, {"dz"}},
@@ -642,17 +642,17 @@ absl::Status MaximumMinimumGradHelper(const string& comparator,
   // clang-format on
 }
 
-absl::Status MaximumGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status MaximumGrad(const AttrSlice& attrs, FunctionDef* g) {
   return MaximumMinimumGradHelper("GreaterEqual", attrs, g);
 }
 REGISTER_OP_GRADIENT("Maximum", MaximumGrad);
 
-absl::Status MinimumGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status MinimumGrad(const AttrSlice& attrs, FunctionDef* g) {
   return MaximumMinimumGradHelper("LessEqual", attrs, g);
 }
 REGISTER_OP_GRADIENT("Minimum", MinimumGrad);
 
-absl::Status ComplexGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status ComplexGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForBinaryCwise(g, {
       {{"gx"}, "Real", {"dz"}},
@@ -663,7 +663,7 @@ absl::Status ComplexGrad(const AttrSlice& attrs, FunctionDef* g) {
 REGISTER_OP_GRADIENT("Complex", ComplexGrad);
 
 // Cwise ternary ops.
-absl::Status SelectGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status SelectGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   *g = FDH::Define(
       {"c:bool", "x:T", "y:T", "dz:T"},
@@ -676,7 +676,7 @@ absl::Status SelectGrad(const AttrSlice& attrs, FunctionDef* g) {
         {{"dy"}, "Select", {"c", "zeros", "dz"}, {{"T", "$T"}}},
       });
   // clang-format on
-  return absl::OkStatus();
+  return OkStatus();
 }
 REGISTER_OP_GRADIENT("Select", SelectGrad);
 
@@ -687,7 +687,7 @@ REGISTER_OP_GRADIENT("Select", SelectGrad);
 //
 // TODO(zhifengc): This helper is pretty ugly. Do something better.
 // TODO(zhifengc): This can be arrange as a function in the standard library.
-absl::Status GradForReductionOp(FunctionDef* g, std::vector<FDH::Node> body) {
+Status GradForReductionOp(FunctionDef* g, std::vector<FDH::Node> body) {
   // Shape manipulation nodes.
 
   // clang-format off
@@ -731,10 +731,10 @@ absl::Status GradForReductionOp(FunctionDef* g, std::vector<FDH::Node> body) {
                    nodes,
                    // Return values
                    {{"dx", "dx:output:0"}, {"di", "di:y:0"}});
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status SumGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status SumGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForReductionOp(g, {
     {{"dy_reshaped"}, "Reshape", {"dy", "y_shape:merged:0"}},
@@ -744,7 +744,7 @@ absl::Status SumGrad(const AttrSlice& attrs, FunctionDef* g) {
 }
 REGISTER_OP_GRADIENT("Sum", SumGrad);
 
-absl::Status MeanGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status MeanGrad(const AttrSlice& attrs, FunctionDef* g) {
   // clang-format off
   return GradForReductionOp(g, {
     {{"factor"}, "Prod", {"tile_scaling:z:0", "zero:output:0"},
@@ -770,8 +770,8 @@ REGISTER_OP_GRADIENT("Mean", MeanGrad);
 // REGISTER_OP_GRADIENT("UnsortedSegmentSum", UnsortedSegmentSumGrad);
 // REGISTER_OP_GRADIENT("UnsortedSegmentMax", UnsortedSegmentMaxGrad);
 
-absl::Status MinMaxGradHelper(const string& op, const AttrSlice& attrs,
-                              FunctionDef* g) {
+Status MinMaxGradHelper(const string& op, const AttrSlice& attrs,
+                        FunctionDef* g) {
   // clang-format off
   *g = FDH::Define(
       // Arg defs
@@ -794,26 +794,25 @@ absl::Status MinMaxGradHelper(const string& op, const AttrSlice& attrs,
         {{"di"}, "ZerosLike", {"i"}, {{"T", DT_INT32}}}
       });
   // clang-format on
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status MaxGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status MaxGrad(const AttrSlice& attrs, FunctionDef* g) {
   return MinMaxGradHelper("Max", attrs, g);
 }
 REGISTER_OP_GRADIENT("Max", MaxGrad);
 
-absl::Status MinGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status MinGrad(const AttrSlice& attrs, FunctionDef* g) {
   return MinMaxGradHelper("Min", attrs, g);
 }
 REGISTER_OP_GRADIENT("Min", MinGrad);
 
-static absl::Status MatMulGradHelper(FunctionDef* g, const string& opname,
-                                     const string& attr_adj_x,
-                                     const string& attr_adj_y, const string& x0,
-                                     bool ax0, const string& x1, bool ax1,
-                                     const string& y0, bool ay0,
-                                     const string& y1, bool ay1,
-                                     bool enable_broadcasting) {
+static Status MatMulGradHelper(FunctionDef* g, const string& opname,
+                               const string& attr_adj_x,
+                               const string& attr_adj_y, const string& x0,
+                               bool ax0, const string& x1, bool ax1,
+                               const string& y0, bool ay0, const string& y1,
+                               bool ay1, bool enable_broadcasting) {
   // The final outputs are "dx" and "dy". If we're broadcasting compute
   // intermediate nodes for now.
   std::vector<FDH::Node> nodes = {
@@ -831,9 +830,9 @@ static absl::Status MatMulGradHelper(FunctionDef* g, const string& opname,
   // broadcasting-specific ops.
   if (enable_broadcasting) {
     std::vector<FDH::Node> unbroadcast_gradients = {
-        FDH::Const<int32>("zero", absl::Span<const int32>{0}),
-        FDH::Const<int32>("one", absl::Span<const int32>{1}),
-        FDH::Const<int32>("minustwo", absl::Span<const int32>{-2}),
+        FDH::Const<int32>("zero", gtl::ArraySlice<int32>{0}),
+        FDH::Const<int32>("one", gtl::ArraySlice<int32>{1}),
+        FDH::Const<int32>("minustwo", gtl::ArraySlice<int32>{-2}),
         // Compute the batch shapes of the inputs (all but last two dims).
         {{"sx"}, "Shape", {"x"}, {{"T", "$T"}}},
         {{"sy"}, "Shape", {"y"}, {{"T", "$T"}}},
@@ -863,12 +862,12 @@ static absl::Status MatMulGradHelper(FunctionDef* g, const string& opname,
       {{"T: {half, float, double}"}},
       // Nodes
       nodes);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status MatMulGradCommon(const string& opname, const string& attr_adj_x,
-                              const string& attr_adj_y, const AttrSlice& attrs,
-                              FunctionDef* g, bool enable_broadcasting) {
+Status MatMulGradCommon(const string& opname, const string& attr_adj_x,
+                        const string& attr_adj_y, const AttrSlice& attrs,
+                        FunctionDef* g, bool enable_broadcasting) {
   DataType T;
   TF_RETURN_IF_ERROR(GetNodeAttr(attrs, "T", &T));
   if (T == DT_COMPLEX64 || T == DT_COMPLEX128) {
@@ -896,19 +895,19 @@ absl::Status MatMulGradCommon(const string& opname, const string& attr_adj_x,
                           true, "dz", true, "x", true, enable_broadcasting);
 }
 
-absl::Status MatMulGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status MatMulGrad(const AttrSlice& attrs, FunctionDef* g) {
   return MatMulGradCommon("MatMul", "transpose_a", "transpose_b", attrs, g,
                           false /* enable_broadcasting */);
 }
 REGISTER_OP_GRADIENT("MatMul", MatMulGrad);
 
-absl::Status BatchMatMulGrad(const AttrSlice& attrs, FunctionDef* g) {
+Status BatchMatMulGrad(const AttrSlice& attrs, FunctionDef* g) {
   return MatMulGradCommon("BatchMatMul", "adj_x", "adj_y", attrs, g,
                           false /* enable_broadcasting */);
 }
 REGISTER_OP_GRADIENT("BatchMatMul", BatchMatMulGrad);
 
-absl::Status BatchMatMulV2Grad(const AttrSlice& attrs, FunctionDef* g) {
+Status BatchMatMulV2Grad(const AttrSlice& attrs, FunctionDef* g) {
   return MatMulGradCommon("BatchMatMulV2", "adj_x", "adj_y", attrs, g,
                           true /* enable_broadcasting */);
 }

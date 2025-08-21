@@ -33,27 +33,26 @@ inline llvm::StringRef StringViewToRef(absl::string_view view) {
 }
 }  // namespace
 
-absl::Status LoadProtoFromBuffer(absl::string_view input,
-                                 protobuf::Message* proto) {
+Status LoadProtoFromBuffer(absl::string_view input, protobuf::Message* proto) {
   // Attempt to parse as text.
-  if (ParseTextProto(input, "", proto).ok()) return absl::OkStatus();
+  if (ParseTextProto(input, "", proto).ok()) return OkStatus();
 
   // Else attempt to parse as binary.
   return LoadProtoFromBuffer(input, static_cast<protobuf::MessageLite*>(proto));
 }
 
-absl::Status LoadProtoFromBuffer(absl::string_view input,
-                                 protobuf::MessageLite* proto) {
+Status LoadProtoFromBuffer(absl::string_view input,
+                           protobuf::MessageLite* proto) {
   // Attempt to parse as binary.
   protobuf::io::ArrayInputStream binary_stream(input.data(), input.size());
-  if (proto->ParseFromZeroCopyStream(&binary_stream)) return absl::OkStatus();
+  if (proto->ParseFromZeroCopyStream(&binary_stream)) return OkStatus();
 
   LOG(ERROR) << "Error parsing Protobuf: " << proto->GetTypeName();
   return errors::InvalidArgument("Could not parse input proto");
 }
 
 template <class T>
-absl::Status LoadProtoFromFileImpl(absl::string_view input_filename, T* proto) {
+Status LoadProtoFromFileImpl(absl::string_view input_filename, T* proto) {
   const auto file_or_err =
       llvm::MemoryBuffer::getFileOrSTDIN(StringViewToRef(input_filename));
   if (std::error_code error = file_or_err.getError()) {
@@ -68,13 +67,13 @@ absl::Status LoadProtoFromFileImpl(absl::string_view input_filename, T* proto) {
   return LoadProtoFromBuffer(content, proto);
 }
 
-absl::Status LoadProtoFromFile(absl::string_view input_filename,
-                               protobuf::Message* proto) {
+Status LoadProtoFromFile(absl::string_view input_filename,
+                         protobuf::Message* proto) {
   return LoadProtoFromFileImpl(input_filename, proto);
 }
 
-absl::Status LoadProtoFromFile(absl::string_view input_filename,
-                               protobuf::MessageLite* proto) {
+Status LoadProtoFromFile(absl::string_view input_filename,
+                         protobuf::MessageLite* proto) {
   return LoadProtoFromFileImpl(input_filename, proto);
 }
 

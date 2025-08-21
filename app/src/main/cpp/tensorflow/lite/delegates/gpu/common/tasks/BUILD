@@ -143,7 +143,6 @@ cc_library(
     hdrs = ["conv_generic.h"],
     deps = [
         "//tensorflow/lite/delegates/gpu/common:data_type",
-        "//tensorflow/lite/delegates/gpu/common:gpu_info",
         "//tensorflow/lite/delegates/gpu/common:operations",
         "//tensorflow/lite/delegates/gpu/common:shape",
         "//tensorflow/lite/delegates/gpu/common:status",
@@ -496,11 +495,7 @@ cc_library(
     srcs = ["elementwise.cc"],
     hdrs = ["elementwise.h"],
     deps = [
-        "//tensorflow/lite/delegates/gpu/common:data_type",
-        "//tensorflow/lite/delegates/gpu/common:gpu_info",
         "//tensorflow/lite/delegates/gpu/common:operations",
-        "//tensorflow/lite/delegates/gpu/common:precision",
-        "//tensorflow/lite/delegates/gpu/common:shape",
         "//tensorflow/lite/delegates/gpu/common:status",
         "//tensorflow/lite/delegates/gpu/common/task:gpu_operation",
         "@com_google_absl//absl/strings",
@@ -514,15 +509,8 @@ cc_library(
     hdrs = ["elementwise_test_util.h"],
     deps = [
         ":elementwise",
-        "//tensorflow/lite/delegates/gpu/common:data_type",
         "//tensorflow/lite/delegates/gpu/common:operations",
-        "//tensorflow/lite/delegates/gpu/common:precision",
-        "//tensorflow/lite/delegates/gpu/common:shape",
         "//tensorflow/lite/delegates/gpu/common:status",
-        "//tensorflow/lite/delegates/gpu/common:tensor",
-        "//tensorflow/lite/delegates/gpu/common:types",
-        "//tensorflow/lite/delegates/gpu/common/task:gpu_operation",
-        "//tensorflow/lite/delegates/gpu/common/task:tensor_desc",
         "//tensorflow/lite/delegates/gpu/common/task:testing_util",
     ],
 )
@@ -533,10 +521,7 @@ cc_library(
     hdrs = ["fully_connected.h"],
     deps = [
         "//tensorflow/lite/delegates/gpu/common:data_type",
-        "//tensorflow/lite/delegates/gpu/common:gpu_info",
-        "//tensorflow/lite/delegates/gpu/common:kernel_info",
         "//tensorflow/lite/delegates/gpu/common:operations",
-        "//tensorflow/lite/delegates/gpu/common:precision",
         "//tensorflow/lite/delegates/gpu/common:shape",
         "//tensorflow/lite/delegates/gpu/common:tensor",
         "//tensorflow/lite/delegates/gpu/common:types",
@@ -544,7 +529,6 @@ cc_library(
         "//tensorflow/lite/delegates/gpu/common/task:buffer_desc",
         "//tensorflow/lite/delegates/gpu/common/task:gpu_operation",
         "//tensorflow/lite/delegates/gpu/common/task:tensor_desc",
-        "//tensorflow/lite/delegates/gpu/common/task:tuning_type",
         "@com_google_absl//absl/memory",
     ],
 )
@@ -557,11 +541,7 @@ cc_library(
     deps = [
         ":fully_connected",
         "//tensorflow/lite/delegates/gpu/common:operations",
-        "//tensorflow/lite/delegates/gpu/common:precision",
-        "//tensorflow/lite/delegates/gpu/common:shape",
         "//tensorflow/lite/delegates/gpu/common:status",
-        "//tensorflow/lite/delegates/gpu/common:tensor",
-        "//tensorflow/lite/delegates/gpu/common/task:gpu_operation",
         "//tensorflow/lite/delegates/gpu/common/task:testing_util",
     ],
 )
@@ -571,14 +551,10 @@ cc_library(
     srcs = ["gather.cc"],
     hdrs = ["gather.h"],
     deps = [
-        "//tensorflow/lite/delegates/gpu/common:data_type",
-        "//tensorflow/lite/delegates/gpu/common:gpu_info",
         "//tensorflow/lite/delegates/gpu/common:operations",
-        "//tensorflow/lite/delegates/gpu/common:shape",
         "//tensorflow/lite/delegates/gpu/common:status",
         "//tensorflow/lite/delegates/gpu/common:types",
         "//tensorflow/lite/delegates/gpu/common/task:gpu_operation",
-        "//tensorflow/lite/delegates/gpu/common/task:tensor_desc",
     ],
 )
 
@@ -589,16 +565,10 @@ cc_library(
     hdrs = ["gather_test_util.h"],
     deps = [
         ":gather",
-        "//tensorflow/lite/delegates/gpu/common:data_type",
         "//tensorflow/lite/delegates/gpu/common:operations",
-        "//tensorflow/lite/delegates/gpu/common:precision",
-        "//tensorflow/lite/delegates/gpu/common:shape",
         "//tensorflow/lite/delegates/gpu/common:status",
-        "//tensorflow/lite/delegates/gpu/common:tensor",
-        "//tensorflow/lite/delegates/gpu/common:types",
-        "//tensorflow/lite/delegates/gpu/common/task:gpu_operation",
-        "//tensorflow/lite/delegates/gpu/common/task:tensor_desc",
         "//tensorflow/lite/delegates/gpu/common/task:testing_util",
+        "@com_google_googletest//:gtest",
     ],
 )
 

@@ -29,13 +29,13 @@ limitations under the License.
 #include "tensorflow/core/protobuf/config.pb.h"
 #include "tensorflow/core/public/session_options.h"
 #include "tensorflow/core/public/version.h"
-#include "tsl/platform/env.h"
-#include "tsl/platform/statusor.h"
+#include "tensorflow/tsl/platform/env.h"
+#include "tensorflow/tsl/platform/statusor.h"
 
 namespace tensorflow {
 namespace data {
 
-absl::StatusOr<std::unique_ptr<TestContext>> TestContext::Create() {
+StatusOr<std::unique_ptr<TestContext>> TestContext::Create() {
   auto ctx = std::unique_ptr<TestContext>(new TestContext());
   SessionOptions options;
   auto* device_count = options.config.mutable_device_count();

@@ -48,14 +48,15 @@ constexpr std::array<const char*, 8> kAsyncDatasetOps = {
 
 }  // namespace
 
-absl::Status AutotuneBufferSizes::OptimizeAndCollectStats(
-    Cluster* cluster, const GrapplerItem& item, GraphDef* output,
-    OptimizationStats* stats) {
+Status AutotuneBufferSizes::OptimizeAndCollectStats(Cluster* cluster,
+                                                    const GrapplerItem& item,
+                                                    GraphDef* output,
+                                                    OptimizationStats* stats) {
   *output = item.graph;
   if (!autotune_) {
     VLOG(1) << "The optimization autotune_buffer_sizes is not applied if "
                "autotune is off.";
-    return absl::OkStatus();
+    return OkStatus();
   }
   MutableGraphView graph(output);
 
@@ -109,7 +110,7 @@ absl::Status AutotuneBufferSizes::OptimizeAndCollectStats(
     }
   }
 
-  if (async_datasets.empty()) return absl::OkStatus();
+  if (async_datasets.empty()) return OkStatus();
 
   for (const NodeDef* async_dataset_node : async_datasets) {
     NodeDef prefetch_node;
@@ -129,7 +130,7 @@ absl::Status AutotuneBufferSizes::OptimizeAndCollectStats(
         graph.UpdateFanouts(async_dataset_node->name(), added_node->name()));
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 REGISTER_GRAPH_OPTIMIZER_AS(AutotuneBufferSizes, "autotune_buffer_sizes");

@@ -20,7 +20,6 @@ limitations under the License.
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/OperationSupport.h"
 #include "mlir/IR/Types.h"
-#include "mlir/Support/LLVM.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringRef.h"
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_attributes.h"
@@ -38,39 +37,39 @@ mlir::TypeAttr ConvertTypeAttribute(mlir::TypeAttr type_attr,
   if (IsSupportedTfrtNumericDType(type)) return type_attr;
 
   // For TF custom types, we convert it to custom corert types.
-  if (mlir::isa<mlir::TF::StringType>(type))
+  if (type.isa<mlir::TF::StringType>())
     return mlir::TypeAttr::get(
         tfrt::corert::StringType::get(builder.getContext()));
 
-  if (mlir::isa<mlir::TF::ResourceType>(type))
+  if (type.isa<mlir::TF::ResourceType>())
     return mlir::TypeAttr::get(
         tfrt::corert::ResourceType::get(builder.getContext()));
 
-  if (mlir::isa<mlir::TF::VariantType>(type))
+  if (type.isa<mlir::TF::VariantType>())
     return mlir::TypeAttr::get(
         tfrt::corert::VariantType::get(builder.getContext()));
 
-  if (mlir::isa<mlir::TF::Quint8Type>(type)) {
+  if (type.isa<mlir::TF::Quint8Type>()) {
     return mlir::TypeAttr::get(
         tfrt::corert::Quint8Type::get(builder.getContext()));
   }
 
-  if (mlir::isa<mlir::TF::Quint16Type>(type)) {
+  if (type.isa<mlir::TF::Quint16Type>()) {
     return mlir::TypeAttr::get(
         tfrt::corert::Quint16Type::get(builder.getContext()));
   }
 
-  if (mlir::isa<mlir::TF::Qint8Type>(type)) {
+  if (type.isa<mlir::TF::Qint8Type>()) {
     return mlir::TypeAttr::get(
         tfrt::corert::Qint8Type::get(builder.getContext()));
   }
 
-  if (mlir::isa<mlir::TF::Qint16Type>(type)) {
+  if (type.isa<mlir::TF::Qint16Type>()) {
     return mlir::TypeAttr::get(
         tfrt::corert::Qint16Type::get(builder.getContext()));
   }
 
-  if (mlir::isa<mlir::TF::Qint32Type>(type)) {
+  if (type.isa<mlir::TF::Qint32Type>()) {
     return mlir::TypeAttr::get(
         tfrt::corert::Qint32Type::get(builder.getContext()));
   }
@@ -87,15 +86,14 @@ mlir::Attribute ConvertAttribute(mlir::Attribute attr, mlir::Builder& builder) {
   // attributes are not supported yet.
 
   // Return directly if the attribute is already supported.
-  if (mlir::isa<mlir::IntegerAttr, mlir::FloatAttr, mlir::BoolAttr,
-                mlir::StringAttr, mlir::DenseIntOrFPElementsAttr>(attr))
+  if (attr.isa<mlir::IntegerAttr, mlir::FloatAttr, mlir::BoolAttr,
+               mlir::StringAttr, mlir::DenseIntOrFPElementsAttr>())
     return attr;
 
   // For type attributes, we convert non-standard MLIR types to corresponding
   // corert types.
-  if (auto type_attr = mlir::dyn_cast<mlir::TypeAttr>(attr)) {
-    if (auto shape_type =
-            mlir::dyn_cast<mlir::TensorType>(type_attr.getValue())) {
+  if (auto type_attr = attr.dyn_cast<mlir::TypeAttr>()) {
+    if (auto shape_type = type_attr.getValue().dyn_cast<mlir::TensorType>()) {
       if (!shape_type.hasRank())
         return tfrt::corert::ShapeAttr::get(builder.getContext());
 
@@ -108,7 +106,7 @@ mlir::Attribute ConvertAttribute(mlir::Attribute attr, mlir::Builder& builder) {
 
   // Convert the attribute to the corresponding format in TFRT dialect if
   // needed.
-  if (auto shape_attr = mlir::dyn_cast<mlir::TF::ShapeAttr>(attr)) {
+  if (auto shape_attr = attr.dyn_cast<mlir::TF::ShapeAttr>()) {
     if (!shape_attr.hasRank())
       return tfrt::corert::ShapeAttr::get(builder.getContext());
     return tfrt::corert::ShapeAttr::get(builder.getContext(),
@@ -116,7 +114,7 @@ mlir::Attribute ConvertAttribute(mlir::Attribute attr, mlir::Builder& builder) {
   }
 
   // For arrays, we recursively convert the elements.
-  if (auto array_attr = mlir::dyn_cast<mlir::ArrayAttr>(attr)) {
+  if (auto array_attr = attr.dyn_cast<mlir::ArrayAttr>()) {
     llvm::SmallVector<mlir::Attribute, 8> attrs;
     attrs.reserve(array_attr.size());
     for (auto attr : array_attr) {
@@ -142,7 +140,7 @@ bool IsSupportedTfrtNumericDType(mlir::Type type) {
       type.isUnsignedInteger(64))
     return true;
 
-  if (auto complex_type = mlir::dyn_cast<mlir::ComplexType>(type)) {
+  if (auto complex_type = type.dyn_cast<mlir::ComplexType>()) {
     auto element_type = complex_type.getElementType();
     if (element_type.isF32() || element_type.isF64()) return true;
   }
@@ -160,8 +158,8 @@ bool IsUnusedTfrtAttribute(llvm::StringRef name) {
   // TODO(b/180399811): Re-evaluate the usage of these attributes.
   static const char* const kUnusedAttributes[] = {
       "_output_shapes",
-      "resultSegmentSizes",
-      "operandSegmentSizes",
+      "result_segment_sizes",
+      "operand_segment_sizes",
   };
 
   for (auto attr : kUnusedAttributes) {

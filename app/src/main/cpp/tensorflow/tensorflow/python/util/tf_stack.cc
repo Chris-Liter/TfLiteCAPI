@@ -24,7 +24,6 @@ limitations under the License.
 // clang-format off
 // These headers must be at the top, before including Python.h header
 // Otherwise, we get C2039 on MSVC due to 'copysign'
-#include "absl/strings/str_cat.h"
 #include "pybind11_abseil/absl_casters.h"  // from @pybind11_abseil
 #include "pybind11_abseil/status_casters.h"  // from @pybind11_abseil
 #include "pybind11/complex.h"  // from @pybind11
@@ -34,23 +33,25 @@ limitations under the License.
 // clang-format on
 #include <frameobject.h>
 
-#include <cstddef>
-#include <memory>
-#include <string>
-#include <tuple>
+#include <algorithm>
 #include <vector>
 
+#include "Python.h"
 #include "absl/algorithm/container.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/hash/hash.h"
 #include "absl/strings/str_format.h"
+#include "absl/strings/str_join.h"
 #include "absl/types/span.h"
+#include "tensorflow/c/c_api_internal.h"
+#include "tensorflow/core/framework/function.h"
+#include "tensorflow/core/graph/graph.h"
 #include "tensorflow/core/graph/graph_debug_info_builder.h"
 #include "tensorflow/core/platform/mutex.h"
-#include "tensorflow/core/platform/stack_frame.h"
-#include "tensorflow/core/util/managed_stack_trace.h"
+#include "tensorflow/core/platform/path.h"
+#include "tensorflow/core/platform/status.h"
 #include "tensorflow/python/util/stack_trace.h"
-#include "tsl/platform/mutex.h"
+#include "tensorflow/tsl/platform/mutex.h"
 
 struct StackFrame;  // Forward declaration.
 struct StackTrace;
@@ -120,21 +121,6 @@ class StackTraceWrapper : public AbstractStackTrace {
     return cache_->ToFrames();
   }
 
-  std::vector<StackFrame> ToUncachedFrames() const override {
-    std::vector<StackFrame> frames = captured_->ToStackFrames(
-        *source_map_, [&](const char* f) { return StackTraceFiltering(f); },
-        /*reverse_traversal=*/false, /*limit=*/-1);
-
-    // Drop last stack frames.
-    int newsize = frames.size() - stacklevel_;
-    if (newsize < 0) {
-      newsize = 0;
-    }
-    frames.resize(newsize);
-
-    return frames;
-  }
-
   std::vector<StackFrame> GetUserFrames(int limit) const override {
     ComputeFrozen();
     return cache_->GetUserFrames(limit);
@@ -157,7 +143,16 @@ class StackTraceWrapper : public AbstractStackTrace {
       return;
     }
 
-    std::vector<StackFrame> frames = ToUncachedFrames();
+    std::vector<StackFrame> frames = captured_->ToStackFrames(
+        *source_map_, [&](const char* f) { return StackTraceFiltering(f); },
+        /*reverse_traversal=*/false, /*limit=*/-1);
+
+    // Drop last stack frames.
+    int newsize = frames.size() - stacklevel_;
+    if (newsize < 0) {
+      newsize = 0;
+    }
+    frames.resize(newsize);
 
     std::vector<StackFrame> user_frames = captured_->ToStackFrames(
         *source_map_,

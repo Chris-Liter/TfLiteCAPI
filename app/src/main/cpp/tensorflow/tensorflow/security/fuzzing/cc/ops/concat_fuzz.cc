@@ -15,9 +15,8 @@
 #include <cstdint>
 #include <vector>
 
+#include <gtest/gtest.h>
 #include "fuzztest/fuzztest.h"
-#include "absl/log/log.h"
-#include "absl/status/status.h"
 #include "tensorflow/cc/ops/standard_ops.h"
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/security/fuzzing/cc/core/framework/tensor_domains.h"
@@ -46,7 +45,7 @@ class FuzzConcat : public FuzzSession<Tensor, Tensor, int32> {
                 const int32& axis) final {
     Tensor axis_tensor(DT_INT32, {});
     axis_tensor.scalar<int32_t>()() = axis;
-    absl::Status s = RunInputsWithStatus(
+    Status s = RunInputsWithStatus(
         {{"value1", value1}, {"value2", value2}, {"axis", axis_tensor}});
     if (!s.ok()) {
       LOG(ERROR) << "Execution failed: " << s.message();
@@ -56,16 +55,16 @@ class FuzzConcat : public FuzzSession<Tensor, Tensor, int32> {
 
 // Setup up fuzzing test.
 FUZZ_TEST_F(FuzzConcat, Fuzz)
-    .WithDomains(fuzzing::AnyValidNumericTensor(fuzzing::AnyValidTensorShape(
-                                                    /*max_rank=*/5,
-                                                    /*dim_lower_bound=*/0,
-                                                    /*dim_upper_bound=*/10),
-                                                fuzztest::Just(DT_INT32)),
-                 fuzzing::AnyValidNumericTensor(fuzzing::AnyValidTensorShape(
-                                                    /*max_rank=*/5,
-                                                    /*dim_lower_bound=*/0,
-                                                    /*dim_upper_bound=*/10),
-                                                fuzztest::Just(DT_INT32)),
+    .WithDomains(fuzzing::AnyValidTensor(fuzzing::AnyValidTensorShape(
+                                             /*max_rank=*/5,
+                                             /*dim_lower_bound=*/0,
+                                             /*dim_upper_bound=*/10),
+                                         fuzztest::Just(DT_INT32)),
+                 fuzzing::AnyValidTensor(fuzzing::AnyValidTensorShape(
+                                             /*max_rank=*/5,
+                                             /*dim_lower_bound=*/0,
+                                             /*dim_upper_bound=*/10),
+                                         fuzztest::Just(DT_INT32)),
                  fuzztest::InRange<int32>(0, 6));
 
 }  // end namespace fuzzing

@@ -134,8 +134,8 @@ bool FindType(const Graph* graph, const Node* node, bool* signed_input,
 }
 
 // Find the Save op and inputs.
-absl::Status FindSaveOp(const Graph* graph, Node** save_op,
-                        std::vector<const Edge*>* in_edges, bool* found) {
+Status FindSaveOp(const Graph* graph, Node** save_op,
+                  std::vector<const Edge*>* in_edges, bool* found) {
   *found = false;
   for (Node* node : graph->op_nodes()) {
     if (node->type_string() == "SaveV2") {
@@ -148,10 +148,10 @@ absl::Status FindSaveOp(const Graph* graph, Node** save_op,
       TF_RETURN_IF_ERROR(node->input_edges(in_edges));
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-Node* FindRestoreAllOp(const Graph* graph, absl::string_view save_prefix) {
+Node* FindRestoreAllOp(const Graph* graph, StringPiece save_prefix) {
   for (Node* node : graph->op_nodes()) {
     // The restore_all op should have the same prefix of the save_op.
     if (node->name() == strings::StrCat(save_prefix, "/restore_all")) {
@@ -164,8 +164,8 @@ Node* FindRestoreAllOp(const Graph* graph, absl::string_view save_prefix) {
 // Strips the last "/suffix" from a name.
 // We use this to construct the name of restore ops in the same way they are
 // constructed by the Saver.
-absl::string_view GetNodeNamePrefix(const Node* node) {
-  absl::string_view name = node->name();
+StringPiece GetNodeNamePrefix(const Node* node) {
+  StringPiece name = node->name();
   return name.substr(0, name.rfind('/'));
 }
 
@@ -180,9 +180,9 @@ void FillStringTensor(Tensor* dst, const Tensor& src) {
 // Add the added_variables as an inputs to the Save op.
 // We change the inputs of the SaveV2 op to include the names of the added
 // variables. We also add the variables as inputs to the save op.
-absl::Status ConnectVariablesToSaveOp(
-    Graph* graph, Node* save_op, const std::vector<const Edge*>& in_edges,
-    const std::vector<Node*>& added_variables) {
+Status ConnectVariablesToSaveOp(Graph* graph, Node* save_op,
+                                const std::vector<const Edge*>& in_edges,
+                                const std::vector<Node*>& added_variables) {
   Node* tensor_names_op = in_edges[1]->src();
   Node* shape_and_slices_op = in_edges[2]->src();
 
@@ -237,7 +237,7 @@ absl::Status ConnectVariablesToSaveOp(
   }
   graph->RemoveNode(save_op);
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Add a restore subgraph for each variable and connect to the restore_all op.
@@ -245,11 +245,11 @@ absl::Status ConnectVariablesToSaveOp(
 //           Assign----restore_all
 //          |      |
 //   RestoreV2    Variable
-absl::Status AddRestoreVariableSubgraphs(
-    Graph* graph, Node* save_op, const std::vector<const Edge*>& in_edges,
-    const std::vector<Node*>& variables) {
+Status AddRestoreVariableSubgraphs(Graph* graph, Node* save_op,
+                                   const std::vector<const Edge*>& in_edges,
+                                   const std::vector<Node*>& variables) {
   Node* prefix_op = in_edges[0]->src();
-  absl::string_view name_prefix = GetNodeNamePrefix(save_op);
+  StringPiece name_prefix = GetNodeNamePrefix(save_op);
   Node* restore_all = FindRestoreAllOp(graph, name_prefix);
   if (restore_all == nullptr) {
     return errors::InvalidArgument("graph has SaveOp, but no restore_all NoOp");
@@ -307,13 +307,12 @@ absl::Status AddRestoreVariableSubgraphs(
     // Add a control edge from the assign op to restore_all op.
     graph->AddControlEdge(assign_op, restore_all);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Adds new variables to save and restore ops matching the Save and Restore
 // graphs created in tensorflow/python/training/saver.py.
-absl::Status AddSaveAndRestore(Graph* graph,
-                               const std::vector<Node*>& variables) {
+Status AddSaveAndRestore(Graph* graph, const std::vector<Node*>& variables) {
   Node* save_op = nullptr;
   std::vector<const Edge*> in_edges;
   bool found = false;
@@ -324,13 +323,13 @@ absl::Status AddSaveAndRestore(Graph* graph,
     TF_RETURN_IF_ERROR(
         ConnectVariablesToSaveOp(graph, save_op, in_edges, variables));
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Sets output to the Node that computes reduction axes corresponding to all
 // dimensions of input and return.
-absl::Status MakeReductionAxes(Graph* graph, string name_prefix, Node* input,
-                               Node** output) {
+Status MakeReductionAxes(Graph* graph, string name_prefix, Node* input,
+                         Node** output) {
   name_prefix = strings::StrCat(name_prefix, "/ReductionAxes");
   Node* start;
   Tensor zero_tensor(DT_INT32, TensorShape());
@@ -359,14 +358,14 @@ absl::Status MakeReductionAxes(Graph* graph, string name_prefix, Node* input,
           .Input(rank)
           .Input(delta)
           .Finalize(graph, output));
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Computes the exponential moving average of input, updated in update_variable.
-absl::Status MakeExponentialMovingAverage(Graph* graph, string name_prefix,
-                                          const NodeBuilder::NodeOut& input,
-                                          Node* decay, Node* update_variable,
-                                          Node** assign_value) {
+Status MakeExponentialMovingAverage(Graph* graph, string name_prefix,
+                                    const NodeBuilder::NodeOut& input,
+                                    Node* decay, Node* update_variable,
+                                    Node** assign_value) {
   // variable_t+1 = variable_t - [(variable_t - value) * (1 - decay)]
   name_prefix = strings::StrCat(name_prefix, "/EMA");
   Node* one;
@@ -402,7 +401,7 @@ absl::Status MakeExponentialMovingAverage(Graph* graph, string name_prefix,
           .Input(update_variable)
           .Input(update_value)
           .Finalize(graph, assign_value));
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Creates an automatically initialized exponential moving average variable.
@@ -416,10 +415,10 @@ absl::Status MakeExponentialMovingAverage(Graph* graph, string name_prefix,
 //       |         EMA    init_val
 //       |           \      /
 //       +----------- assign
-absl::Status MakeInitializedEMAVariable(Graph* graph, const string& name,
-                                        Node* decay, Node* init_val,
-                                        std::vector<Node*>* added_variables,
-                                        Node** var) {
+Status MakeInitializedEMAVariable(Graph* graph, const string& name, Node* decay,
+                                  Node* init_val,
+                                  std::vector<Node*>* added_variables,
+                                  Node** var) {
   // TODO(suharshs): Update this to use ResourceVariables when they are ready.
   TF_RETURN_IF_ERROR(
       NodeBuilder(strings::StrCat(name, "/Variable"), "VariableV2")
@@ -455,13 +454,13 @@ absl::Status MakeInitializedEMAVariable(Graph* graph, const string& name,
           .Input(*var)
           .Input(assign_value)
           .Finalize(graph, var));
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Computes the min and max EMA of input and stores them in min_var and max_var.
-absl::Status MakeEMAMinMaxVars(Graph* graph, const string& name_prefix,
-                               Node* input, std::vector<Node*>* added_variables,
-                               Node** min_var, Node** max_var) {
+Status MakeEMAMinMaxVars(Graph* graph, const string& name_prefix, Node* input,
+                         std::vector<Node*>* added_variables, Node** min_var,
+                         Node** max_var) {
   // TODO(suharshs): The decay will be constant, so we could make only one for
   // all quantize_and_dequantize ops to share, this would have to live outside
   // this function.
@@ -493,15 +492,15 @@ absl::Status MakeEMAMinMaxVars(Graph* graph, const string& name_prefix,
                                                 added_variables, min_var));
   TF_RETURN_IF_ERROR(MakeInitializedEMAVariable(graph, max_name, decay, max,
                                                 added_variables, max_var));
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Makes an input min and max constant if the range is given. Otherwise, makes
 // min and max variables that are updated by an EMA.
-absl::Status MakeInputMinMax(Graph* graph, const string& name_prefix,
-                             const EdgeToConvert& edge,
-                             std::vector<Node*>* added_variables,
-                             Node** input_min, Node** input_max) {
+Status MakeInputMinMax(Graph* graph, const string& name_prefix,
+                       const EdgeToConvert& edge,
+                       std::vector<Node*>* added_variables, Node** input_min,
+                       Node** input_max) {
   if (edge.range_given) {
     // Make constant nodes for the input_min and input_max if the range is
     // provided.
@@ -526,17 +525,16 @@ absl::Status MakeInputMinMax(Graph* graph, const string& name_prefix,
                                          input_max));
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Adds a QuantizeAndDequantizeV2 or FakeQuantizeWithMinMaxVars op
 // (and required input nodes) based on edge.
 // The result is stored in convert_node.
-absl::Status MakeQuantizeOp(Graph* graph, const string& name_prefix,
-                            const string& quant_op_type,
-                            const EdgeToConvert& edge,
-                            std::vector<Node*>* added_variables,
-                            Node** convert_node) {
+Status MakeQuantizeOp(Graph* graph, const string& name_prefix,
+                      const string& quant_op_type, const EdgeToConvert& edge,
+                      std::vector<Node*>* added_variables,
+                      Node** convert_node) {
   Node* input_min;
   Node* input_max;
   TF_RETURN_IF_ERROR(MakeInputMinMax(graph, name_prefix, edge, added_variables,
@@ -561,13 +559,12 @@ absl::Status MakeQuantizeOp(Graph* graph, const string& name_prefix,
   } else {
     return errors::InvalidArgument("Unknown quant op type: ", quant_op_type);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Insert conversion op, connect it to the graph and remove the old edge.
-absl::Status ProcessTargetEdges(
-    Graph* graph, const string& quant_op_type,
-    const std::vector<EdgeToConvert>& target_edges) {
+Status ProcessTargetEdges(Graph* graph, const string& quant_op_type,
+                          const std::vector<EdgeToConvert>& target_edges) {
   // Remember previously converted ops to avoid duplicated conversion on the
   // same input.
   std::unordered_map<string, Node*, StringPieceHasher> name_index;
@@ -591,13 +588,13 @@ absl::Status ProcessTargetEdges(
 
   TF_RETURN_IF_ERROR(AddSaveAndRestore(graph, added_variables));
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace
 
-absl::Status DoQuantizeTraining(int32_t num_bits, const string& quant_op_type,
-                                Graph* graph) {
+Status DoQuantizeTraining(int32_t num_bits, const string& quant_op_type,
+                          Graph* graph) {
   if (graph == nullptr) {
     return errors::InvalidArgument("Cannot accept empty graph pointer.");
   }
@@ -658,13 +655,13 @@ absl::Status DoQuantizeTraining(int32_t num_bits, const string& quant_op_type,
 
   TF_RETURN_IF_ERROR(ProcessTargetEdges(graph, quant_op_type, target_edges));
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status DoQuantizeTrainingOnGraphDef(const GraphDef& input_graphdef,
-                                          int32_t num_bits,
-                                          const string& quant_op_type,
-                                          GraphDef* result_graphdef) {
+Status DoQuantizeTrainingOnGraphDef(const GraphDef& input_graphdef,
+                                    int32_t num_bits,
+                                    const string& quant_op_type,
+                                    GraphDef* result_graphdef) {
   Graph graph(OpRegistry::Global());
   GraphConstructorOptions opts;
   TF_RETURN_IF_ERROR(ConvertGraphDefToGraph(opts, input_graphdef, &graph));
@@ -674,12 +671,13 @@ absl::Status DoQuantizeTrainingOnGraphDef(const GraphDef& input_graphdef,
 
   // Convert the result graph back to a GraphDef.
   graph.ToGraphDef(result_graphdef);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status DoQuantizeTrainingOnSerializedGraphDef(
-    const string& input_graph_string, int32_t num_bits,
-    const string& quant_op_type, string* result_graph_string) {
+Status DoQuantizeTrainingOnSerializedGraphDef(const string& input_graph_string,
+                                              int32_t num_bits,
+                                              const string& quant_op_type,
+                                              string* result_graph_string) {
   // First create the graph from the GraphDef.
   GraphDef input_graphdef;
   if (!ParseProtoUnlimited(&input_graphdef, input_graph_string)) {
@@ -694,7 +692,7 @@ absl::Status DoQuantizeTrainingOnSerializedGraphDef(
     return errors::Internal(
         "quantize training transformation resulted in invalid GraphDef");
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace tensorflow

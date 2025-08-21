@@ -24,8 +24,7 @@ namespace odml {
 // Adds passes which transform TF Ops to StableHLO Ops.
 void AddLegalizeTFToStablehloPasses(OpPassManager& pm,
                                     bool skip_quantization_ops,
-                                    bool skip_resize,
-                                    bool skip_partitioned_calls);
+                                    bool skip_resize);
 
 }  // namespace odml
 }  // namespace mlir

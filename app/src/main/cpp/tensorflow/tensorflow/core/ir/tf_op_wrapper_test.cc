@@ -15,16 +15,14 @@ limitations under the License.
 
 #include "tensorflow/core/ir/tf_op_wrapper.h"
 
-#include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/ScopeExit.h"
-#include "mlir/IR/BuiltinAttributes.h"  // from @llvm-project
+#include "llvm/ADT/SmallVector.h"
 #include "mlir/IR/BuiltinOps.h"  // from @llvm-project
 #include "mlir/IR/Location.h"  // from @llvm-project
 #include "mlir/IR/MLIRContext.h"  // from @llvm-project
 #include "mlir/IR/OperationSupport.h"  // from @llvm-project
 #include "mlir/IR/OwningOpRef.h"  // from @llvm-project
 #include "mlir/Parser/Parser.h"  // from @llvm-project
-#include "mlir/Support/LLVM.h"  // from @llvm-project
 #include "tensorflow/core/ir/dialect.h"
 #include "tensorflow/core/ir/ops.h"
 #include "tensorflow/core/platform/test.h"
@@ -86,7 +84,7 @@ TEST(TFOpWrapper, ControlOperands) {
   EXPECT_EQ(ctls.size(), 2u);
 
   OperandRange::iterator ctl_it = llvm::find_if(operands, [](Value operand) {
-    return mlir::isa<ControlType>(operand.getType());
+    return operand.getType().isa<ControlType>();
   });
   EXPECT_NE(ctl_it, operands.end());
   EXPECT_EQ(data.end(), ctl_it);
@@ -186,7 +184,7 @@ TEST(TFOpWrapper, ValueControlRet) {
   // Value with ControlType will be the same.
   EXPECT_EQ(ret_range[2], const_op.controlRet());
 
-  for (Value v : ret_range) EXPECT_TRUE(mlir::isa<ControlType>(v.getType()));
+  for (Value v : ret_range) EXPECT_TRUE(v.getType().isa<ControlType>());
 }
 
 }  // namespace

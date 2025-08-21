@@ -23,7 +23,6 @@ limitations under the License.
 #include "tensorflow/core/framework/op_def.pb.h"
 #include "tensorflow/core/lib/core/status.h"
 #include "tensorflow/core/platform/env.h"
-#include "tensorflow/core/platform/types.h"
 #include "tensorflow/java/src/gen/cc/op_specs.h"
 
 namespace tensorflow {
@@ -45,8 +44,8 @@ class OpGenerator {
   //
   // Output files are generated in <output_dir>/<base_package>/<op_package>,
   // where 'op_package' is derived from ops endpoints.
-  absl::Status Run(const OpList& op_list, const string& base_package,
-                   const string& output_dir);
+  Status Run(const OpList& op_list, const string& base_package,
+             const string& output_dir);
 
  private:
   const std::vector<string> api_dirs_;

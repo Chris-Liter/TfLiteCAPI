@@ -252,7 +252,7 @@ class DatasetTest(test_base.DatasetTestBase, parameterized.TestCase):
     dataset = dataset.filter(lambda x: x > 10)
     debug_string = dataset.__debug_string__()
     for transformation in ["Range", "Map", "Filter"]:
-      self.assertIn(transformation, debug_string)
+      self.assertContainsSubsequence(debug_string, transformation)
 
   @combinations.generate(test_base.default_test_combinations())
   def testNoWarnings(self):
@@ -402,7 +402,7 @@ class DatasetTest(test_base.DatasetTestBase, parameterized.TestCase):
     dataset = dataset_ops.Dataset.range(10)
     with ops.Graph().as_default():
       with self.assertRaisesRegex(ValueError,
-                                  "Make sure that the dataset is created in "
+                                  "make sure that the dataset is created in "
                                   "the same graph as the iterator"):
         _ = dataset_ops.make_one_shot_iterator(dataset)
 
@@ -412,7 +412,7 @@ class DatasetTest(test_base.DatasetTestBase, parameterized.TestCase):
     dataset = dataset_ops.Dataset.range(10)
     with ops.Graph().as_default():
       with self.assertRaisesRegex(ValueError,
-                                  "Make sure that the dataset is created in "
+                                  "make sure that the dataset is created in "
                                   "the same graph as the iterator"):
         _ = dataset_ops.make_initializable_iterator(dataset)
 

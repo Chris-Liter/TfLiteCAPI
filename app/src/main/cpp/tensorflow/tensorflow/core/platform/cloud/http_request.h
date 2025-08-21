@@ -20,7 +20,6 @@ limitations under the License.
 #include <unordered_map>
 #include <vector>
 
-#include "xla/tsl/platform/cloud/http_request.h"
 #include "tensorflow/core/platform/env.h"
 #include "tensorflow/core/platform/errors.h"
 #include "tensorflow/core/platform/macros.h"
@@ -28,6 +27,7 @@ limitations under the License.
 #include "tensorflow/core/platform/status.h"
 #include "tensorflow/core/platform/stringpiece.h"
 #include "tensorflow/core/platform/types.h"
+#include "tensorflow/tsl/platform/cloud/http_request.h"
 
 namespace tensorflow {
 using tsl::HttpRequest;  // NOLINT(misc-unused-using-decls)

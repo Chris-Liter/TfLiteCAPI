@@ -1,5 +1,5 @@
-load("//tensorflow:tensorflow.bzl", "if_oss")
 load("//tensorflow/compiler/mlir:glob_lit_test.bzl", "glob_lit_tests")
+load("//tensorflow:tensorflow.bzl", "if_oss")
 
 package(
     # copybara:uncomment default_applicable_licenses = ["//tensorflow:license"],
@@ -24,6 +24,7 @@ package(
 #         "@llvm-project//llvm:FileCheck",
 #         "@llvm-project//llvm:not",
 #         "@llvm-project//mlir:run_lit.sh",
+#         "//tensorflow/compiler/mlir/tfrt:lhlo-tfrt-opt",
 #     ],
 # )
 #

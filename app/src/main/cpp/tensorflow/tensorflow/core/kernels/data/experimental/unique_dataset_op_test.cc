@@ -11,14 +11,7 @@ limitations under the License.
 ==============================================================================*/
 #include "tensorflow/core/kernels/data/experimental/unique_dataset_op.h"
 
-#include <cstdint>
-#include <utility>
-#include <vector>
-
-#include <gtest/gtest.h>
-#include "absl/status/status.h"
 #include "tensorflow/core/data/dataset_test_base.h"
-#include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/lib/io/path.h"
 #include "tensorflow/core/platform/env.h"
 
@@ -44,17 +37,17 @@ class UniqueDatasetParams : public DatasetParams {
 
   std::vector<Tensor> GetInputTensors() const override { return {}; }
 
-  absl::Status GetInputNames(std::vector<string>* input_names) const override {
+  Status GetInputNames(std::vector<string>* input_names) const override {
     input_names->clear();
     input_names->emplace_back(UniqueDatasetOp::kInputDataset);
-    return absl::OkStatus();
+    return OkStatus();
   }
 
-  absl::Status GetAttributes(AttributeVector* attributes) const override {
+  Status GetAttributes(AttributeVector* attributes) const override {
     *attributes = {{"output_types", output_dtypes_},
                    {"output_shapes", output_shapes_},
                    {"metadata", ""}};
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   string dataset_type() const override { return UniqueDatasetOp::kDatasetType; }

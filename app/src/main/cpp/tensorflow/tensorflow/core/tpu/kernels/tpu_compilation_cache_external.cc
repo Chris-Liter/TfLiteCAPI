@@ -21,7 +21,7 @@ limitations under the License.
 #include <utility>
 #include <vector>
 
-#include "xla/stream_executor/tpu/tpu_ops_c_api.h"
+#include "tensorflow/compiler/xla/stream_executor/tpu/tpu_ops_c_api.h"
 #include "tensorflow/core/platform/random.h"
 #include "tensorflow/core/profiler/lib/traceme.h"
 #include "tensorflow/core/tpu/kernels/compiled_subgraph.h"
@@ -66,9 +66,8 @@ std::unique_ptr<CompiledSubgraph> CreateAndInitializeCompiledSubgraph(
 }  // namespace
 
 CompiledSubgraph* TpuCompilationCacheExternal::InitializeEntry(
-    const std::string& key,
-    const std::function<absl::Status(TpuProgramGroupInterface*)>&
-        initialize_program,
+    const string& key,
+    const std::function<Status(TpuProgramGroupInterface*)>& initialize_program,
     const TpuCompilationCacheKey& subgraph_key) {
   CompiledSubgraph* main_entry = new CompiledSubgraph();
   main_entry->parent = this;
@@ -91,13 +90,13 @@ CompiledSubgraph* TpuCompilationCacheExternal::InitializeEntry(
 
   // Initialize the programs outside the lock so that other cache operations
   // can proceed during the (potentially lengthy) initialization.
-  absl::Status initialization_status;
+  Status initialization_status;
 
   TpuProgramGroup tpu_program_group;
   {
     mu_.Unlock();
     {
-      tsl::profiler::TraceMe compile_programs_traceme(
+      profiler::TraceMe compile_programs_traceme(
           "TPU compilation cache compile",
           /*level=*/2);
       initialization_status = initialize_program(&tpu_program_group);
@@ -155,6 +154,5 @@ CompiledSubgraph* TpuCompilationCacheExternal::InitializeEntry(
   marked_for_eviction_size_ += main_entry->total_size;
   return main_entry;
 }
-
 }  // namespace tpu
 }  // namespace tensorflow

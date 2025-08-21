@@ -1,4 +1,3 @@
-load("//tensorflow:tensorflow.default.bzl", "get_compatible_with_portable")
 load(
     "//tensorflow/lite:build_def.bzl",
     "tflite_cc_library_with_c_headers_test",
@@ -9,6 +8,7 @@ load(
     "tflite_linkopts_no_undefined",
     "tflite_self_contained_libs_test_suite",
 )
+load("//tensorflow:tensorflow.default.bzl", "get_compatible_with_portable")
 load("//tensorflow/lite:special_rules.bzl", "c_api_opaque_internal_visibility_allowlist", "tflite_portable_test_suite")
 load("//tensorflow/lite/core/shims:cc_library_with_tflite.bzl", "cc_library_with_tflite_with_c_headers_test")
 
@@ -55,6 +55,7 @@ cc_library_with_tflite_with_c_headers_test(
     compatible_with = get_compatible_with_portable(),
     copts = tflite_copts(),
     generate_opaque_delegate_target = True,
+    tags = ["allow_undefined_symbols"],  # For tflite::CreateOpResolver().
     deps = [
         ":c_api_without_op_resolver",
         "//tensorflow/lite/core/async/c:types",
@@ -97,7 +98,6 @@ cc_library_with_tflite_with_c_headers_test(
 cc_library_with_tflite_with_c_headers_test(
     name = "c_api_without_op_resolver_without_alwayslink",
     hdrs = ["c_api.h"],
-    compatible_with = get_compatible_with_portable(),
     copts = tflite_copts(),
     tags = ["allow_undefined_symbols"],  # For tflite::CreateOpResolver().
     deps = ["//tensorflow/lite/core/c:c_api_without_op_resolver_without_alwayslink"],
@@ -107,11 +107,6 @@ cc_library_with_tflite_with_c_headers_test(
     name = "c_api_experimental",
     hdrs = [
         "c_api_experimental.h",
-        # ':c_api_opaque' was promoted to the 'mostly stable' API.
-        # Please explicitly add a dependency on ':c_api_opaque' if your target
-        # needs both ':c_api_experimental' and ':c_api_opaque' dependencies.
-        # We plan to remove 'c_api_opaque.h' from the list of exposed headers and
-        # will remove the dependency from this target on ':c_api_opaque' in the future.
         "c_api_opaque.h",
     ],
     copts = tflite_copts() + tflite_copts_warnings(),
@@ -120,8 +115,14 @@ cc_library_with_tflite_with_c_headers_test(
         ":c_api",
     ],
     deps = [
+        ":c_api_opaque_internal",
+        ":common_internal",
+        "//tensorflow/lite/core:subgraph",
+        "//tensorflow/lite/core/c:c_api",
         "//tensorflow/lite/core/c:c_api_experimental",
-        "//tensorflow/lite/core/c:c_api_opaque",
+        "//tensorflow/lite/core/c:c_api_types",
+        "//tensorflow/lite/core/c:common",
+        "//tensorflow/lite/kernels:kernel_util",
     ],
 )
 
@@ -130,23 +131,11 @@ cc_library_with_tflite_with_c_headers_test(
     name = "c_api_experimental_without_op_resolver",
     hdrs = [
         "c_api_experimental.h",
-        # DEPRECATED
-        # ':c_api_opaque_without_op_resolver' was promoted to the 'mostly stable' API.
-        # Please explicitly add a dependency on ':c_api_opaque_without_op_resolver' if your target
-        # needs both ':c_api_experimental_without_op_resolver' and ':c_api_opaque_without_op_resolver' dependencies.
-        # We plan to remove 'c_api_opaque.h' from the list of exposed headers and
-        # will remove the dependency from this target on ':c_api_opaque_without_op_resolver' in the future.
         "c_api_opaque.h",
     ],
     copts = tflite_copts() + tflite_copts_warnings(),
     tags = ["allow_undefined_symbols"],  # For tflite::CreateOpResolver().
-    tflite_deps = [
-        ":c_api_without_op_resolver",
-    ],
-    deps = [
-        "//tensorflow/lite/core/c:c_api_experimental_without_op_resolver",
-        "//tensorflow/lite/core/c:c_api_opaque_without_op_resolver",
-    ],
+    deps = ["//tensorflow/lite/core/c:c_api_experimental_without_op_resolver"],
 )
 
 # Same as ":c_api_experimental", but without linking in the default CreateOpResolver implementation,
@@ -155,61 +144,11 @@ cc_library_with_tflite_with_c_headers_test(
     name = "c_api_experimental_without_op_resolver_without_alwayslink",
     hdrs = [
         "c_api_experimental.h",
-        # DEPRECATED
-        # ':c_api_opaque_without_op_resolver_without_alwayslink' was promoted to the 'mostly stable' API.
-        # Please explicitly add a dependency on ':c_api_opaque_without_op_resolver_without_alwayslink'
-        # if your target needs both ':c_api_experimental_without_op_resolver_without_alwayslink' and
-        # ':c_api_opaque_without_op_resolver_without_alwayslink' dependencies.
-        # We plan to remove 'c_api_opaque.h' from the list of exposed headers and
-        # will remove the dependency from this target on
-        # ':c_api_opaque_without_op_resolver_without_alwayslink' in the future.
         "c_api_opaque.h",
     ],
     copts = tflite_copts() + tflite_copts_warnings(),
     tags = ["allow_undefined_symbols"],  # For tflite::CreateOpResolver().
-    tflite_deps = [":c_api_without_op_resolver_without_alwayslink"],
-    deps = [
-        "//tensorflow/lite/core/c:c_api_experimental_without_op_resolver_without_alwayslink",
-        "//tensorflow/lite/core/c:c_api_opaque_without_op_resolver_without_alwayslink",
-    ],
-)
-
-cc_library_with_tflite_with_c_headers_test(
-    name = "c_api_opaque",
-    hdrs = [
-        "c_api_opaque.h",
-    ],
-    compatible_with = get_compatible_with_portable(),
-    copts = tflite_copts() + tflite_copts_warnings(),
-    generate_opaque_delegate_target = True,
-    tflite_deps = [":c_api"],
-    deps = ["//tensorflow/lite/core/c:c_api_opaque"],
-)
-
-cc_library_with_tflite_with_c_headers_test(
-    name = "c_api_opaque_without_op_resolver",
-    hdrs = [
-        "c_api_opaque.h",
-    ],
-    compatible_with = get_compatible_with_portable(),
-    copts = tflite_copts() + tflite_copts_warnings(),
-    tags = ["allow_undefined_symbols"],  # For tflite::CreateOpResolver().
-    tflite_deps = [":c_api_without_op_resolver"],
-    deps = ["//tensorflow/lite/core/c:c_api_opaque_without_op_resolver"],
-)
-
-cc_library_with_tflite_with_c_headers_test(
-    name = "c_api_opaque_without_op_resolver_without_alwayslink",
-    hdrs = [
-        "c_api_opaque.h",
-    ],
-    compatible_with = get_compatible_with_portable(),
-    copts = tflite_copts() + tflite_copts_warnings(),
-    tags = ["allow_undefined_symbols"],  # For tflite::CreateOpResolver().
-    tflite_deps = [
-        ":c_api_without_op_resolver_without_alwayslink",
-    ],
-    deps = ["//tensorflow/lite/core/c:c_api_opaque_without_op_resolver_without_alwayslink"],
+    deps = ["//tensorflow/lite/core/c:c_api_experimental_without_op_resolver_without_alwayslink"],
 )
 
 cc_library_with_tflite_with_c_headers_test(
@@ -229,6 +168,7 @@ cc_library(
     visibility = [
         "//tensorflow/lite/core/async/c:__subpackages__",
         "//tensorflow/lite/core/c:__subpackages__",
+        "//tensorflow/lite/delegates/utils:__pkg__",
     ],
     deps = [
         ":common_internal",
@@ -292,10 +232,7 @@ cc_test(
     size = "small",
     srcs = ["c_api_signature_runner_test.cc"],
     copts = tflite_copts(),
-    data = [
-        "//tensorflow/lite:testdata/multi_signatures.bin",
-        "//tensorflow/lite:testdata/no_signatures.bin",
-    ],
+    data = ["//tensorflow/lite:testdata/multi_signatures.bin"],
     deps = [
         ":c_api",
         "//tensorflow/lite/core/c:c_api",
@@ -359,7 +296,7 @@ cc_library(
         "//tensorflow/lite/c:c_api_internal",
         "//tensorflow/lite/core/api:op_resolver",
         "//tensorflow/lite/core/c:common",
-        "//tensorflow/lite/core/c:operator",
+        "//tensorflow/lite/core/c:registration_external",
     ],
 )
 
@@ -385,7 +322,6 @@ cc_library(
     name = "c_api_opaque_internal_without_alwayslink",
     srcs = ["c_api_opaque_internal.cc"],
     hdrs = ["c_api_opaque_internal.h"],
-    compatible_with = get_compatible_with_portable(),
     tags = ["allow_undefined_symbols"],  # For tflite::CreateOpResolver().
     visibility = [
         "//tensorflow/lite:__subpackages__",
@@ -396,14 +332,13 @@ cc_library(
         "//tensorflow/lite/c:c_api_internal",
         "//tensorflow/lite/core/api:op_resolver",
         "//tensorflow/lite/core/c:common",
-        "//tensorflow/lite/core/c:operator_without_alwayslink",
+        "//tensorflow/lite/core/c:registration_external_without_alwayslink",
     ],
 )
 
 # For use with library targets that can't use relative paths.
 # LINT.IfChange(exported_headers)
 exports_files([
-    "builtin_op_data.h",
     "c_api.h",
     "c_api_experimental.h",
     "c_api_opaque.h",
@@ -414,7 +349,6 @@ exports_files([
 filegroup(
     name = "tensorflowlite_c_api_hdrs_filegroup",
     srcs = [
-        "builtin_op_data.h",
         "c_api.h",
         "c_api_types.h",
         "common.h",
@@ -462,7 +396,6 @@ cc_test(
         ":c_api_experimental",
         "//tensorflow/lite/core/c:c_api",
         "//tensorflow/lite/core/c:c_api_experimental",
-        "//tensorflow/lite/core/c:c_api_opaque",
         "//tensorflow/lite/core/c:c_api_types",
         "//tensorflow/lite/core/c:common",
     ],
@@ -473,7 +406,6 @@ cc_library_with_tflite_with_c_headers_test(
     testonly = True,
     srcs = ["test_util.cc"],
     hdrs = ["test_util.h"],
-    generate_opaque_delegate_target = True,
 )
 
 tflite_self_contained_libs_test_suite(name = "self_contained_libs_test_suite")

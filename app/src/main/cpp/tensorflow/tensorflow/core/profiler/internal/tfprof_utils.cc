@@ -84,12 +84,12 @@ string StripQuote(const string& s) {
   return s.substr(start, end - start + 1);
 }
 
-absl::Status ReturnError(const std::vector<string>& pieces, int idx) {
+tensorflow::Status ReturnError(const std::vector<string>& pieces, int idx) {
   string val;
   if (pieces.size() > idx + 1) {
     val = pieces[idx + 1];
   }
-  return absl::Status(
+  return tensorflow::Status(
       absl::StatusCode::kInvalidArgument,
       absl::StrCat("Invalid option '", pieces[idx], "' value: '", val, "'"));
 }
@@ -115,15 +115,15 @@ bool StringToBool(StringPiece str, bool* value) {
 }
 }  // namespace
 
-absl::Status ParseCmdLine(const string& line, string* cmd,
-                          tensorflow::tfprof::Options* opts) {
+tensorflow::Status ParseCmdLine(const string& line, string* cmd,
+                                tensorflow::tfprof::Options* opts) {
   std::vector<string> pieces = absl::StrSplit(line, ' ', absl::SkipEmpty());
 
   std::vector<string> cmds_str(kCmds, kCmds + sizeof(kCmds) / sizeof(*kCmds));
   if (std::find(cmds_str.begin(), cmds_str.end(), pieces[0]) ==
       cmds_str.end()) {
-    return absl::Status(absl::StatusCode::kInvalidArgument,
-                        "First string must be a valid command.");
+    return tensorflow::Status(absl::StatusCode::kInvalidArgument,
+                              "First string must be a valid command.");
   }
   *cmd = pieces[0];
 
@@ -279,7 +279,7 @@ absl::Status ParseCmdLine(const string& line, string* cmd,
         return ReturnError(pieces, i);
       }
 
-      absl::Status s =
+      tensorflow::Status s =
           ParseOutput(pieces[i + 1], &opts->output_type, &opts->output_options);
       if (!s.ok()) return s;
       ++i;
@@ -287,7 +287,7 @@ absl::Status ParseCmdLine(const string& line, string* cmd,
       return ReturnError(pieces, i);
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 void PrintHelp() {

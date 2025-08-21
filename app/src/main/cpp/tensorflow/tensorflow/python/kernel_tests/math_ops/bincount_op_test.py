@@ -122,15 +122,13 @@ class BincountTest(test_util.TensorFlowTestCase):
     arr = np.random.randint(0, 1000, size=1000)
     with test_util.deterministic_ops(), self.assertRaisesRegex(
         errors_impl.UnimplementedError,
-        "Determinism is not yet supported in GPU implementation of "
-        "(Dense)?Bincount.",
-    ):
+        "Determinism is not yet supported in GPU implementation of Bincount."):
       self.evaluate(bincount_ops.bincount(arr, None, axis=None))
     arr = np.random.randint(0, 1000, size=(100, 100))
     with test_util.deterministic_ops(), self.assertRaisesRegex(
         errors_impl.UnimplementedError,
         "Determinism is not yet supported in GPU implementation of "
-        "(Dense)?Bincount."):
+        "DenseBincount."):
       self.evaluate(bincount_ops.bincount(arr, None, axis=-1))
 
   def test_zero_weights(self):
@@ -143,18 +141,8 @@ class BincountTest(test_util.TensorFlowTestCase):
   def test_negative(self):
     # unsorted_segment_sum will only report InvalidArgumentError on CPU
     with self.cached_session(), ops.device("/CPU:0"):
-      with self.assertRaisesRegex(
-          (ValueError, errors.InvalidArgumentError), "must be non-negative"
-      ):
+      with self.assertRaises(errors.InvalidArgumentError):
         self.evaluate(bincount_ops.bincount([1, 2, 3, -1, 6, 8]))
-      with self.assertRaisesRegex(
-          (ValueError, errors.InvalidArgumentError), "must be non-negative"
-      ):
-        self.evaluate(
-            gen_math_ops.dense_bincount(
-                input=[[1, 1, 3], [0, -1, 2]], weights=[], size=4
-            )
-        )
 
   @test_util.run_in_graph_and_eager_modes
   def test_shape_function(self):

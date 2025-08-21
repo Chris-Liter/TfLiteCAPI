@@ -17,7 +17,7 @@ limitations under the License.
 
 #include "tensorflow/compiler/tf2xla/literal_util.h"
 #include "tensorflow/compiler/tf2xla/shape_util.h"
-#include "xla/hlo/builder/value_inference.h"
+#include "tensorflow/compiler/xla/client/value_inference.h"
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/lib/core/errors.h"
 
@@ -89,7 +89,7 @@ string XlaExpression::HumanString() const {
 }
 
 xla::XlaOp XlaExpression::AsXlaOp(xla::XlaBuilder* builder) const {
-  return builder->ReportErrorOrReturn([&]() -> absl::StatusOr<xla::XlaOp> {
+  return builder->ReportErrorOrReturn([&]() -> StatusOr<xla::XlaOp> {
     switch (kind_) {
       case Kind::kConstant: {
         xla::BorrowingLiteral literal;
@@ -112,7 +112,7 @@ xla::XlaOp XlaExpression::AsXlaOp(xla::XlaBuilder* builder) const {
   });
 }
 
-absl::StatusOr<Tensor> XlaExpression::ResolveDynamism() const {
+StatusOr<Tensor> XlaExpression::ResolveDynamism() const {
   switch (kind()) {
     case Kind::kConstant: {
       // Constant values are considered static.
@@ -147,7 +147,7 @@ absl::StatusOr<Tensor> XlaExpression::ResolveDynamism() const {
   return tensor;
 }
 
-absl::StatusOr<std::optional<Tensor>> XlaExpression::ResolveConstant(
+StatusOr<std::optional<Tensor>> XlaExpression::ResolveConstant(
     xla::Client* client, bool dynamic_dimension_is_minus_one,
     xla::ValueInferenceMode mode) const {
   switch (kind()) {
@@ -205,7 +205,7 @@ absl::StatusOr<std::optional<Tensor>> XlaExpression::ResolveConstant(
   return {tensor};
 }
 
-absl::StatusOr<TensorShape> XlaExpression::GetShape() const {
+StatusOr<TensorShape> XlaExpression::GetShape() const {
   switch (kind_) {
     case Kind::kConstant:
       return constant_value()->shape();
@@ -229,7 +229,7 @@ absl::StatusOr<TensorShape> XlaExpression::GetShape() const {
   }
 }
 
-absl::StatusOr<xla::Shape> XlaExpression::GetXlaShape() const {
+StatusOr<xla::Shape> XlaExpression::GetXlaShape() const {
   if (kind_ == Kind::kXlaOp) {
     return handle().builder()->GetShape(handle());
   }

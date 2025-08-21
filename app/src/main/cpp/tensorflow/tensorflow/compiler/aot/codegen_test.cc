@@ -22,8 +22,8 @@ limitations under the License.
 #include "absl/strings/match.h"
 #include "absl/strings/string_view.h"
 #include "llvm/Support/TargetSelect.h"
-#include "xla/cpu_function_runtime.h"
-#include "xla/shape_util.h"
+#include "tensorflow/compiler/xla/cpu_function_runtime.h"
+#include "tensorflow/compiler/xla/shape_util.h"
 #include "tensorflow/core/framework/tensor_shape.pb.h"
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/lib/core/status.h"
@@ -39,8 +39,8 @@ namespace {
 
 using ::xla::cpu_function_runtime::BufferInfo;
 
-void ExpectErrorContains(const absl::Status& status, absl::string_view str) {
-  EXPECT_NE(absl::OkStatus(), status);
+void ExpectErrorContains(const Status& status, absl::string_view str) {
+  EXPECT_NE(OkStatus(), status);
   EXPECT_TRUE(absl::StrContains(status.message(), str))
       << "expected error: " << status.message() << " to contain: " << str;
 }
@@ -88,8 +88,7 @@ class ParseCppClassTest : public ::testing::Test {
   void ExpectFail(const string& cpp_class) {
     string class_name;
     std::vector<string> namespaces;
-    EXPECT_NE(ParseCppClass(cpp_class, &class_name, &namespaces),
-              absl::OkStatus())
+    EXPECT_NE(ParseCppClass(cpp_class, &class_name, &namespaces), OkStatus())
         << cpp_class;
   }
 };
@@ -154,7 +153,7 @@ static void CompareWithGoldenFile(
 
   // To update the golden file, flip update_golden to true and run the
   // following:
-  // blaz test --test_strategy=local \
+  // bazel test --test_strategy=local \
   //   "third_party/tensorflow/compiler/aot:codegen_test"
   const bool update_golden = false;
   string golden_file_name =
@@ -176,7 +175,6 @@ static void CompareWithGoldenFile(
   EXPECT_EQ(golden_file_contents, expected_contents);
 }
 
-#if TF_LLVM_X86_AVAILABLE
 TEST(CodegenTest, Golden) {
   // Normally CpuCompiler::CpuCompiler does this, but in this test we've
   // bypassed the Cpu compiler so we have to do this manually.
@@ -232,7 +230,7 @@ TEST(CodegenTest, Golden) {
                                        /*result_param_number=*/1),
        BufferInfo::MakeResultParameter(/*size=*/5 * 4,
                                        /*result_param_number=*/2)},
-      0, nullptr, {}));
+      0, {}));
   compile_result.program_shape =
       xla::ShapeUtil::MakeProgramShape(
           {
@@ -270,7 +268,6 @@ TEST(CodegenTest, Golden) {
   CompareWithGoldenFile("tensorflow/compiler/aot/codegen_test_h.golden", header,
                         true);
 }
-#endif
 }  // namespace
 }  // namespace tfcompile
 }  // namespace tensorflow

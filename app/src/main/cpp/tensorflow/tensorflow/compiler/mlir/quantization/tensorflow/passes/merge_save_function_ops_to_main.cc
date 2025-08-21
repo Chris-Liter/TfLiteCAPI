@@ -23,7 +23,6 @@ limitations under the License.
 #include "tensorflow/compiler/mlir/quantization/tensorflow/passes/manipulate_model_attr.h"
 #include "tensorflow/compiler/mlir/quantization/tensorflow/passes/passes.h"
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_executor.h"
-#include "tensorflow/compiler/mlir/tensorflow/ir/tf_ops.h"
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_saved_model.h"
 #include "tensorflow/compiler/mlir/tensorflow/translate/import_model.h"
 
@@ -143,7 +142,7 @@ BlockArgument GetFilePrefixArg(func::FuncOp main_func_op) {
     auto index_path_attr =
         main_func_op.getArgAttrOfType<ArrayAttr>(i, kTfSavedModelIndexPathAttr);
     if (index_path_attr && !index_path_attr.empty() &&
-        mlir::cast<StringAttr>(index_path_attr[0]) == kTfFilePrefix) {
+        index_path_attr[0].cast<StringAttr>() == kTfFilePrefix) {
       return main_func_op.getArgument(i);
     }
   }

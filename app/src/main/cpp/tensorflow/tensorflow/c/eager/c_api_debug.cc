@@ -28,7 +28,7 @@ using tensorflow::string;
 namespace {
 
 std::vector<int64_t> TensorShapeAsVector(const tensorflow::TensorHandle& handle,
-                                         absl::Status* status) {
+                                         tensorflow::Status* status) {
   std::vector<int64_t> shape;
   int rank = -1;
   *status = handle.NumDims(&rank);

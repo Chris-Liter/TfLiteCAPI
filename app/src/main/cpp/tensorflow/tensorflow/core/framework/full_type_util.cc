@@ -41,7 +41,7 @@ OpTypeConstructor NoOp() {
 OpTypeConstructor NoOutputs() {
   return [](OpDef* op_def) {
     op_def->mutable_output_arg();
-    return absl::OkStatus();
+    return OkStatus();
   };
 }
 
@@ -50,7 +50,7 @@ OpTypeConstructor Nullary(FullTypeId t) {
     FullTypeDef* tdef =
         op_def->mutable_output_arg(0)->mutable_experimental_full_type();
     tdef->set_type_id(t);
-    return absl::OkStatus();
+    return OkStatus();
   };
 }
 
@@ -64,7 +64,7 @@ OpTypeConstructor Unary(FullTypeId t, const string& var_name) {
     arg->set_type_id(TFT_VAR);
     arg->set_s(var_name);
 
-    return absl::OkStatus();
+    return OkStatus();
   };
 }
 
@@ -77,7 +77,7 @@ OpTypeConstructor UnaryGeneric(FullTypeId t) {
     FullTypeDef* arg = tdef->add_args();
     arg->set_type_id(TFT_ANY);
 
-    return absl::OkStatus();
+    return OkStatus();
   };
 }
 
@@ -92,7 +92,7 @@ OpTypeConstructor UnaryTensorContainer(FullTypeId t, FullTypeId dtype) {
     FullTypeDef* targ = arg->add_args();
     targ->set_type_id(dtype);
 
-    return absl::OkStatus();
+    return OkStatus();
   };
 }
 
@@ -108,7 +108,7 @@ OpTypeConstructor UnaryTensorContainer(FullTypeId t, const string& var_name) {
     varg->set_type_id(TFT_VAR);
     varg->set_s(var_name);
 
-    return absl::OkStatus();
+    return OkStatus();
   };
 }
 
@@ -133,27 +133,27 @@ OpTypeConstructor VariadicTensorContainer(FullTypeId t,
     tvar->set_type_id(TFT_VAR);
     tvar->set_s(var_name);
 
-    return absl::OkStatus();
+    return OkStatus();
   };
 }
 
 namespace {
 
-typedef absl::flat_hash_map<absl::string_view, const AttrValue*> AttrMap;
+typedef absl::flat_hash_map<StringPiece, const AttrValue*> AttrMap;
 
-inline absl::Status SubstituteFromAttrs(AttrMap& attrs, FullTypeDef& t);
+inline Status SubstituteFromAttrs(AttrMap& attrs, FullTypeDef& t);
 
-absl::Status SubstituteVar(AttrMap& attrs, FullTypeDef& t) {
+Status SubstituteVar(AttrMap& attrs, FullTypeDef& t) {
   if (t.args_size() != 0) {
-    return absl::Status(
+    return Status(
         absl::StatusCode::kInvalidArgument,
         absl::StrCat("Unexpected Var type, expected args_size 0, found ",
                      t.args_size()));
   }
 
-  absl::string_view var_name = t.s();
+  StringPiece var_name = t.s();
   if (!attrs.contains(var_name)) {
-    return absl::Status(
+    return Status(
         absl::StatusCode::kInvalidArgument,
         absl::StrCat("could not find an attribute for key '", var_name, "'"));
   }
@@ -165,37 +165,34 @@ absl::Status SubstituteVar(AttrMap& attrs, FullTypeDef& t) {
   } else if (attr_type == AttrValue::kList) {
     const auto& attr_list = attr->list();
     if (attr_list.type_size() != 1) {
-      return absl::Status(
-          absl::StatusCode::kUnimplemented,
-          absl::StrCat("lists or other than one type element\n",
-                       attr_list.DebugString(), "\nkey=", var_name));
+      return Status(absl::StatusCode::kUnimplemented,
+                    absl::StrCat("lists or other than one type element\n",
+                                 attr_list.DebugString(), "\nkey=", var_name));
     }
     map_dtype_to_tensor(attr_list.type(0), t);
   } else {
-    return absl::Status(
-        absl::StatusCode::kUnimplemented,
-        absl::StrCat("unsupported attribute type ", attr->DebugString(),
-                     " for name ", var_name));
+    return Status(absl::StatusCode::kUnimplemented,
+                  absl::StrCat("unsupported attribute type ",
+                               attr->DebugString(), " for name ", var_name));
   }
   t.clear_s();
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status SubstituteForEach(AttrMap& attrs, FullTypeDef& t) {
+Status SubstituteForEach(AttrMap& attrs, FullTypeDef& t) {
   if (t.args_size() != 3) {
-    return absl::Status(
-        absl::StatusCode::kInvalidArgument,
-        absl::StrCat("illegal FOR_EACH type, expected 3 args, got ",
-                     t.args_size()));
+    return Status(absl::StatusCode::kInvalidArgument,
+                  absl::StrCat("illegal FOR_EACH type, expected 3 args, got ",
+                               t.args_size()));
   }
 
   const auto& cont = t.args(0);
   const auto& tmpl = t.args(1);
   const auto& t_var = t.args(2);
 
-  absl::string_view var_name = t_var.s();
+  StringPiece var_name = t_var.s();
   if (!attrs.contains(var_name)) {
-    return absl::Status(
+    return Status(
         absl::StatusCode::kInvalidArgument,
         absl::StrCat("could not find an attribute for key '", var_name, "'"));
   }
@@ -216,10 +213,9 @@ absl::Status SubstituteForEach(AttrMap& attrs, FullTypeDef& t) {
     const auto& attr_list = attr->list();
     int tsize = attr_list.type_size();
     if (tsize == 0) {
-      return absl::Status(
-          absl::StatusCode::kUnimplemented,
-          absl::StrCat("unsupported list attribute type\n",
-                       attr_list.DebugString(), "\nkey=", var_name));
+      return Status(absl::StatusCode::kUnimplemented,
+                    absl::StrCat("unsupported list attribute type\n",
+                                 attr_list.DebugString(), "\nkey=", var_name));
     }
     AttrValue replacement;
     attrs[var_name] = &replacement;
@@ -237,16 +233,15 @@ absl::Status SubstituteForEach(AttrMap& attrs, FullTypeDef& t) {
     attrs[var_name] = attr;
 
   } else {
-    return absl::Status(
-        absl::StatusCode::kUnimplemented,
-        absl::StrCat("unsupported attribute type\n", attr->DebugString(),
-                     "\nfor name ", var_name));
+    return Status(absl::StatusCode::kUnimplemented,
+                  absl::StrCat("unsupported attribute type\n",
+                               attr->DebugString(), "\nfor name ", var_name));
   }
   t = result;
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status SubstituteGeneric(AttrMap& attrs, FullTypeDef& t) {
+Status SubstituteGeneric(AttrMap& attrs, FullTypeDef& t) {
   int nargs = t.args_size();
   for (int j = 0; j < nargs; j++) {
     FullTypeDef* arg_t = t.mutable_args(j);
@@ -262,10 +257,10 @@ absl::Status SubstituteGeneric(AttrMap& attrs, FullTypeDef& t) {
       break;
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-inline absl::Status SubstituteFromAttrs(AttrMap& attrs, FullTypeDef& t) {
+inline Status SubstituteFromAttrs(AttrMap& attrs, FullTypeDef& t) {
   // Resolve dependent types. The convention for op registrations is to use
   // attributes as type variables.
   // See https://www.tensorflow.org/guide/create_op#type_polymorphism.
@@ -286,13 +281,13 @@ inline absl::Status SubstituteFromAttrs(AttrMap& attrs, FullTypeDef& t) {
     default:
       return SubstituteGeneric(attrs, t);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace
 
-absl::Status SpecializeType(const AttrSlice& attrs, const OpDef& op_def,
-                            FullTypeDef& target) {
+Status SpecializeType(const AttrSlice& attrs, const OpDef& op_def,
+                      FullTypeDef& target) {
   target.Clear();
   target.set_type_id(TFT_PRODUCT);
 
@@ -317,7 +312,7 @@ absl::Status SpecializeType(const AttrSlice& attrs, const OpDef& op_def,
         t.DebugString(), "\nfrom\n", attrs.SummarizeNode());
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 const FullTypeDef& GetArgDefaultUnset(const FullTypeDef& t, int i) {

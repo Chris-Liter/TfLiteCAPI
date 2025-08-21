@@ -41,12 +41,12 @@ class TableBuilder : public TensorSliceWriter::Builder {
     option.compression = table::kNoCompression;
     builder_ = std::make_unique<table::TableBuilder>(option, f);
   }
-  void Add(absl::string_view key, absl::string_view val) override {
+  void Add(StringPiece key, StringPiece val) override {
     builder_->Add(key, val);
   }
-  absl::Status Finish(int64_t* file_size) override {
+  Status Finish(int64_t* file_size) override {
     *file_size = -1;
-    absl::Status s = builder_->Finish();
+    Status s = builder_->Finish();
     if (s.ok()) {
       s = file_->Close();
       if (s.ok()) {
@@ -69,14 +69,14 @@ class TableBuilder : public TensorSliceWriter::Builder {
 };
 }  // anonymous namespace
 
-absl::Status CreateTableTensorSliceBuilder(
-    const string& name, TensorSliceWriter::Builder** builder) {
+Status CreateTableTensorSliceBuilder(const string& name,
+                                     TensorSliceWriter::Builder** builder) {
   *builder = nullptr;
   std::unique_ptr<WritableFile> f;
-  absl::Status s = Env::Default()->NewWritableFile(name, &f);
+  Status s = Env::Default()->NewWritableFile(name, &f);
   if (s.ok()) {
     *builder = new TableBuilder(name, f.release());
-    return absl::OkStatus();
+    return OkStatus();
   } else {
     return s;
   }
@@ -86,26 +86,16 @@ TensorSliceWriter::TensorSliceWriter(const string& filename,
                                      CreateBuilderFunction create_builder)
     : filename_(filename),
       create_builder_(std::move(create_builder)),
+      tmpname_(strings::StrCat(filename, ".tempstate", random::New64())),
       slices_(0) {
-  Env* env = Env::Default();
-  absl::Status status = env->CanCreateTempFile(filename_, &use_temp_file_);
-  if (!status.ok()) {
-    LOG(ERROR) << "Failed to get CanCreateTempFile attribute: " << filename_;
-    use_temp_file_ = true;
-  }
-
-  data_filename_ = filename_;
-  if (use_temp_file_) {
-    data_filename_ = strings::StrCat(filename_, ".tempstate", random::New64());
-  }
   VersionDef* versions = sts_.mutable_meta()->mutable_versions();
   versions->set_producer(TF_CHECKPOINT_VERSION);
   versions->set_min_consumer(TF_CHECKPOINT_VERSION_MIN_CONSUMER);
 }
 
-absl::Status TensorSliceWriter::Finish() {
+Status TensorSliceWriter::Finish() {
   Builder* b;
-  absl::Status s = create_builder_(data_filename_, &b);
+  Status s = create_builder_(tmpname_, &b);
   if (!s.ok()) {
     delete b;
     return s;
@@ -124,21 +114,18 @@ absl::Status TensorSliceWriter::Finish() {
 
   int64_t file_size;
   s = builder->Finish(&file_size);
-  // If use temp file, we need to rename the file to the proper name.
-  if (use_temp_file_) {
+  // We need to rename the file to the proper name
+  if (s.ok()) {
+    s = Env::Default()->RenameFile(tmpname_, filename_);
     if (s.ok()) {
-      s = Env::Default()->RenameFile(data_filename_, filename_);
-      if (s.ok()) {
-        VLOG(1) << "Written " << slices_ << " slices for "
-                << sts_.meta().tensor_size() << " tensors (" << file_size
-                << " bytes) to " << filename_;
-      } else {
-        LOG(ERROR) << "Failed to rename file " << data_filename_ << " to "
-                   << filename_;
-      }
+      VLOG(1) << "Written " << slices_ << " slices for "
+              << sts_.meta().tensor_size() << " tensors (" << file_size
+              << " bytes) to " << filename_;
     } else {
-      Env::Default()->DeleteFile(data_filename_).IgnoreError();
+      LOG(ERROR) << "Failed to rename file " << tmpname_ << " to " << filename_;
     }
+  } else {
+    Env::Default()->DeleteFile(tmpname_).IgnoreError();
   }
   return s;
 }
@@ -199,8 +186,8 @@ size_t TensorSliceWriter::MaxBytesPerElementOrZero(DataType dt) {
 }
 
 template <>
-absl::Status TensorSliceWriter::SaveData(const tstring* data,
-                                         int64_t num_elements, SavedSlice* ss) {
+Status TensorSliceWriter::SaveData(const tstring* data, int64_t num_elements,
+                                   SavedSlice* ss) {
   size_t size_bound = ss->ByteSize() + kTensorProtoHeaderBytes +
                       (num_elements * MaxBytesPerElement(DT_INT32));
   for (int64_t i = 0; i < num_elements; ++i) {
@@ -214,7 +201,7 @@ absl::Status TensorSliceWriter::SaveData(const tstring* data,
   Fill(data, num_elements, ss->mutable_data());
   DCHECK_GE(ss->ByteSize(), 0);
   DCHECK_LE(ss->ByteSize(), size_bound);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace checkpoint

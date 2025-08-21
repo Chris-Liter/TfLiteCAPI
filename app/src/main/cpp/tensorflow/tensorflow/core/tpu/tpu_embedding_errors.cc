@@ -17,21 +17,17 @@ limitations under the License.
 
 #include <string>
 
-#include "absl/strings/cord.h"
 #include "absl/strings/match.h"
-#include "absl/strings/str_cat.h"
-#include "tensorflow/core/platform/status.h"
-#include "tensorflow/core/protobuf/tpu/tpu_embedding_configuration.pb.h"
 
 namespace tensorflow::tpu {
 
-absl::Status AppendTpuEmbeddingErrorPayload(absl::Status obj) {
+Status AppendTpuEmbeddingErrorPayload(Status obj) {
   if (obj.ok()) {
-    return absl::OkStatus();
+    return OkStatus();
   } else {
     const std::string error_message =
         absl::StrCat(kTpuEmbeddingErrorMessage, ". ", obj.message());
-    absl::Status status(obj.code(), error_message);
+    Status status(obj.code(), error_message);
     TPUEmbeddingError error_payload;
     status.SetPayload(kTpuEmbeddingErrorUrl,
                       absl::Cord(error_payload.SerializeAsString()));
@@ -39,11 +35,11 @@ absl::Status AppendTpuEmbeddingErrorPayload(absl::Status obj) {
   }
 }
 
-bool HasTpuEmbeddingErrorPayload(const absl::Status& status) {
+bool HasTpuEmbeddingErrorPayload(const Status& status) {
   return status.GetPayload(kTpuEmbeddingErrorUrl).has_value();
 }
 
-bool HasTpuEmbeddingErrorMessage(const absl::Status& status) {
+bool HasTpuEmbeddingErrorMessage(const Status& status) {
   return absl::StrContains(status.message(), kTpuEmbeddingErrorMessage);
 }
 

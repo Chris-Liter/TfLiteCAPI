@@ -25,7 +25,7 @@ limitations under the License.
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "tensorflow/compiler/jit/flags.h"
-#include "xla/status_macros.h"
+#include "tensorflow/compiler/xla/status_macros.h"
 #include "tensorflow/core/common_runtime/function.h"
 #include "tensorflow/core/framework/bounds_check.h"
 #include "tensorflow/core/framework/node_def.pb.h"
@@ -47,8 +47,8 @@ const char* const kXlaCompileTimeConstantInputsAttr =
 namespace {
 // Returns a string describing how an edge from src to dst would
 // create a cycle.
-string DescribeCycle(const xla::GraphCycles* cycles, const Graph& graph,
-                     int src, int dst) {
+string DescribeCycle(const GraphCycles* cycles, const Graph& graph, int src,
+                     int dst) {
   int32_t max_path_size = graph.num_node_ids() + 1;
   std::vector<int32> path(max_path_size);
   int32_t path_size = cycles->FindPath(dst, src, max_path_size, path.data());
@@ -107,8 +107,8 @@ bool HasForwardedRefInput(const Node& node) {
   return false;
 }
 
-absl::StatusOr<bool> CreateCycleDetectionGraph(const Graph* graph,
-                                               xla::GraphCycles* cycles) {
+StatusOr<bool> CreateCycleDetectionGraph(const Graph* graph,
+                                         GraphCycles* cycles) {
   for (int i = 0; i < graph->num_node_ids(); ++i) {
     // We rely on the node IDs in the cycle detection graph being consecutive
     // integers starting from 0.
@@ -202,7 +202,7 @@ std::optional<absl::string_view> GetXlaClusterForNode(const Node& node) {
   if (attr_value == nullptr) {
     return std::nullopt;
   }
-  absl::Status s = AttrValueHasType(*attr_value, "string");
+  Status s = AttrValueHasType(*attr_value, "string");
   if (!s.ok()) {
     return std::nullopt;
   }
@@ -420,11 +420,11 @@ CallTargetListTy GetCallTargetListFromNode(
 
 enum class Direction { kForward, kBackward };
 
-absl::Status GetNodesRelatedToRefVariablesInDirection(
+Status GetNodesRelatedToRefVariablesInDirection(
     const Graph& graph, FunctionLibraryRuntime* lib_runtime,
     Direction direction, int depth, absl::flat_hash_set<Node*>* result);
 
-absl::StatusOr<bool> DoesAnyCalleeHaveRefNodes(
+StatusOr<bool> DoesAnyCalleeHaveRefNodes(
     const CallTargetListTy& call_target_list,
     FunctionLibraryRuntime* lib_runtime, Direction direction, int depth) {
   const int kMaxDepth = 10;
@@ -480,7 +480,7 @@ absl::StatusOr<bool> DoesAnyCalleeHaveRefNodes(
 
 // Helper for GetNodesRelatedToRefVariables that traverses the graph in one
 // direction.
-absl::Status GetNodesRelatedToRefVariablesInDirection(
+Status GetNodesRelatedToRefVariablesInDirection(
     const Graph& graph, FunctionLibraryRuntime* lib_runtime,
     Direction direction, int depth, absl::flat_hash_set<Node*>* result) {
   std::vector<Node*> nodes_in_order;
@@ -500,7 +500,7 @@ absl::Status GetNodesRelatedToRefVariablesInDirection(
   std::vector<bool> callee_has_ref_nodes_cache;
   callee_has_ref_nodes_cache.resize(graph.num_node_ids());
 
-  auto does_callee_have_ref_nodes = [&](Node* n) -> absl::StatusOr<bool> {
+  auto does_callee_have_ref_nodes = [&](Node* n) -> StatusOr<bool> {
     if (iterations == 1) {
       TF_ASSIGN_OR_RETURN(
           bool callee_has_ref_nodes,
@@ -557,7 +557,7 @@ absl::Status GetNodesRelatedToRefVariablesInDirection(
 
   VLOG(2) << "# iterations = " << iterations;
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Sorts control inputs of a graphdef so that they are deterministically
@@ -579,7 +579,7 @@ void SortControlInputs(GraphDef* gdef) {
 }
 }  // namespace
 
-absl::StatusOr<absl::flat_hash_set<Node*>> GetNodesRelatedToRefVariables(
+StatusOr<absl::flat_hash_set<Node*>> GetNodesRelatedToRefVariables(
     const Graph& graph, FunctionLibraryRuntime* lib_runtime) {
   absl::flat_hash_set<Node*> result;
   TF_RETURN_IF_ERROR(GetNodesRelatedToRefVariablesInDirection(
@@ -592,7 +592,7 @@ absl::StatusOr<absl::flat_hash_set<Node*>> GetNodesRelatedToRefVariables(
   return result;
 }
 
-absl::StatusOr<std::string> SerializeGraphDeterministic(const Graph& graph) {
+StatusOr<std::string> SerializeGraphDeterministic(const Graph& graph) {
   GraphDef def;
   graph.ToGraphDef(&def);
 
@@ -609,7 +609,7 @@ absl::StatusOr<std::string> SerializeGraphDeterministic(const Graph& graph) {
   return s;
 }
 
-absl::StatusOr<uint64> FingerprintGraph(const Graph& graph) {
+StatusOr<uint64> FingerprintGraph(const Graph& graph) {
   TF_ASSIGN_OR_RETURN(std::string serialized,
                       SerializeGraphDeterministic(graph));
   return Hash64(serialized.data(), serialized.size());

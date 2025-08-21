@@ -193,7 +193,7 @@ TEST(HingeLoss, ComputeDualLoss) {
 TEST(HingeLoss, ConvertLabel) {
   HingeLossUpdater loss_updater;
   float example_label = 1.0;
-  absl::Status status;
+  Status status;
 
   // A label with value 1.0 should remain intact.
   TF_EXPECT_OK(loss_updater.ConvertLabel(&example_label));
@@ -338,7 +338,7 @@ TEST(PoissonLoss, ConvertLabel) {
   PoissonLossUpdater loss_updater;
   float example_label = -1.0;
   // Negative label should throw an error.
-  absl::Status status = loss_updater.ConvertLabel(&example_label);
+  Status status = loss_updater.ConvertLabel(&example_label);
   EXPECT_FALSE(status.ok());
 }
 

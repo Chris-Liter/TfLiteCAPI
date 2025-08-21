@@ -28,9 +28,4 @@ void InitTensorFlow() {
   ::tensorflow::port::InitMain(kFakeName, &argc, &argv);
   free(fake_name_copy);
 }
-
-void InitTensorFlow(int argc, char** argv) {
-  ::tensorflow::port::InitMain(argv[0], &argc, &argv);
-}
-
 }  // namespace tflite

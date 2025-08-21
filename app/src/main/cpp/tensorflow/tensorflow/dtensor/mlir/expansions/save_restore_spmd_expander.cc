@@ -17,37 +17,32 @@ limitations under the License.
 
 #include <algorithm>
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
-#include <vector>
 
-#include "absl/container/flat_hash_map.h"
-#include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
+#include "absl/strings/str_split.h"
 #include "llvm/ADT/STLExtras.h"
+#include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Support/Casting.h"
+#include "llvm/Support/Debug.h"
 #include "llvm/Support/FormatVariadic.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"  // from @llvm-project
-#include "mlir/IR/Attributes.h"  // from @llvm-project
-#include "mlir/IR/Block.h"  // from @llvm-project
 #include "mlir/IR/Builders.h"  // from @llvm-project
 #include "mlir/IR/BuiltinAttributes.h"  // from @llvm-project
-#include "mlir/IR/BuiltinOps.h"  // from @llvm-project
-#include "mlir/IR/BuiltinTypes.h"  // from @llvm-project
+#include "mlir/IR/Matchers.h"  // from @llvm-project
 #include "mlir/IR/Operation.h"  // from @llvm-project
-#include "mlir/IR/SymbolTable.h"  // from @llvm-project
-#include "mlir/IR/TypeRange.h"  // from @llvm-project
-#include "mlir/IR/Value.h"  // from @llvm-project
-#include "mlir/IR/ValueRange.h"  // from @llvm-project
 #include "mlir/Support/LLVM.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_attributes.h"
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_ops.h"
 #include "tensorflow/compiler/mlir/tensorflow/transforms/collection_ops_util.h"
+#include "tensorflow/core/platform/errors.h"
+#include "tensorflow/core/platform/path.h"
 #include "tensorflow/dtensor/cc/dstatus.h"
+#include "tensorflow/dtensor/cc/dtensor_utils.h"
 #include "tensorflow/dtensor/cc/save_restore_util.h"
 #include "tensorflow/dtensor/cc/tensor_layout.h"
 #include "tensorflow/dtensor/mlir/collectives.h"
@@ -89,7 +84,7 @@ StatusOr<mlir::Value> GetAllCandidateCheckpointPrefixes(
       builder
           .create<mlir::TF::AddOp>(
               prefix.getLoc(),
-              mlir::dyn_cast<mlir::RankedTensorType>(prefix.getType()), prefix,
+              prefix.getType().dyn_cast<mlir::RankedTensorType>(), prefix,
               StringConst(builder, prefix.getLoc(),
                           llvm::SmallVector<llvm::StringRef>(
                               {DeviceSuffix(0, mesh.num_devices())})))
@@ -100,8 +95,7 @@ StatusOr<mlir::Value> GetAllCandidateCheckpointPrefixes(
         builder
             .create<mlir::TF::AddOp>(
                 prefix.getLoc(),
-                mlir::dyn_cast<mlir::RankedTensorType>(prefix.getType()),
-                prefix,
+                prefix.getType().dyn_cast<mlir::RankedTensorType>(), prefix,
                 StringConst(builder, prefix.getLoc(),
                             llvm::SmallVector<llvm::StringRef>(
                                 {DeviceSuffix(device_id, mesh.num_devices())})))
@@ -204,7 +198,7 @@ StatusOr<mlir::TF::CaseOp> ConditionalSave(
   // the extraction failed to just ignore those values and work as if those are
   // empty.
   llvm::SmallVector<std::string, 4> original_shape_and_slices;
-  const absl::Status extraction_status = ExtractConstStringVectorFromValue(
+  const Status extraction_status = ExtractConstStringVectorFromValue(
       original_save.getShapeAndSlices(), original_shape_and_slices);
   if (extraction_status.ok()) {
     for (const std::string& shape_and_slice : original_shape_and_slices) {
@@ -388,6 +382,9 @@ StatusOr<mlir::Operation*> ExpandSaveV2Op(mlir::Operation* op) {
   auto save_v2 = mlir::cast<mlir::TF::SaveV2Op>(op);
 
   mlir::OpBuilder builder(save_v2);
+
+  absl::flat_hash_map<int64_t, std::pair<std::vector<int64_t>, Layout>>
+      tensor_shape_layout_map;
   std::vector<SavingTensorMetadata> metadata;
   for (const auto& it : llvm::enumerate(save_v2.getTensors())) {
     mlir::Value tensor = it.value();
@@ -395,7 +392,7 @@ StatusOr<mlir::Operation*> ExpandSaveV2Op(mlir::Operation* op) {
     // inputs. This is generic regardless whether the inputs are constants or
     // just arguments.
     int index = it.index();
-    TF_ASSIGN_OR_RETURN(std::optional<Layout> layout,
+    TF_ASSIGN_OR_RETURN(absl::optional<Layout> layout,
                         ExtractLayoutFromOperand(tensor));
     if (!layout)
       return absl::InvalidArgumentError(
@@ -531,7 +528,7 @@ StatusOr<mlir::Operation*> ExpandMergeV2Op(mlir::Operation* op) {
       mlir::Value zero_scalar,
       CreateZeroScalarConst(
           builder, location,
-          mlir::cast<mlir::TensorType>(device_id.getType()).getElementType()));
+          device_id.getType().cast<mlir::TensorType>().getElementType()));
 
   mlir::TF::NotEqualOp not_equal = builder.create<mlir::TF::NotEqualOp>(
       location, device_id, zero_scalar,
@@ -699,7 +696,7 @@ StatusOr<mlir::Operation*> ExpandDTensorRestoreV2Op(mlir::Operation* op) {
   std::vector<std::vector<int64_t>> input_shapes;
   input_shapes.reserve(input_shapes_attr.size());
   for (const auto& shape : input_shapes_attr) {
-    mlir::TF::ShapeAttr shape_attr = mlir::cast<mlir::TF::ShapeAttr>(shape);
+    mlir::TF::ShapeAttr shape_attr = shape.cast<mlir::TF::ShapeAttr>();
     if (!shape_attr.hasStaticShape()) {
       return absl::InvalidArgumentError(
           llvm::formatv("DTensorRestoreV2Op requires statically known input "
@@ -720,8 +717,7 @@ StatusOr<mlir::Operation*> ExpandDTensorRestoreV2Op(mlir::Operation* op) {
   input_layouts.reserve(input_layouts_attr.size());
   for (const auto& layout : input_layouts_attr.getValue().vec()) {
     input_layouts.push_back(
-        Layout::FromString(
-            mlir::cast<mlir::StringAttr>(layout).getValue().str())
+        Layout::FromString(layout.cast<mlir::StringAttr>().getValue().str())
             .value());
   }
 
@@ -781,7 +777,7 @@ StatusOr<mlir::Operation*> ExpandRestoreV2Op(mlir::Operation* op) {
     Layout& layout = std::get<2>(it);
     new_types.push_back(mlir::RankedTensorType::get(
         layout.LocalShapeFromGlobalShape(shape),
-        mlir::dyn_cast<mlir::RankedTensorType>(type).getElementType()));
+        type.dyn_cast<mlir::RankedTensorType>().getElementType()));
   }
 
   return ExpandRestoreV2OpHelper(
@@ -913,7 +909,7 @@ SaveRestoreSPMDExpander::ComputeLayoutForward(
       TF_ASSIGN_OR_RETURN(
           Layout layout,
           Layout::FromString(
-              mlir::cast<mlir::StringAttr>(it.value()).getValue().str()));
+              it.value().cast<mlir::StringAttr>().getValue().str()));
       output_layouts[it.index()] = layout;
     }
     return output_layouts;

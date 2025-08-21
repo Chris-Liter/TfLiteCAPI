@@ -31,9 +31,9 @@ namespace tensorflow {
 namespace graph_transforms {
 
 // Declare here, so we don't need a public header.
-absl::Status FoldOldBatchNorms(const GraphDef& input_graph_def,
-                               const TransformFuncContext& context,
-                               GraphDef* output_graph_def);
+Status FoldOldBatchNorms(const GraphDef& input_graph_def,
+                         const TransformFuncContext& context,
+                         GraphDef* output_graph_def);
 
 class FoldOldBatchNormsTest : public ::testing::Test {
  protected:

@@ -94,7 +94,7 @@ LogicalResult ModifyIONodesPass::SetupInputOutputTypesIfNull(
 LogicalResult ModifyIONodesPass::ModifyInputNodes(
     func::FuncOp func, llvm::SmallVectorImpl<Type>& new_input_types,
     OpBuilder builder) {
-  if (mlir::isa<FloatType>(input_type)) {
+  if (input_type.isa<FloatType>()) {
     return success();
   }
 
@@ -151,7 +151,7 @@ LogicalResult ModifyIONodesPass::ModifyOutputNodes(
   auto* terminator = block.getTerminator();
   builder.setInsertionPoint(terminator);
 
-  if (mlir::isa<FloatType>(output_type)) {
+  if (output_type.isa<FloatType>()) {
     return success();
   }
 

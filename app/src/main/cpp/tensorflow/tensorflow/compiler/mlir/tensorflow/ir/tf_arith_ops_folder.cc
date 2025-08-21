@@ -19,7 +19,6 @@ limitations under the License.
 #include "mlir/IR/Attributes.h"  // from @llvm-project
 #include "mlir/IR/BuiltinTypes.h"  // from @llvm-project
 #include "mlir/IR/Matchers.h"  // from @llvm-project
-#include "mlir/Support/LLVM.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_types.h"
 
 namespace mlir {
@@ -28,12 +27,12 @@ namespace TF {
 // Verifies an reduction op's `input` and reduction `dims`.
 LogicalResult VerifyReductionInputAndDims(Value input, Value dims,
                                           Location loc) {
-  auto dims_type = mlir::dyn_cast<RankedTensorType>(dims.getType());
+  auto dims_type = dims.getType().dyn_cast<RankedTensorType>();
   if (!dims_type) return success();
   if (dims_type.getRank() > 1)
     return emitError(loc, "dimensions can only be 0D or 1D tensor");
 
-  auto input_type = mlir::dyn_cast<RankedTensorType>(input.getType());
+  auto input_type = input.getType().dyn_cast<RankedTensorType>();
   if (!input_type) return success();
   int64_t rank = input_type.getRank();
 

@@ -28,9 +28,8 @@ namespace tensorflow {
 namespace grappler {
 namespace {
 
-absl::Status OptimizeWithEnableGradientDescent(const GrapplerItem &item,
-                                               GraphDef *output,
-                                               bool autotune) {
+Status OptimizeWithEnableGradientDescent(const GrapplerItem &item,
+                                         GraphDef *output, bool autotune) {
   EnableGradientDescent optimizer;
   RewriterConfig_CustomGraphOptimizer config;
   if (autotune) {

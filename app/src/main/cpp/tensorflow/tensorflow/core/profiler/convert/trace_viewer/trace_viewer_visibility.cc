@@ -16,9 +16,7 @@ limitations under the License.
 
 #include <cstdint>
 
-#include "absl/log/check.h"
-#include "xla/tsl/profiler/utils/timespan.h"
-#include "tensorflow/core/profiler/protobuf/trace_events.pb.h"
+#include "tensorflow/tsl/profiler/utils/timespan.h"
 
 namespace tensorflow {
 namespace profiler {

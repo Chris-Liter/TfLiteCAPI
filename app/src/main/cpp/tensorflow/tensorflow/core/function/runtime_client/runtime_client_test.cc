@@ -46,7 +46,7 @@ namespace {
 EagerContextPtr TestingEagerCtx() {
   SessionOptions opts;
   std::vector<std::unique_ptr<Device>> devices;
-  absl::Status&& device_init_status = DeviceFactory::AddDevices(
+  Status&& device_init_status = DeviceFactory::AddDevices(
       opts, "/job:localhost/replica:0/task:0", &devices);
   CHECK(device_init_status.ok());  // Crash OK
 
@@ -62,7 +62,7 @@ EagerContextPtr TestingEagerCtx() {
 }
 
 int IntValue(ImmediateExecutionTensorHandle& h) {
-  absl::Status status;
+  Status status;
   AbstractTensorPtr t(h.Resolve(&status));
   DCHECK(status.ok());
   switch (h.DataType()) {
@@ -208,7 +208,7 @@ TEST(GlobalContext, Basic) {
   Runtime rt(GlobalEagerContext());
   TF_ASSERT_OK(rt.CreateFunction(MakeNullaryFunction()));
 
-  absl::StatusOr<ReturnValues> rets = rt.CallFunction("NullaryFunction", {});
+  StatusOr<ReturnValues> rets = rt.CallFunction("NullaryFunction", {});
   TF_ASSERT_OK(rets.status());
   ASSERT_EQ(rets->size(), 1);
   ASSERT_EQ(rets->at(0)->DataType(), DT_INT32);
@@ -220,7 +220,7 @@ TEST(CreateTest, Call) {
   Runtime rt(*ctx);
   TF_ASSERT_OK(rt.CreateFunction(MakeNullaryFunction()));
 
-  absl::StatusOr<ReturnValues> rets = rt.CallFunction("NullaryFunction", {});
+  StatusOr<ReturnValues> rets = rt.CallFunction("NullaryFunction", {});
   TF_ASSERT_OK(rets.status());
   ASSERT_EQ(rets->size(), 1);
   ASSERT_EQ(rets->at(0)->DataType(), DT_INT32);
@@ -232,7 +232,7 @@ TEST(CreateTest, GetRoundtrip) {
   Runtime rt(*ctx);
   TF_ASSERT_OK(rt.CreateFunction(MakeNullaryFunction()));
 
-  absl::StatusOr<FunctionDef> fdef_ret = rt.GetFunctionProto("NullaryFunction");
+  StatusOr<FunctionDef> fdef_ret = rt.GetFunctionProto("NullaryFunction");
   TF_ASSERT_OK(fdef_ret.status());
 
   FunctionDef fdef = *fdef_ret;
@@ -240,7 +240,7 @@ TEST(CreateTest, GetRoundtrip) {
 
   TF_ASSERT_OK(rt.CreateFunction(fdef));
 
-  absl::StatusOr<ReturnValues> rets = rt.CallFunction("SecondFunction", {});
+  StatusOr<ReturnValues> rets = rt.CallFunction("SecondFunction", {});
   TF_ASSERT_OK(rets.status());
   ASSERT_EQ(rets->size(), 1);
   ASSERT_EQ(rets->at(0)->DataType(), DT_INT32);
@@ -276,7 +276,7 @@ TEST(CreateTest, MlirFromGraphDef) {
       reinterpret_cast<OpaqueTfgGraphFuncOp*>(&fop);
   TF_ASSERT_OK(rt.CreateFunction(opaque_fop));
 
-  absl::StatusOr<ReturnValues> rets = rt.CallFunction("NullaryFunction", {});
+  StatusOr<ReturnValues> rets = rt.CallFunction("NullaryFunction", {});
   TF_ASSERT_OK(rets.status());
   ASSERT_EQ(rets->size(), 1);
   ASSERT_EQ(rets->at(0)->DataType(), DT_INT32);
@@ -288,7 +288,7 @@ TEST(CallTest, Nullary) {
   Runtime rt(*ctx);
   TF_ASSERT_OK(rt.CreateFunction(MakeNullaryFunction()));
 
-  absl::StatusOr<ReturnValues> rets = rt.CallFunction("NullaryFunction", {});
+  StatusOr<ReturnValues> rets = rt.CallFunction("NullaryFunction", {});
   TF_ASSERT_OK(rets.status());
   ASSERT_EQ(rets->size(), 1);
   ASSERT_EQ(rets->at(0)->DataType(), DT_INT32);
@@ -301,8 +301,7 @@ TEST(CallTest, Unary) {
   TF_ASSERT_OK(rt.CreateFunction(MakeUnaryFunction()));
 
   auto x = IntScalarTensor(*ctx, 1);
-  absl::StatusOr<ReturnValues> rets =
-      rt.CallFunction("UnaryFunction", {x.get()});
+  StatusOr<ReturnValues> rets = rt.CallFunction("UnaryFunction", {x.get()});
   TF_ASSERT_OK(rets.status());
   ASSERT_EQ(rets->size(), 1);
   ASSERT_EQ(rets->at(0)->DataType(), DT_INT32);
@@ -316,7 +315,7 @@ TEST(CallTest, Binary) {
 
   auto x = IntScalarTensor(*ctx, 1);
   auto y = IntScalarTensor(*ctx, 1);
-  absl::StatusOr<ReturnValues> rets =
+  StatusOr<ReturnValues> rets =
       rt.CallFunction("BinaryFunction", {x.get(), y.get()});
   TF_ASSERT_OK(rets.status());
   ASSERT_EQ(rets->size(), 1);
@@ -334,7 +333,7 @@ TEST(TransformTest, TestPassOnBinaryFunction) {
 
   auto x = IntScalarTensor(*ctx, 2);
   auto y = IntScalarTensor(*ctx, 3);
-  absl::StatusOr<ReturnValues> rets =
+  StatusOr<ReturnValues> rets =
       rt.CallFunction("BinaryFunction", {x.get(), y.get()});
   TF_ASSERT_OK(rets.status());
   ASSERT_EQ(rets->size(), 1);
@@ -353,7 +352,7 @@ TEST(TransformTest, TestPassOnMultiplyFunction) {
 
   auto x = IntScalarTensor(*ctx, 2);
   auto y = IntScalarTensor(*ctx, 3);
-  absl::StatusOr<ReturnValues> rets =
+  StatusOr<ReturnValues> rets =
       rt.CallFunction("MultiplyFunction", {x.get(), y.get()});
   TF_ASSERT_OK(rets.status());
   ASSERT_EQ(rets->size(), 1);
@@ -373,7 +372,7 @@ TEST(TransformTest, TestMixedPassesOnBinaryFunction) {
 
   auto x = IntScalarTensor(*ctx, 2);
   auto y = IntScalarTensor(*ctx, 3);
-  absl::StatusOr<ReturnValues> rets =
+  StatusOr<ReturnValues> rets =
       rt.CallFunction("BinaryFunction", {x.get(), y.get()});
   TF_ASSERT_OK(rets.status());
   ASSERT_EQ(rets->size(), 1);

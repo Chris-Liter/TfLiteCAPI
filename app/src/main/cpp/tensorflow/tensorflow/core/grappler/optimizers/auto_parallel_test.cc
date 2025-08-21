@@ -50,7 +50,7 @@ TEST_F(AutoParallelTest, SimpleParallel) {
 
   AutoParallel parallel(2);
   GraphDef output;
-  absl::Status status = parallel.Optimize(nullptr, item, &output);
+  Status status = parallel.Optimize(nullptr, item, &output);
   TF_EXPECT_OK(status);
   EXPECT_EQ(21, output.node_size());
 
@@ -146,7 +146,7 @@ TEST_F(AutoParallelTest, SimpleParallelNoDequeue) {
 
   AutoParallel parallel(2);
   GraphDef output;
-  absl::Status status = parallel.Optimize(nullptr, item, &output);
+  Status status = parallel.Optimize(nullptr, item, &output);
   TF_EXPECT_OK(status);
 }
 

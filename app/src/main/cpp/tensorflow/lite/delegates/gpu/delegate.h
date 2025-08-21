@@ -18,8 +18,6 @@ limitations under the License.
 
 #include <stdint.h>
 
-#include <cstddef>
-
 #include "tensorflow/lite/core/c/common.h"
 #include "tensorflow/lite/delegates/gpu/delegate_options.h"
 
@@ -47,12 +45,6 @@ TFL_CAPI_EXPORT TfLiteDelegate* TfLiteGpuDelegateV2CreateAsync(
 
 // Destroys a delegate created with `TfLiteGpuDelegateV2Create` call.
 TFL_CAPI_EXPORT void TfLiteGpuDelegateV2Delete(TfLiteDelegate* delegate);
-
-TFL_CAPI_EXPORT TfLiteDelegate* tflite_plugin_create_delegate(
-    const char* const* options_keys, const char* const* options_values,
-    size_t num_options, void (*report_error)(const char*));
-
-TFL_CAPI_EXPORT void tflite_plugin_destroy_delegate(TfLiteDelegate* delegate);
 
 #ifdef __cplusplus
 }

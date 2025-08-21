@@ -118,9 +118,9 @@ void GetOpDefNamesAndDefaults(const tensorflow::OpDef& op_def,
 PythonAPIInfo::PythonAPIInfo(const std::string& api_name)
     : api_name_(InternPyString(api_name)) {}
 
-absl::Status PythonAPIInfo::Initialize(const OpDef& op_def,
-                                       const std::vector<string> param_names,
-                                       PyObject* defaults_tuple) {
+Status PythonAPIInfo::Initialize(const OpDef& op_def,
+                                 const std::vector<string> param_names,
+                                 PyObject* defaults_tuple) {
   // Intern the parameter names.
   param_names_.reserve(param_names.size());
   for (const auto& param_name : param_names) {
@@ -167,10 +167,10 @@ absl::Status PythonAPIInfo::Initialize(const OpDef& op_def,
       },
       &inputs_with_number_attrs_);
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status PythonAPIInfo::CheckParamNames() const {
+Status PythonAPIInfo::CheckParamNames() const {
   std::vector<bool> param_found(param_names_.size());
   for (const auto& attr : attributes_) {
     if (attr.index != -1) {
@@ -190,11 +190,10 @@ absl::Status PythonAPIInfo::CheckParamNames() const {
           api_name_, ": missing specification for parameter ", param_names_[i]);
     }
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status PythonAPIInfo::InitializeFromRegisteredOp(
-    const std::string& op_name) {
+Status PythonAPIInfo::InitializeFromRegisteredOp(const std::string& op_name) {
   const tensorflow::OpDef* op_def = nullptr;
   TF_RETURN_IF_ERROR(
       tensorflow::OpRegistry::Global()->LookUpOpDef(op_name, &op_def));
@@ -202,10 +201,10 @@ absl::Status PythonAPIInfo::InitializeFromRegisteredOp(
   Safe_PyObjectPtr defaults_tuple;
   GetOpDefNamesAndDefaults(*op_def, param_names, defaults_tuple);
   TF_RETURN_IF_ERROR(Initialize(*op_def, param_names, defaults_tuple.get()));
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status PythonAPIInfo::InitializeFromParamSpecs(
+Status PythonAPIInfo::InitializeFromParamSpecs(
     const std::map<std::string, std::string>& input_specs,
     const std::map<std::string, std::string>& attr_specs,
     const std::vector<string> param_names, PyObject* defaults_tuple) {
@@ -224,10 +223,10 @@ absl::Status PythonAPIInfo::InitializeFromParamSpecs(
   TF_RETURN_IF_ERROR(
       Initialize(op_reg_data.op_def, param_names, defaults_tuple));
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status PythonAPIInfo::InitializeAttribute(
+Status PythonAPIInfo::InitializeAttribute(
     const OpDef::AttrDef& attr_def,
     const std::map<std::string, int>& param_name_to_index) {
   if (attr_def.name() == "name") {
@@ -294,10 +293,10 @@ absl::Status PythonAPIInfo::InitializeAttribute(
     }
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status PythonAPIInfo::InitializeInput(
+Status PythonAPIInfo::InitializeInput(
     const OpDef::ArgDef& arg_def,
     const std::map<std::string, ParamIndex>& param_name_to_index) {
   if (arg_def.name() == "name") {
@@ -361,7 +360,7 @@ absl::Status PythonAPIInfo::InitializeInput(
     input->tensor_list_params.push_back(param_index);
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 PythonAPIInfo::InputsWithTypeAttr* PythonAPIInfo::FindInputsWithTypeAttr(

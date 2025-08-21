@@ -15,11 +15,9 @@ limitations under the License.
 
 #include "tensorflow/core/common_runtime/single_threaded_cpu_device.h"
 
-#include <memory>
-
 #define EIGEN_USE_THREADS
 
-#include "unsupported/Eigen/CXX11/Tensor"  // from @eigen_archive
+#include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 #include "tensorflow/core/common_runtime/device.h"
 #include "tensorflow/core/framework/allocator.h"
 #include "tensorflow/core/framework/tensor.pb.h"
@@ -49,26 +47,26 @@ class SingleThreadedCpuDevice : public Device {
                                                   DeviceLocality())) {
     eigen_worker_threads_.num_threads = kNumThreads;
     eigen_worker_threads_.workers = GraphRunnerThreadPool();
-    eigen_device_ = std::make_unique<Eigen::ThreadPoolDevice>(
+    eigen_device_.reset(new Eigen::ThreadPoolDevice(
         eigen_worker_threads_.workers->AsEigenThreadPool(),
-        eigen_worker_threads_.num_threads);
+        eigen_worker_threads_.num_threads));
     set_tensorflow_cpu_worker_threads(&eigen_worker_threads_);
     set_eigen_cpu_device(eigen_device_.get());
   }
 
   ~SingleThreadedCpuDevice() override { eigen_device_.reset(); }
 
-  absl::Status Sync() override { return absl::OkStatus(); }
+  Status Sync() override { return OkStatus(); }
 
-  absl::Status MakeTensorFromProto(const TensorProto& tensor_proto,
-                                   const AllocatorAttributes alloc_attrs,
-                                   Tensor* tensor) override {
+  Status MakeTensorFromProto(const TensorProto& tensor_proto,
+                             const AllocatorAttributes alloc_attrs,
+                             Tensor* tensor) override {
     Tensor parsed(tensor_proto.dtype());
     if (!parsed.FromProto(cpu_allocator(), tensor_proto)) {
       return errors::InvalidArgument("Cannot parse tensor from tensor_proto.");
     }
     *tensor = parsed;
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   void CopyTensorInSameDevice(const Tensor* input_tensor, Tensor* output_tensor,
@@ -81,7 +79,7 @@ class SingleThreadedCpuDevice : public Device {
       return;
     }
     tensor::DeepCopy(*input_tensor, output_tensor);
-    done(absl::OkStatus());
+    done(OkStatus());
   }
 
   Allocator* GetAllocator(AllocatorAttributes attr) override {

@@ -14,12 +14,10 @@ limitations under the License.
 ==============================================================================*/
 #include <vector>
 
-#include "absl/status/status.h"
-#include "tensorflow/core/platform/logging.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/lite/toco/graph_transformations/graph_transformations.h"
 #include "tensorflow/lite/toco/model.h"
 #include "tensorflow/lite/toco/tooling_util.h"
+#include "tensorflow/core/platform/logging.h"
 
 namespace toco {
 
@@ -107,7 +105,7 @@ inline void Tile(const Array& input_array, const Array& multiples_array,
   auto it = model->operators.begin() + op_index;
   const auto* base_op = it->get();
   if (base_op->type != OperatorType::kTile) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   const auto* op = static_cast<const TensorFlowTileOperator*>(base_op);
 
@@ -116,17 +114,17 @@ inline void Tile(const Array& input_array, const Array& multiples_array,
   auto& output_array = model->GetArray(op->outputs[0]);
   if (output_array.data_type == ArrayDataType::kNone) {
     // Yield until the output type has been set by PropagateArrayDataTypes.
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   if (!output_array.has_shape()) {
     // Yield until the output shape has been set by PropagateFixedShapes.
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   // We require constant inputs.
   if (!IsConstantParameterArray(*model, op->inputs[0]) ||
       !IsConstantParameterArray(*model, op->inputs[1])) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   const Array& input_array = model->GetArray(op->inputs[0]);
   const Array& multiples_array = model->GetArray(op->inputs[1]);
@@ -165,7 +163,7 @@ inline void Tile(const Array& input_array, const Array& multiples_array,
 
   DeleteOpAndArrays(model, op);
   *modified = true;
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 }  // namespace toco

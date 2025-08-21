@@ -96,22 +96,21 @@ std::vector<std::reference_wrapper<const FullTypeDef>> input_types(
   return input_types;
 }
 
-absl::Status update_inferred_type(Node* target, const FullTypeDef& t,
-                                  bool& updated) {
+Status update_inferred_type(Node* target, const FullTypeDef& t, bool& updated) {
   if (t.type_id() == TFT_UNSET) {
     VLOG(3) << "  " << target->name() << " no inferred type";
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   if (target->def().has_experimental_type()) {
     const auto existing = target->def().experimental_type();
     if (full_type::IsSubtype(existing, t)) {
       VLOG(3) << "  " << target->name() << " no new type info";
-      return absl::OkStatus();
+      return OkStatus();
     } else if (!full_type::IsSubtype(t, existing)) {
       // The only allowable type mismatches are those which would further
       // specialize the existing type.
-      return absl::Status(
+      return Status(
           absl::StatusCode::kInvalidArgument,
           absl::StrCat("type mismatch for node '", target->name(),
                        "': expected a subtype of:\n", existing.DebugString(),
@@ -122,22 +121,22 @@ absl::Status update_inferred_type(Node* target, const FullTypeDef& t,
   *(target->mutable_def()->mutable_experimental_type()) = t;
   updated = true;
   VLOG(3) << "  " << target->name() << " updated";
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::StatusOr<FullTypeDef> run_inference(const string& fn_name,
-                                          const TypeRefVector& in_types) {
+StatusOr<FullTypeDef> run_inference(const string& fn_name,
+                                    const TypeRefVector& in_types) {
   // TODO(b/224776031): Things remaining to implement:
   //  * look up function by name
   //  * execute pass on its graph
   //  * get retnode types
   //  * return them here
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace
 
-absl::Status TypeInferencePass::Run(
+Status TypeInferencePass::Run(
     const GraphOptimizationPassOptions& options) {
   VLOG(1) << "TypeInferencePass::Run";
 
@@ -175,7 +174,7 @@ absl::Status TypeInferencePass::Run(
 
   auto infer_forward = [&forward](Node* n, bool& updated) {
     if (!forward.contains(n->id())) {
-      return absl::OkStatus();
+      return OkStatus();
     }
     VLOG(4) << "  " << n->name() << " has forward function";
 
@@ -190,12 +189,12 @@ absl::Status TypeInferencePass::Run(
         update_inferred_type(n, *infer_ret, updated),
         "while updating its output type.");
 
-    return absl::OkStatus();
+    return OkStatus();
   };
 
   auto infer_reverse = [&reverse](Node* n, bool& updated) {
     if (!reverse.contains(n->id())) {
-      return absl::OkStatus();
+      return OkStatus();
     }
     VLOG(4) << "  " << n->name() << " has reverse function";
 
@@ -219,7 +218,7 @@ absl::Status TypeInferencePass::Run(
         absl::StrCat("while updating its output type inferred from '",
                      n->name(), ","));
 
-    return absl::OkStatus();
+    return OkStatus();
   };
 
   std::list<int> queue;
@@ -329,10 +328,10 @@ absl::Status TypeInferencePass::Run(
     DumpGraphToFile("forward_type_inference_after", *g, flib_def);
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status WeakTypeInferencePass::Run(
+Status WeakTypeInferencePass::Run(
     const GraphOptimizationPassOptions& options) {
   TypeInferencePass pass;
   const auto& pass_status = pass.Run(options);
@@ -342,7 +341,7 @@ absl::Status WeakTypeInferencePass::Run(
            "invalid graph that escaped type checking. Error message: "
         << pass_status.ToString();
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Note: This needs to run last because Placer needs it.

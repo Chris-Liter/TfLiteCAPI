@@ -34,7 +34,7 @@ const char kXlaIsPlaceholderForTailOcAttrName[] =
 const char kXlaOriginalOutsideCompilationNodeName[] =
     "_xla_original_oc_node_name";
 
-absl::Status SetDeviceOrdinalAttributeForNode(Node* node, int device_ordinal) {
+Status SetDeviceOrdinalAttributeForNode(Node* node, int device_ordinal) {
   if (!HasNodeAttr(node->def(), kXlaHasHostTransferAttrName)) {
     return errors::InvalidArgument("Node ", node->DebugString(),
                                    " does not have attribute ",
@@ -74,7 +74,7 @@ absl::Status SetDeviceOrdinalAttributeForNode(Node* node, int device_ordinal) {
     return errors::Internal("Unknown node type to set 'device_ordinal': ",
                             node->DebugString());
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 std::set<std::string> CalculateTokenInputsForOutputToken(const Graph& g) {
@@ -122,9 +122,8 @@ bool HasSideEffectingNodes(const Graph& g) {
   return false;
 }
 
-absl::Status ParseHostComputeCoreList(
-    absl::Span<const string> list_from_attr,
-    std::map<string, int>* host_compute_core) {
+Status ParseHostComputeCoreList(absl::Span<const string> list_from_attr,
+                                std::map<string, int>* host_compute_core) {
   for (const auto& hc_core : list_from_attr) {
     std::vector<string> parts = str_util::Split(hc_core, ":");
     if (parts.size() != 2) {
@@ -144,7 +143,7 @@ absl::Status ParseHostComputeCoreList(
     }
     (*host_compute_core)[parts[0]] = core;
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace tensorflow

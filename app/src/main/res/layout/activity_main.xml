@@ -15,6 +15,8 @@
 
     <androidx.camera.view.PreviewView
         android:id="@+id/camara"
+        tools:ignore="MissingClass"
+
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         app:scaleType="fillCenter">
@@ -40,12 +42,18 @@
         tools:ignore="MissingConstraints" android:translationY="30dp"/>
     <Button
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Numeros" android:id="@+id/numeros" android:layout_margin="20dp"/>
-    <ToggleButton android:layout_margin="20dp" app:layout_constraintStart_toEndOf="@id/latencia" android:id="@+id/cambio"
+        android:layout_height="wrap_content" android:visibility="invisible"
+        android:text="Numeros" android:id="@+id/numeros" android:layout_margin="20dp"
+        tools:ignore="MissingConstraints" />
+    <ToggleButton android:layout_margin="20dp" app:layout_constraintStart_toEndOf="@id/latencia"
+        android:id="@+id/cambio" android:visibility="invisible"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         tools:ignore="MissingConstraints" />
 
+    <ToggleButton android:id="@+id/CpuOrGpu"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" app:layout_constraintLeft_toRightOf="@+id/latencia"
+        tools:ignore="MissingConstraints" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

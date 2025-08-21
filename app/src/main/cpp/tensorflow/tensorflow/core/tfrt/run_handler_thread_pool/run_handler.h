@@ -18,7 +18,6 @@ limitations under the License.
 
 #include <atomic>
 #include <cstddef>
-#include <cstdint>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -26,8 +25,6 @@ limitations under the License.
 #include <utility>
 #include <vector>
 
-#include "absl/log/check.h"
-#include "absl/log/log.h"
 #include "tensorflow/core/lib/core/threadpool.h"
 #include "tensorflow/core/lib/histogram/histogram.h"
 #include "tensorflow/core/platform/context.h"

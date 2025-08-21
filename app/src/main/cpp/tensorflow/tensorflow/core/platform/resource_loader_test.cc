@@ -30,7 +30,7 @@ string DataDependencyPath() {
 
 TEST(ResourceLoaderTest, FindsAndOpensFile) {
   string filepath = GetDataDependencyFilepath(DataDependencyPath());
-  absl::Status s = Env::Default()->FileExists(filepath);
+  Status s = Env::Default()->FileExists(filepath);
   EXPECT_TRUE(s.ok()) << "No file found at this location: " << filepath;
 }
 

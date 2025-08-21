@@ -53,7 +53,7 @@ llvm::Expected<Device*> GetTfDevice(const tfrt::ExecutionContext& exec_ctx,
     return eager_context_expected.takeError();
   }
   Device* tf_device;
-  absl::Status s = eager_context_expected.get()->FindDeviceFromName(
+  Status s = eager_context_expected.get()->FindDeviceFromName(
       device.name().data(), &tf_device);
   if (!s.ok()) {
     return tfrt::MakeStringError(s.message());

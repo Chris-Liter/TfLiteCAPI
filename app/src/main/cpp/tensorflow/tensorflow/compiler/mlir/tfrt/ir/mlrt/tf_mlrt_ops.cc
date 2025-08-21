@@ -19,7 +19,6 @@ limitations under the License.
 #include "mlir/IR/DialectImplementation.h"  // from @llvm-project
 #include "mlir/IR/OpDefinition.h"  // from @llvm-project
 #include "mlir/IR/TypeUtilities.h"  // from @llvm-project
-#include "mlir/Support/LLVM.h"  // from @llvm-project
 #include "mlir/Transforms/InliningUtils.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_ops.h"
 #include "tensorflow/compiler/mlir/tfrt/ir/mlrt/mlrt_dialect.h"
@@ -75,7 +74,7 @@ mlir::Type TensorflowMlrtDialect::parseType(
 // Print a type registered to this dialect.
 void TensorflowMlrtDialect::printType(mlir::Type type,
                                       mlir::DialectAsmPrinter &os) const {
-  if (mlir::isa<TFTensorType>(type)) {
+  if (type.isa<TFTensorType>()) {
     os << "tensor";
     return;
   }

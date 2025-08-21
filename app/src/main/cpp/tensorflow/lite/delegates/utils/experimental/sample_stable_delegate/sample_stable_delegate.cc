@@ -64,7 +64,7 @@ class SampleStableDelegateKernel : public SimpleOpaqueDelegateKernelInterface {
       const int node_index = params->nodes_to_replace->data[i];
 
       TfLiteOpaqueNode* delegated_node = nullptr;
-      TfLiteOperator* delegated_node_registration = nullptr;
+      TfLiteRegistrationExternal* delegated_node_registration = nullptr;
       TfLiteOpaqueContextGetNodeAndRegistration(
           context, node_index, &delegated_node, &delegated_node_registration);
 
@@ -82,7 +82,7 @@ class SampleStableDelegateKernel : public SimpleOpaqueDelegateKernelInterface {
       node_output_tensors_set_.insert(output_tensor);
 
       builtin_code_[i] =
-          TfLiteOperatorGetBuiltInCode(delegated_node_registration);
+          TfLiteRegistrationExternalGetBuiltInCode(delegated_node_registration);
     }
 
     // Determine which tensors are external (the TFLite runtime takes care
@@ -176,10 +176,10 @@ int helpers::CalculateNumElements(const TfLiteOpaqueTensor* opaque_tensor) {
 }
 
 bool SampleStableDelegate::IsNodeSupportedByDelegate(
-    const TfLiteOperator* registration_external, const TfLiteOpaqueNode* node,
-    TfLiteOpaqueContext* context) const {
+    const TfLiteRegistrationExternal* registration_external,
+    const TfLiteOpaqueNode* node, TfLiteOpaqueContext* context) const {
   TfLiteBuiltinOperator builtin_operator =
-      TfLiteOperatorGetBuiltInCode(registration_external);
+      TfLiteRegistrationExternalGetBuiltInCode(registration_external);
   void* builtin_data = TfLiteOpaqueNodeGetBuiltinData(node);
   if (builtin_operator == kTfLiteBuiltinAdd) {
     TfLiteAddParams* params = reinterpret_cast<TfLiteAddParams*>(builtin_data);

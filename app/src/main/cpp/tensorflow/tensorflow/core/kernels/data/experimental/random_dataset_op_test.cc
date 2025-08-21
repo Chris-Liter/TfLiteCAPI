@@ -94,19 +94,20 @@ class RandomDatasetParams : public DatasetParams {
 
   ResourceHandle CreateDummyResourceHandle() { return ResourceHandle(); }
 
-  std::vector<Tensor> GetInputTensors() const override {
+  virtual std::vector<Tensor> GetInputTensors() const override {
     return {seed_, seed2_, seed_generator_resource_};
   }
 
-  absl::Status GetInputNames(std::vector<string>* input_names) const override {
+  virtual Status GetInputNames(
+      std::vector<string>* input_names) const override {
     *input_names = {RandomDatasetOp::kSeed, RandomDatasetOp::kSeed2};
     if (op_version_ == 2) {
       input_names->emplace_back("seed_generator");
     }
-    return absl::OkStatus();
+    return OkStatus();
   }
 
-  absl::Status GetAttributes(AttributeVector* attributes) const override {
+  virtual Status GetAttributes(AttributeVector* attributes) const override {
     *attributes = {{"output_types", output_dtypes_},
                    {"output_shapes", output_shapes_},
                    {"metadata", ""}};
@@ -114,10 +115,12 @@ class RandomDatasetParams : public DatasetParams {
       attributes->emplace_back("rerandomize_each_iteration",
                                rerandomize_each_iteration_);
     }
-    return absl::OkStatus();
+    return OkStatus();
   }
 
-  string dataset_type() const override { return RandomDatasetOp::kDatasetType; }
+  virtual string dataset_type() const override {
+    return RandomDatasetOp::kDatasetType;
+  }
 
  private:
   Tensor seed_;

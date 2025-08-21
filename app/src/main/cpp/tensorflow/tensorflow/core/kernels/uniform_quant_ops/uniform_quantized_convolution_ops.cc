@@ -270,7 +270,7 @@ void ConvWithAccFunctionAndOutFunction(
 // Quantized Conv on per-tensor quantized padded and dilated transposed lhs and
 // per-tensor quantized transposed rhs.
 template <typename Tin, typename Tout>
-absl::Status EvalLhsPerTensorAndRhsPerTensorQuantizedConv(
+Status EvalLhsPerTensorAndRhsPerTensorQuantizedConv(
     const Tensor& lhs, const Tensor& rhs,
     const UniformQuantizedConvolutionParams& convolution_params,
     const float lhs_scale, const int32_t lhs_zero_point, const float rhs_scale,
@@ -302,13 +302,13 @@ absl::Status EvalLhsPerTensorAndRhsPerTensorQuantizedConv(
             /*input_zero_point=*/0, output_zero_point,
             output_quantization_min_val, output_quantization_max_val);
       });
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Quantized Conv on per-tensor quantized padded and dilated transposed lhs and
 // per-channel quantized transposed rhs.
 template <typename Tin, typename Tout>
-absl::Status EvalLhsPerTensorAndRhsPerChannelQuantizedConv(
+Status EvalLhsPerTensorAndRhsPerChannelQuantizedConv(
     OpKernelContext* context, const Tensor& lhs, const Tensor& rhs,
     const UniformQuantizedConvolutionParams& convolution_params,
     const float lhs_scale, const int32_t lhs_zero_point,
@@ -383,7 +383,7 @@ absl::Status EvalLhsPerTensorAndRhsPerChannelQuantizedConv(
                                                             : out_feature_idx],
             output_quantization_min_val, output_quantization_max_val);
       });
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Quantized Conv on per-batch quantized padded and dilated transposed lhs and
@@ -449,7 +449,7 @@ void EvalLhsPerBatchAndRhsPerChannelQuantizedConv(
 // Given quantized `lhs` and quantized `rhs`, performs quantized convolution and
 // writes to `out`. Assumes that `out` is already allocated with correct size.
 template <typename Tin, typename Tout>
-absl::Status EvalQuantizedConv(
+Status EvalQuantizedConv(
     OpKernelContext* context, const Tensor& lhs, const Tensor& rhs,
     const UniformQuantizedConvolutionParams& convolution_params,
     const Tensor& lhs_scales, const Tensor& lhs_zero_points,
@@ -509,7 +509,7 @@ absl::Status EvalQuantizedConv(
   // Transpose transposed_out back to out.
   const auto& out_perm_back = OutBackTransposePerm(out_perm);
   Transpose<Tout>(out_transposed, out_perm_back, out);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Given float `lhs` and quantized `rhs`, performs per-batch dynamic range
@@ -519,7 +519,7 @@ absl::Status EvalQuantizedConv(
 // For more details on `lhs` quantization policy, refer to the comment of class
 // UniformQuantizedConvolutionHybridOp below.
 template <typename Trhs>
-absl::Status EvalHybridConv(
+Status EvalHybridConv(
     OpKernelContext* context, const Tensor& lhs, const Tensor& rhs,
     const UniformQuantizedConvolutionParams& convolution_params,
     const Tensor& rhs_scales, const Tensor& rhs_zero_points, Tensor& out) {
@@ -593,7 +593,7 @@ absl::Status EvalHybridConv(
   // Transpose transposed_out back to out.
   const auto& out_perm_back = OutBackTransposePerm(out_perm);
   Transpose<float>(out_transposed, out_perm_back, out);
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace

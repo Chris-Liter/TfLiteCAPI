@@ -16,7 +16,6 @@ limitations under the License.
 #ifndef TENSORFLOW_COMPILER_MLIR_TENSORFLOW_TRANSLATE_IMPORT_MODEL_H_
 #define TENSORFLOW_COMPILER_MLIR_TENSORFLOW_TRANSLATE_IMPORT_MODEL_H_
 
-#include <cstddef>
 #include <string>
 
 #include "absl/strings/string_view.h"
@@ -40,20 +39,34 @@ inline constexpr absl::string_view kImportModelDefaultGraphFuncName = "main";
 
 // Given a GraphDef, returns a MLIR module containing the graph, expressed with
 // tf_executor dialect.
-ABSL_DEPRECATED("Use tensorflow::tf2xla::v2::ConvertGraphToTfExecutor instead.")
-absl::StatusOr<mlir::OwningOpRef<mlir::ModuleOp>> ConvertGraphdefToMlir(
+tsl::StatusOr<mlir::OwningOpRef<mlir::ModuleOp>> ConvertGraphdefToMlir(
     const GraphDef& graphdef, const GraphDebugInfo& debug_info,
-    const GraphImportConfig& specs, mlir::MLIRContext* context);
+    const GraphImportConfig& specs, mlir::MLIRContext* context,
+    bool add_default_attributes = true);
+
+// Given a Graph, returns a MLIR module containing the graph, expressed with
+// tf_executor dialect.
+tsl::StatusOr<mlir::OwningOpRef<mlir::ModuleOp>> ConvertGraphToMlir(
+    const Graph& graph, const GraphDebugInfo& debug_info,
+    const FunctionLibraryDefinition& flib_def, const GraphImportConfig& specs,
+    mlir::MLIRContext* context);
+
+// [Experimental]
+// Given a Function, returns a MLIR module containing the graph, expressed with
+// tf_executor dialect.
+tsl::StatusOr<mlir::OwningOpRef<mlir::ModuleOp>> ConvertFunctionToMlir(
+    const FunctionBody* fbody, const FunctionLibraryDefinition& flib_def,
+    mlir::MLIRContext* context);
 
 // Given a SavedModel, returns a MLIR module containing the functions, expressed
 // with tf_executor dialect.
-absl::StatusOr<mlir::OwningOpRef<mlir::ModuleOp>> ConvertSavedModelToMlir(
+tsl::StatusOr<mlir::OwningOpRef<mlir::ModuleOp>> ConvertSavedModelToMlir(
     SavedModelV2Bundle* saved_model, mlir::MLIRContext* context,
     absl::Span<std::string> exported_names, MLIRImportOptions options = {});
 
 // Given a V1 SavedModel, returns a MLIR module containing the functions,
 // expressed with tf_executor dialect.
-absl::StatusOr<mlir::OwningOpRef<mlir::ModuleOp>> ConvertSavedModelV1ToMlir(
+tsl::StatusOr<mlir::OwningOpRef<mlir::ModuleOp>> ConvertSavedModelV1ToMlir(
     const SavedModelBundle& saved_model, absl::Span<std::string> exported_names,
     mlir::MLIRContext* context, MLIRImportOptions options = {});
 
@@ -67,7 +80,7 @@ absl::StatusOr<mlir::OwningOpRef<mlir::ModuleOp>> ConvertSavedModelV1ToMlir(
 // ConvertSavedModelV1ToMlir(), and is not related to TFLite.
 //
 // TODO(b/179683149): Rename this class to avoid confusion with TFLite.
-absl::StatusOr<mlir::OwningOpRef<mlir::ModuleOp>> ConvertSavedModelV1ToMlirLite(
+tsl::StatusOr<mlir::OwningOpRef<mlir::ModuleOp>> ConvertSavedModelV1ToMlirLite(
     const MetaGraphDef& meta_graph_def, const GraphDebugInfo& debug_info,
     std::optional<absl::Span<const std::string>> exported_names,
     mlir::MLIRContext* context, MLIRImportOptions options);
@@ -100,8 +113,8 @@ class SavedModelMLIRImportInput {
   // and remain valid for the graph.
   // `name` is a unique identifier for this subgraph, so the implementation can
   // use it for eg. debugging or caching compilation results.
-  virtual absl::StatusOr<const Graph*> GetSubGraph(
-      absl::string_view name, GraphImportConfig& specs) = 0;
+  virtual tsl::StatusOr<const Graph*> GetSubGraph(absl::string_view name,
+                                                  GraphImportConfig& specs) = 0;
 
  private:
   const MetaGraphDef* meta_graph_def_ = nullptr;
@@ -119,13 +132,15 @@ class SavedModelMLIRImportInput {
 // ConvertSavedModelV1ToMlir(), and is not related to TFLite.
 //
 // TODO(b/179683149): Rename this class to avoid confusion with TFLite.
-absl::StatusOr<mlir::OwningOpRef<mlir::ModuleOp>> ConvertSavedModelV1ToMlirLite(
+tsl::StatusOr<mlir::OwningOpRef<mlir::ModuleOp>> ConvertSavedModelV1ToMlirLite(
     SavedModelMLIRImportInput& input,
     std::optional<absl::Span<const std::string>> exported_names,
     mlir::MLIRContext* context,
     bool unconditionally_use_set_output_shapes = false);
 
 // Serialize a MLIR module to a string.
+std::string MlirModuleToString(mlir::ModuleOp module,
+                               mlir::OpPrintingFlags flags);
 std::string MlirModuleToString(mlir::ModuleOp m, bool show_debug_info = false);
 
 }  // namespace tensorflow

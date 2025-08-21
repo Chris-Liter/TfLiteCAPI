@@ -28,7 +28,7 @@ namespace profiler {
 // <combined_op_stats>.
 // Return the first error status during conversion, or return OkStatus() if
 // there is no error.
-absl::Status ConvertMultiXSpacesToCombinedOpStats(
+Status ConvertMultiXSpacesToCombinedOpStats(
     const SessionSnapshot& session_snapshot, const OpStatsOptions& options,
     OpStats* combined_op_stats);
 

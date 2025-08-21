@@ -20,13 +20,12 @@ limitations under the License.
 
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/SourceMgr.h"
-#include "mlir/Dialect/Quant/IR/Quant.h"  // from @llvm-project
+#include "mlir/Dialect/Quant/QuantOps.h"  // from @llvm-project
 #include "mlir/IR/Builders.h"  // from @llvm-project
 #include "mlir/IR/BuiltinAttributes.h"  // from @llvm-project
 #include "mlir/IR/BuiltinTypes.h"  // from @llvm-project
 #include "mlir/IR/PatternMatch.h"  // from @llvm-project
 #include "mlir/Pass/Pass.h"  // from @llvm-project
-#include "mlir/Support/LLVM.h"  // from @llvm-project
 #include "mlir/Support/LogicalResult.h"  // from @llvm-project
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/lite/quantization/ir/QuantOps.h"
@@ -59,7 +58,7 @@ class ConvertCustomAggregationOpToQuantStatsPass
 
   void getDependentDialects(DialectRegistry &registry) const override {
     registry.insert<TF::TensorFlowDialect>();
-    registry.insert<quant::QuantDialect>();
+    registry.insert<quant::QuantizationDialect>();
     registry.insert<quantfork::QuantizationForkDialect>();
   }
 
@@ -76,12 +75,12 @@ class ConvertCustomAggregationOpToQuantStats
 
   LogicalResult matchAndRewrite(TF::CustomAggregatorOp op,
                                 PatternRewriter &rewriter) const override {
-    FloatAttr min = mlir::dyn_cast_or_null<FloatAttr>(op->getAttr("min"));
-    FloatAttr max = mlir::dyn_cast_or_null<FloatAttr>(op->getAttr("max"));
+    FloatAttr min = op->getAttr("min").dyn_cast_or_null<FloatAttr>();
+    FloatAttr max = op->getAttr("max").dyn_cast_or_null<FloatAttr>();
 
     // When there are no min and max attributes, remove op.
     if (min == nullptr || max == nullptr) {
-      op.getOutput().replaceAllUsesWith(op.getInput());
+      op->replaceAllUsesWith(op->getOperands());
       rewriter.eraseOp(op);
       return success();
     }
@@ -94,9 +93,8 @@ class ConvertCustomAggregationOpToQuantStats
     ElementsAttr axis_stats;
     IntegerAttr axis;
 
-    quantfork::StatisticsOp stats_op = rewriter.create<quantfork::StatisticsOp>(
-        op->getLoc(), op.getInput(), layer_stats, axis_stats, axis);
-    op.getOutput().replaceAllUsesWith(stats_op.getResult());
+    rewriter.replaceOpWithNewOp<quantfork::StatisticsOp>(
+        op, op->getOperand(0), layer_stats, axis_stats, axis);
     return success();
   }
 };

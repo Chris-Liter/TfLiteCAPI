@@ -18,11 +18,10 @@ limitations under the License.
 #include <unordered_map>
 #include <vector>
 
-#include "absl/status/status.h"
-#include "tensorflow/core/platform/logging.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/lite/toco/graph_transformations/graph_transformations.h"
 #include "tensorflow/lite/toco/model.h"
+#include "tensorflow/lite/toco/tooling_util.h"
+#include "tensorflow/core/platform/logging.h"
 
 namespace toco {
 
@@ -52,19 +51,19 @@ bool ApplyAttrsToArray(GraphTransformation* transformation, Model* model,
 
 }  // end namespace
 
-absl::Status ReadArrayMinmaxAndNarrowRangeFromFakeQuant::Run(
+::tensorflow::Status ReadArrayMinmaxAndNarrowRangeFromFakeQuant::Run(
     Model* model, std::size_t op_index, bool* modified) {
   *modified = false;
   const auto fakequant_it = model->operators.begin() + op_index;
   auto* fakequant_base_op = fakequant_it->get();
   if (fakequant_base_op->type != OperatorType::kFakeQuant) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   auto* fq_op = static_cast<FakeQuantOperator*>(fakequant_base_op);
 
   if (!fq_op->minmax) {
     // Need to be resolved first by ResolveFakeQuantArgsFromVars.
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   // At this point, this FakeQuantOperator should have a MinMax
@@ -77,7 +76,7 @@ absl::Status ReadArrayMinmaxAndNarrowRangeFromFakeQuant::Run(
   changed |= ApplyAttrsToArray(this, model, *fq_op, fq_op->inputs[0]);
   changed |= ApplyAttrsToArray(this, model, *fq_op, fq_op->outputs[0]);
   *modified = changed;
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 }  // namespace toco

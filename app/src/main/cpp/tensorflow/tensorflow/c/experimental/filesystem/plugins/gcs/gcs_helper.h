@@ -16,7 +16,6 @@ limitations under the License.
 #define TENSORFLOW_C_EXPERIMENTAL_FILESYSTEM_PLUGINS_GCS_GCS_HELPER_H_
 
 #include <fstream>
-#include <ios>
 #include <string>
 
 class TempFile : public std::fstream {

@@ -15,9 +15,6 @@
 #include <algorithm>
 #include <string>
 
-#include "absl/log/check.h"
-#include "absl/status/status.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow/lite/toco/graph_transformations/graph_transformations.h"
 #include "tensorflow/lite/toco/model.h"
 #include "tensorflow/lite/toco/tooling_util.h"
@@ -58,9 +55,9 @@ bool IsTailOfShape(const Shape& tail, const Shape& shape) {
 //
 // Note we are testing for one particular case of a broader set of possible
 // binary-reshape op transformations. This transformation could be generalized.
-absl::Status MoveBinaryOperatorBeforeReshape::Run(Model* model,
-                                                  std::size_t op_index,
-                                                  bool* modified) {
+::tensorflow::Status MoveBinaryOperatorBeforeReshape::Run(Model* model,
+                                                          std::size_t op_index,
+                                                          bool* modified) {
   *modified = false;
   const auto binary_it = model->operators.begin() + op_index;
   Operator* binary_op = binary_it->get();
@@ -76,7 +73,7 @@ absl::Status MoveBinaryOperatorBeforeReshape::Run(Model* model,
       binary_op->type != OperatorType::kLessEqual &&
       binary_op->type != OperatorType::kGreater &&
       binary_op->type != OperatorType::kGreaterEqual) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   // BINARY OP INPUT CHECKS
@@ -88,11 +85,11 @@ absl::Status MoveBinaryOperatorBeforeReshape::Run(Model* model,
   if (!input_is_const[0] && !input_is_const[1]) {
     // To limit our scope, we require one constant input. Though there's no
     // reason this transformation wouldn't work with all variable inputs.
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   if (input_is_const[0] && input_is_const[1]) {
     // Both inputs are constants. Leave this for constants propagation.
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   const int constant_input_idx = input_is_const[0] ? 0 : 1;
   const int variable_input_idx = input_is_const[0] ? 1 : 0;
@@ -105,13 +102,13 @@ absl::Status MoveBinaryOperatorBeforeReshape::Run(Model* model,
     AddMessageF(
         "Not moving %s because it's non-constant input shape is not resolved.",
         LogName(*binary_op));
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   if (!IsTailOfShape(
           model->GetArray(binary_op->inputs[constant_input_idx]).shape(),
           model->GetArray(binary_op->inputs[variable_input_idx]).shape())) {
     // Constant array shape must be the latter part of the variable shape.
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   // RESHAPE OP CHECKS
@@ -120,13 +117,13 @@ absl::Status MoveBinaryOperatorBeforeReshape::Run(Model* model,
   if (reshape_it == model->operators.end()) {
     AddMessageF("Not moving %s because it's variable input is not connected.",
                 LogName(*binary_op));
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   Operator* reshape_op = reshape_it->get();
   if (reshape_op->type != OperatorType::kReshape) {
     AddMessageF("Not moving %s because the preceding %s is not a reshape op",
                 LogName(*binary_op), LogName(*reshape_op));
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   const auto& reshape_input_array = model->GetArray(reshape_op->inputs[0]);
   if (!reshape_input_array.has_shape()) {
@@ -134,14 +131,14 @@ absl::Status MoveBinaryOperatorBeforeReshape::Run(Model* model,
         "Not moving %s because it's non-constant input shape is not resolved "
         "yet",
         LogName(*binary_op));
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
   if (!IsTailOfShape(
           model->GetArray(binary_op->inputs[constant_input_idx]).shape(),
           model->GetArray(reshape_op->outputs[0]).shape())) {
     // Constant array shape must be the latter part of the binary op output
     // shape.
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   // EXTRA CHECKS ON CONNECTING ARRAY
@@ -150,7 +147,7 @@ absl::Status MoveBinaryOperatorBeforeReshape::Run(Model* model,
       AddMessageF(
           "Not moving %s because the output of reshape op %s is an output op.",
           LogName(*binary_op), LogName(*reshape_op));
-      return absl::OkStatus();
+      return ::tensorflow::OkStatus();
     }
   }
   int count_ops_consuming_output =
@@ -161,7 +158,7 @@ absl::Status MoveBinaryOperatorBeforeReshape::Run(Model* model,
         "Not moving %s because the output of reshape op %s is consumed by "
         "another op",
         LogName(*binary_op), LogName(*reshape_op));
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   // SWAP ORDER OF BINARY AND RESHAPE OPS
@@ -180,7 +177,7 @@ absl::Status MoveBinaryOperatorBeforeReshape::Run(Model* model,
   model->GetArray(binary_op->outputs[0]).clear_shape();
 
   *modified = true;
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 }  // namespace toco

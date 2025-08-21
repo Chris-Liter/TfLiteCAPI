@@ -46,11 +46,11 @@ class SparseTensorsMap : public ResourceBase {
   typedef struct {
     Tensor indices;
     Tensor values;
-    absl::InlinedVector<int64_t, 8UL> shape;
+    gtl::InlinedVector<int64_t, 8> shape;
   } PersistentSparseTensor;
 
-  absl::Status AddSparseTensor(OpKernelContext* ctx, const SparseTensor& sp,
-                               int64_t* handle) {
+  Status AddSparseTensor(OpKernelContext* ctx, const SparseTensor& sp,
+                         int64_t* handle) {
     Tensor ix;
     TF_RETURN_IF_ERROR(
         ctx->allocate_temp(sp.indices().dtype(), sp.indices().shape(), &ix));
@@ -63,16 +63,15 @@ class SparseTensorsMap : public ResourceBase {
     {
       mutex_lock l(mu_);
       int64_t unique_st_handle = counter_++;  // increment is guarded on purpose
-      sp_tensors_[unique_st_handle] =
-          PersistentSparseTensor{ix, values,
-                                 absl::InlinedVector<int64_t, 8UL>(
-                                     sp.shape().begin(), sp.shape().end())};
+      sp_tensors_[unique_st_handle] = PersistentSparseTensor{
+          ix, values,
+          gtl::InlinedVector<int64_t, 8>(sp.shape().begin(), sp.shape().end())};
       *handle = unique_st_handle;
     }
-    return absl::OkStatus();
+    return OkStatus();
   }
 
-  absl::Status RetrieveAndClearSparseTensors(
+  Status RetrieveAndClearSparseTensors(
       OpKernelContext* ctx, const TTypes<int64_t>::ConstVec& handles,
       std::vector<SparseTensor>* sparse_tensors) {
     sparse_tensors->clear();
@@ -96,7 +95,7 @@ class SparseTensorsMap : public ResourceBase {
       }
     }
 
-    return absl::OkStatus();
+    return OkStatus();
   }
 
  protected:
@@ -113,7 +112,7 @@ class SparseTensorsMap : public ResourceBase {
 
 class SparseTensorAccessingOp : public OpKernel {
  public:
-  typedef std::function<absl::Status(SparseTensorsMap**)> CreatorCallback;
+  typedef std::function<Status(SparseTensorsMap**)> CreatorCallback;
 
   explicit SparseTensorAccessingOp(OpKernelConstruction* context)
       : OpKernel(context), sparse_tensors_map_(nullptr) {}
@@ -123,13 +122,13 @@ class SparseTensorAccessingOp : public OpKernel {
     if (sparse_tensors_map_) sparse_tensors_map_->Unref();
   }
 
-  absl::Status GetMap(OpKernelContext* ctx, bool is_writing,
-                      SparseTensorsMap** sparse_tensors_map) {
+  Status GetMap(OpKernelContext* ctx, bool is_writing,
+                SparseTensorsMap** sparse_tensors_map) {
     mutex_lock l(mu_);
 
     if (sparse_tensors_map_) {
       *sparse_tensors_map = sparse_tensors_map_;
-      return absl::OkStatus();
+      return OkStatus();
     }
 
     TF_RETURN_IF_ERROR(cinfo_.Init(ctx->resource_manager(), def(),
@@ -138,7 +137,7 @@ class SparseTensorAccessingOp : public OpKernel {
     CreatorCallback sparse_tensors_map_creator = [this](SparseTensorsMap** c) {
       SparseTensorsMap* map = new SparseTensorsMap(cinfo_.name());
       *c = map;
-      return absl::OkStatus();
+      return OkStatus();
     };
 
     TF_RETURN_IF_ERROR(
@@ -147,7 +146,7 @@ class SparseTensorAccessingOp : public OpKernel {
             sparse_tensors_map_creator));
 
     *sparse_tensors_map = sparse_tensors_map_;
-    return absl::OkStatus();
+    return OkStatus();
   }
 
  private:
@@ -268,7 +267,7 @@ class AddManySparseToTensorsMapOp : public SparseTensorAccessingOp {
     TensorShape tensor_input_shape;
     OP_REQUIRES_OK(context, TensorShape::BuildTensorShape(input_shape_vec,
                                                           &tensor_input_shape));
-    absl::InlinedVector<int64_t, 8UL> std_order(rank);
+    gtl::InlinedVector<int64_t, 8> std_order(rank);
     std::iota(std_order.begin(), std_order.end(), 0);
     SparseTensor input_st;
     OP_REQUIRES_OK(context, SparseTensor::Create(*input_indices, *input_values,
@@ -483,7 +482,7 @@ class TakeManySparseFromTensorsMapOp : public SparseTensorAccessingOp {
     }
 
     // Dimension 0 is the primary dimension.
-    absl::InlinedVector<int64_t, 8UL> std_order(rank);
+    gtl::InlinedVector<int64_t, 8> std_order(rank);
     std::iota(std_order.begin(), std_order.end(), 0);
 
     std::vector<SparseTensor> tensors_to_concat;

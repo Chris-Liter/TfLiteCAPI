@@ -21,7 +21,7 @@ limitations under the License.
 #include "tensorflow/core/platform/status.h"
 #include "tensorflow/core/platform/types.h"
 #include "tensorflow/core/profiler/protobuf/memory_profile.pb.h"
-#include "tsl/profiler/protobuf/xplane.pb.h"
+#include "tensorflow/tsl/profiler/protobuf/xplane.pb.h"
 
 namespace tensorflow {
 namespace profiler {
@@ -32,8 +32,8 @@ namespace profiler {
 MemoryProfile ConvertXPlaneToMemoryProfile(const XPlane& host_plane,
                                            int64_t max_num_snapshots = 1000);
 
-absl::Status ConvertXSpaceToMemoryProfileJson(const XSpace& xspace,
-                                              std::string* json_output);
+Status ConvertXSpaceToMemoryProfileJson(const XSpace& xspace,
+                                        std::string* json_output);
 }  // namespace profiler
 }  // namespace tensorflow
 

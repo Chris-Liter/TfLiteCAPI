@@ -32,16 +32,14 @@ limitations under the License.
 #ifndef TENSORFLOW_CORE_TPU_GRAPH_REWRITE_VARIABLE_MERGER_PASS_H_
 #define TENSORFLOW_CORE_TPU_GRAPH_REWRITE_VARIABLE_MERGER_PASS_H_
 
-#include "absl/status/status.h"
 #include "tensorflow/core/common_runtime/optimization_registry.h"
 #include "tensorflow/core/graph/graph.h"
-#include "tensorflow/core/platform/status.h"
 
 namespace tensorflow {
 
 class VariableMergerPass : public GraphOptimizationPass {
  public:
-  absl::Status Run(const GraphOptimizationPassOptions& options) override;
+  Status Run(const GraphOptimizationPassOptions& options) override;
 };
 
 }  // namespace tensorflow

@@ -111,8 +111,9 @@ struct NodeItem {
   // is true if and only if the ith output is consumed by another node.
   std::unique_ptr<bool[]> outputs_required;
 
-  absl::Span<EdgeInfo> mutable_output_edges() {
-    return absl::Span<EdgeInfo>(output_edge_base(), num_output_edges);
+  gtl::MutableArraySlice<EdgeInfo> mutable_output_edges() {
+    return gtl::MutableArraySlice<EdgeInfo>(output_edge_base(),
+                                            num_output_edges);
   }
 
   gtl::ArraySlice<EdgeInfo> output_edges() const {
@@ -199,8 +200,7 @@ struct NodeItem {
         sizeof(uint8) * num_inputs);
   }
 
-  NodeItem(const NodeItem&) = delete;
-  void operator=(const NodeItem&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(NodeItem);
 };
 
 // Immutable view of a Graph organized for efficient execution.
@@ -211,8 +211,8 @@ class GraphView {
   GraphView() : space_(nullptr) {}
   ~GraphView();
 
-  absl::Status Initialize(const Graph* g);
-  absl::Status SetAllocAttrs(const Graph* g, const Device* device);
+  Status Initialize(const Graph* g);
+  Status SetAllocAttrs(const Graph* g, const Device* device);
   void SetScopedAllocatorAttrs(const std::vector<const Node*>& sa_nodes);
 
   // Returns a mutable pointer to the `NodeItem` with the given `id` if it
@@ -249,8 +249,7 @@ class GraphView {
 
   char* space_;  // NodeItem objects are allocated here
 
-  GraphView(const GraphView&) = delete;
-  void operator=(const GraphView&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(GraphView);
 };
 
 }  // namespace tensorflow

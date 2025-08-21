@@ -88,9 +88,7 @@ class FakeDevice : public Device {
       : Device(nullptr, device_attributes) {}
 
  public:
-  absl::Status Sync() override {
-    return errors::Unimplemented("FakeDevice::Sync()");
-  }
+  Status Sync() override { return errors::Unimplemented("FakeDevice::Sync()"); }
 
   Allocator* GetAllocator(AllocatorAttributes attr) override { return nullptr; }
 
@@ -113,13 +111,12 @@ class FakeDevice : public Device {
 
 class DummyFactory : public DeviceFactory {
  public:
-  absl::Status ListPhysicalDevices(std::vector<string>* devices) override {
-    return absl::OkStatus();
+  Status ListPhysicalDevices(std::vector<string>* devices) override {
+    return OkStatus();
   }
-  absl::Status CreateDevices(
-      const SessionOptions& options, const string& name_prefix,
-      std::vector<std::unique_ptr<Device>>* devices) override {
-    return absl::OkStatus();
+  Status CreateDevices(const SessionOptions& options, const string& name_prefix,
+                       std::vector<std::unique_ptr<Device>>* devices) override {
+    return OkStatus();
   }
 };
 
@@ -216,8 +213,6 @@ REGISTER_OP("TestTypedConsumer").Input("i: variant");
 REGISTER_KERNEL_BUILDER(Name("TestTypedConsumer").Device("FakeCPU"), DummyOp);
 REGISTER_KERNEL_BUILDER(Name("TestTypedConsumer").Device("FakeGPU"), DummyOp);
 
-REGISTER_OP("ConvertToListOfCooTensorsV2").Input("i: int32");
-
 ////////////////////////////////////////////////////////////////////////////////
 //
 // A PlacerTest method has three phases:
@@ -257,34 +252,33 @@ class PlacerTest : public ::testing::Test {
 
   // Builds the given graph, and (if successful) indexes the node
   // names for use in placement, and later lookup.
-  absl::Status BuildGraph(const GraphDefBuilder& builder, Graph* out_graph) {
+  Status BuildGraph(const GraphDefBuilder& builder, Graph* out_graph) {
     TF_RETURN_IF_ERROR(GraphDefBuilderToGraph(builder, out_graph));
     RebuildNodeNameMap(*out_graph);
-    return absl::OkStatus();
+    return OkStatus();
   }
 
-  absl::Status BuildGraph(const GraphDef& graph_def, Graph* out_graph) {
+  Status BuildGraph(const GraphDef& graph_def, Graph* out_graph) {
     GraphConstructorOptions opts;
     TF_RETURN_IF_ERROR(ConvertGraphDefToGraph(opts, graph_def, out_graph));
     RebuildNodeNameMap(*out_graph);
-    return absl::OkStatus();
+    return OkStatus();
   }
 
   // Invokes the Placer on "graph". If no DeviceSet is specified, the
   // placement will use the default DeviceSet (of 10 CPU and 10 GPU devices).
   //
   // REQUIRES: "*graph" was produced by the most recent call to BuildGraph.
-  absl::Status Place(Graph* graph, DeviceSet* devices,
-                     Device* default_local_device, bool allow_soft_placement,
-                     bool log_device_placement) {
+  Status Place(Graph* graph, DeviceSet* devices, Device* default_local_device,
+               bool allow_soft_placement, bool log_device_placement) {
     Placer placer(graph, "", &graph->flib_def(), devices, default_local_device,
                   allow_soft_placement, log_device_placement);
     return placer.Run();
   }
 
-  absl::Status CallOptPassesAndPlace(Graph* graph, DeviceSet* devices,
-                                     bool allow_soft_placement,
-                                     bool log_device_placement) {
+  Status CallOptPassesAndPlace(Graph* graph, DeviceSet* devices,
+                               bool allow_soft_placement,
+                               bool log_device_placement) {
     // Disable all real optimizations (i.e. Grappler and GraphOptimizer)
     // to make sure functions are not inlined and not constant folded
     SessionOptions session_options;
@@ -305,7 +299,7 @@ class PlacerTest : public ::testing::Test {
     optimization_options.device_set = &devices_;
     optimization_options.session_options = &session_options;
     optimization_options.debug_filename_prefix = "placer_test_";
-    absl::Status s = OptimizationPassRegistry::Global()->RunGrouping(
+    Status s = OptimizationPassRegistry::Global()->RunGrouping(
         OptimizationPassRegistry::PRE_PLACEMENT, optimization_options);
     if (!s.ok()) {
       graph_ptr.release();
@@ -320,27 +314,27 @@ class PlacerTest : public ::testing::Test {
     return placer.Run(optimization_options);
   }
 
-  absl::Status Place(Graph* graph, DeviceSet* devices) {
+  Status Place(Graph* graph, DeviceSet* devices) {
     return Place(graph, devices, nullptr, true, false);
   }
 
-  absl::Status Place(Graph* graph, bool allow_soft_placement,
-                     bool log_device_placement) {
+  Status Place(Graph* graph, bool allow_soft_placement,
+               bool log_device_placement) {
     return Place(graph, &devices_, nullptr, allow_soft_placement,
                  log_device_placement);
   }
 
-  absl::Status Place(Graph* graph) {
+  Status Place(Graph* graph) {
     return Place(graph, &devices_, nullptr, true, false);
   }
 
-  absl::Status CallOptPassesAndPlace(Graph* graph, bool allow_soft_placement,
-                                     bool log_device_placement) {
+  Status CallOptPassesAndPlace(Graph* graph, bool allow_soft_placement,
+                               bool log_device_placement) {
     return CallOptPassesAndPlace(graph, &devices_, allow_soft_placement,
                                  log_device_placement);
   }
 
-  absl::Status CallOptPassesAndPlace(Graph* graph) {
+  Status CallOptPassesAndPlace(Graph* graph) {
     return CallOptPassesAndPlace(graph, &devices_, true, false);
   }
 
@@ -358,9 +352,9 @@ class PlacerTest : public ::testing::Test {
   DeviceSet devices_;
   std::unordered_map<string, int> nodes_by_name_;
 
-  absl::Status ReferenceTestHelper(const string& variable_op_type,
-                                   const string& assign_op_type,
-                                   const DeviceType& expected_device_type);
+  Status ReferenceTestHelper(const string& variable_op_type,
+                             const string& assign_op_type,
+                             const DeviceType& expected_device_type);
 
  private:
   void RebuildNodeNameMap(const Graph& graph) {
@@ -926,7 +920,7 @@ TEST_F(PlacerTest, TestAssignedGpuDeviceToCpuDevice) {
   GetNodeByName(g, "in")->set_assigned_device_name(
       "/job:a/replica:0/task:0/device:FakeGPU:0");
 
-  absl::Status s = Place(&g);
+  Status s = Place(&g);
   EXPECT_EQ(error::INTERNAL, s.code()) << s.ToString();
   EXPECT_TRUE(absl::StrContains(
       s.message(),
@@ -940,9 +934,9 @@ TEST_F(PlacerTest, TestAssignedGpuDeviceToCpuDevice) {
 // Build a graph containing a Variable op of "variable_op_type" and an
 // Assign op of "assign_op_type", and expect all of the ops to be
 // placed on a device of type "expected_device_type".
-absl::Status PlacerTest::ReferenceTestHelper(
-    const string& variable_op_type, const string& assign_op_type,
-    const DeviceType& expected_device_type) {
+Status PlacerTest::ReferenceTestHelper(const string& variable_op_type,
+                                       const string& assign_op_type,
+                                       const DeviceType& expected_device_type) {
   Graph g(OpRegistry::Global());
   {  // Scope for temporary variables used to construct g.
     GraphDefBuilder b(GraphDefBuilder::kFailImmediately);
@@ -966,27 +960,27 @@ absl::Status PlacerTest::ReferenceTestHelper(
     EXPECT_DEVICE_TYPE(g, strings::StrCat("assign_", i), expected_device_type);
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 // Test all 2^3 combinations of Variable and Assignment op types
 // (unconstrained, CPU-only, and GPU-only).
 TEST_F(PlacerTest, TestReferenceConnection) {
-  absl::Status s;
+  Status s;
   TF_EXPECT_OK(ReferenceTestHelper("TestVariable", "TestAssign", "FakeGPU"));
   TF_EXPECT_OK(ReferenceTestHelper("TestVariable", "AssignCPU", "FakeCPU"));
   TF_EXPECT_OK(ReferenceTestHelper("TestVariable", "AssignGPU", "FakeGPU"));
   TF_EXPECT_OK(ReferenceTestHelper("VariableCPU", "TestAssign", "FakeCPU"));
   TF_EXPECT_OK(ReferenceTestHelper("VariableCPU", "AssignCPU", "FakeCPU"));
   {
-    absl::Status s = ReferenceTestHelper("VariableCPU", "AssignGPU", "FakeCPU");
+    Status s = ReferenceTestHelper("VariableCPU", "AssignGPU", "FakeCPU");
     EXPECT_EQ(error::INVALID_ARGUMENT, s.code());
     EXPECT_TRUE(absl::StrContains(
         s.message(), "no device type supports both of those nodes"));
   }
   TF_EXPECT_OK(ReferenceTestHelper("VariableGPU", "TestAssign", "FakeGPU"));
   {
-    absl::Status s = ReferenceTestHelper("VariableGPU", "AssignCPU", "FakeCPU");
+    Status s = ReferenceTestHelper("VariableGPU", "AssignCPU", "FakeCPU");
     EXPECT_EQ(error::INVALID_ARGUMENT, s.code());
     EXPECT_TRUE(absl::StrContains(
         s.message(), "no device type supports both of those nodes"));
@@ -1037,7 +1031,7 @@ TEST_F(PlacerTest, TestResourceHandle) {
     EXPECT_COLOCATED(g, "var", "assign");
     EXPECT_DEVICE_TYPE(g, "var", device);
     EXPECT_DEVICE_TYPE(g, "assign", device);
-    return absl::OkStatus();
+    return OkStatus();
   };
   TF_EXPECT_OK(
       handle_test("TestHandleVariable", "TestHandleAssign", "FakeGPU"));
@@ -1081,7 +1075,7 @@ TEST_F(PlacerTest, TestResourceHandlesOnDifferentDevicesFails) {
       }
     }
 
-    absl::Status s = Place(&g, allow_soft_placement, true);
+    Status s = Place(&g, allow_soft_placement, true);
     EXPECT_EQ(error::INVALID_ARGUMENT, s.code()) << s.ToString();
     if (set_assigned) {
       EXPECT_TRUE(absl::StrContains(
@@ -1103,7 +1097,7 @@ TEST_F(PlacerTest, TestResourceHandlesOnDifferentDevicesFails) {
           << s.ToString();
     }
 
-    return absl::OkStatus();
+    return OkStatus();
   };
 
   TF_EXPECT_OK(handle_test(false, false));
@@ -1116,7 +1110,7 @@ TEST_F(PlacerTest, TestResourceHandlesOnDifferentDevicesFails) {
 // is ignored when it could never be satisfied (due to reference
 // edges, for example).
 TEST_F(PlacerTest, TestReferenceConnectionIgnoreInfeasible) {
-  absl::Status s;
+  Status s;
   Graph g(OpRegistry::Global());
   {
     GraphDefBuilder b(GraphDefBuilder::kFailImmediately);
@@ -1144,7 +1138,7 @@ TEST_F(PlacerTest, TestReferenceConnectionIgnoreInfeasible) {
 // Test that an assignment of an operator to the a more specified device
 // causes the device to maintain its more specific placement.
 TEST_F(PlacerTest, TestReferenceConnectionMoreSpecificDestinationSourceWins) {
-  absl::Status s;
+  Status s;
   Graph g(OpRegistry::Global());
   {
     GraphDefBuilder b(GraphDefBuilder::kFailImmediately);
@@ -1177,7 +1171,7 @@ TEST_F(PlacerTest, TestReferenceConnectionMoreSpecificDestinationSourceWins) {
 // case, the variable gets placed on the location of the assign
 // operation.
 TEST_F(PlacerTest, TestReferenceConnectionNoSourceDevice) {
-  absl::Status s;
+  Status s;
   Graph g(OpRegistry::Global());
   {
     GraphDefBuilder b(GraphDefBuilder::kFailImmediately);
@@ -1198,7 +1192,7 @@ TEST_F(PlacerTest, TestReferenceConnectionNoSourceDevice) {
 }
 
 TEST_F(PlacerTest, TestResourceHandleOnCompositeDevice) {
-  auto build_graph = [this](Graph* g) -> absl::Status {
+  auto build_graph = [this](Graph* g) -> Status {
     GraphDefBuilder b(GraphDefBuilder::kFailImmediately);
     Node* input = ops::SourceOp("TestInput", b.opts().WithName("in"));
     // Build ten variable-and-assignment pairs.
@@ -1208,7 +1202,7 @@ TEST_F(PlacerTest, TestResourceHandleOnCompositeDevice) {
     // `var` is assigned to COMPOSITE.
     GetNodeByName(*g, "var")->set_assigned_device_name(
         "/job:a/replica:0/task:0/device:COMPOSITE:0");
-    return absl::OkStatus();
+    return OkStatus();
   };
 
   {
@@ -1315,7 +1309,7 @@ TEST_P(SoftPlacementPlacerTest, TestInvalidMultipleColocationGroups) {
   }
 
   bool allow_soft_placement = GetParam();
-  absl::Status s = Place(&g, allow_soft_placement, true);
+  Status s = Place(&g, allow_soft_placement, true);
   if (allow_soft_placement) {
     EXPECT_EQ(error::OK, s.code()) << s.ToString();
     EXPECT_DEVICE_TYPE(g, "in", "FakeCPU");
@@ -1399,7 +1393,7 @@ TEST_P(SoftPlacementPlacerTest,
   }
 
   bool allow_soft_placement = GetParam();
-  absl::Status s = Place(&g, allow_soft_placement, true);
+  Status s = Place(&g, allow_soft_placement, true);
   if (allow_soft_placement) {
     EXPECT_EQ(error::OK, s.code()) << s.ToString();
   } else {
@@ -1468,7 +1462,7 @@ TEST_F(PlacerTest, TestEmptyDeviceSet) {
 
   DeviceSet empty;
 
-  absl::Status s = Place(&g, &empty);
+  Status s = Place(&g, &empty);
   EXPECT_TRUE(absl::StrContains(s.message(), "No devices are registered"));
 }
 
@@ -1492,7 +1486,7 @@ TEST_F(PlacerTest, TestHeterogeneousDeviceSetFailure) {
   std::unique_ptr<Device> cpu(
       FakeDevice::MakeCPU("/job:b/replica:0/task:1/device:FakeCPU:0"));
   heterogeneous.AddDevice(cpu.get());
-  absl::Status s = Place(&g, &heterogeneous);
+  Status s = Place(&g, &heterogeneous);
   EXPECT_EQ(error::INVALID_ARGUMENT, s.code());
   EXPECT_TRUE(absl::StrContains(s.message(),
                                 "colocated with a group of nodes that required "
@@ -1514,7 +1508,7 @@ TEST_F(PlacerTest, TestUnknownDevice) {
     TF_EXPECT_OK(BuildGraph(b, &g));
   }
 
-  absl::Status s = Place(&g);
+  Status s = Place(&g);
   EXPECT_EQ(error::INVALID_ARGUMENT, s.code());
   EXPECT_TRUE(absl::StrContains(s.message(), "/job:foo"));
 }
@@ -1529,7 +1523,7 @@ TEST_F(PlacerTest, TestUnknownMergedDevice) {
     TF_EXPECT_OK(BuildGraph(b, &g));
   }
 
-  absl::Status s = Place(&g);
+  Status s = Place(&g);
   EXPECT_EQ(error::INVALID_ARGUMENT, s.code());
   EXPECT_TRUE(absl::StrContains(s.message(), "/job:foo"));
 }
@@ -1546,7 +1540,7 @@ TEST_F(PlacerTest, TestUnknownAssignedDevice) {
 
   GetNodeByName(g, "in")->set_assigned_device_name("/job:foo");
 
-  absl::Status s = Place(&g);
+  Status s = Place(&g);
   EXPECT_EQ(error::INTERNAL, s.code());
   EXPECT_TRUE(absl::StrContains(
       s.message(), "Assigned device '/job:foo' does not match any device"));
@@ -1562,7 +1556,7 @@ TEST_F(PlacerTest, TestNoKernelsRegisteredWithNoRequestedDevice) {
     TF_EXPECT_OK(BuildGraph(b, &g));
   }
 
-  absl::Status s = Place(&g);
+  Status s = Place(&g);
   EXPECT_EQ(error::INVALID_ARGUMENT, s.code());
   EXPECT_TRUE(absl::StrContains(s.message(),
                                 "No OpKernel was registered to support Op "
@@ -1590,7 +1584,7 @@ TEST_F(PlacerTest, TestNoKernelsRegisteredWithRequestedDeviceLocal) {
   devices.AddDevice(gpu.get());
   std::unique_ptr<Device> cpu(FakeDevice::MakeCPU(cpu_device));
   devices.AddDevice(cpu.get());
-  absl::Status s = Place(&g, &devices, cpu.get(), false, false);
+  Status s = Place(&g, &devices, cpu.get(), false, false);
   EXPECT_EQ(error::INVALID_ARGUMENT, s.code());
   EXPECT_TRUE(absl::StrContains(s.message(),
                                 "No OpKernel was registered to support Op "
@@ -1637,7 +1631,7 @@ TEST_F(PlacerTest, TestNoDevicesRegistered) {
       FakeDevice::MakeCPU("/job:a/replica:0/task:0/device:FakeCPU:0"));
   cpu_only.AddDevice(cpu.get());
 
-  absl::Status s = Place(&g, &cpu_only);
+  Status s = Place(&g, &cpu_only);
   EXPECT_EQ(error::INVALID_ARGUMENT, s.code());
   EXPECT_TRUE(absl::StrContains(s.message(),
                                 "No OpKernel was registered to support Op "
@@ -1654,7 +1648,7 @@ TEST_F(PlacerTest, TestMalformedDeviceSpecification) {
     TF_EXPECT_OK(BuildGraph(b, &g));
   }
 
-  absl::Status s = Place(&g);
+  Status s = Place(&g);
   EXPECT_EQ(error::INVALID_ARGUMENT, s.code());
   EXPECT_TRUE(absl::StrContains(s.message(),
                                 "Malformed device specification '/foo:bar'"));
@@ -1671,7 +1665,7 @@ TEST_F(PlacerTest, TestMalformedAssignedDevice) {
 
   GetNodeByName(g, "in")->set_assigned_device_name("/foo:bar");
 
-  absl::Status s = Place(&g);
+  Status s = Place(&g);
   EXPECT_EQ(error::INTERNAL, s.code());
   EXPECT_TRUE(
       absl::StrContains(s.message(), "Malformed assigned device '/foo:bar'"));
@@ -1689,7 +1683,7 @@ TEST_F(PlacerTest, TestNonUniqueAssignedDevice) {
 
   GetNodeByName(g, "in")->set_assigned_device_name("/job:a");
 
-  absl::Status s = Place(&g);
+  Status s = Place(&g);
   EXPECT_EQ(error::INTERNAL, s.code());
   EXPECT_TRUE(absl::StrContains(
       s.message(), "Assigned device '/job:a' does not match any device"));
@@ -1721,7 +1715,7 @@ TEST_F(PlacerTest, TestNonexistentGpuNoAllowSoftPlacement) {
     TF_EXPECT_OK(BuildGraph(b, &g));
   }
 
-  absl::Status s = Place(&g, false, false);
+  Status s = Place(&g, false, false);
   EXPECT_EQ(error::INVALID_ARGUMENT, s.code());
   EXPECT_TRUE(absl::StrContains(s.message(), "/device:FakeGPU:11"));
 }
@@ -1737,7 +1731,7 @@ TEST_F(PlacerTest, TestNonexistentGpuNoAllowSoftPlacementFormatTag) {
     TF_EXPECT_OK(BuildGraph(b, &g));
   }
 
-  absl::Status s = Place(&g, false, false);
+  Status s = Place(&g, false, false);
   EXPECT_EQ(error::INVALID_ARGUMENT, s.code());
   LOG(WARNING) << s.message();
   EXPECT_TRUE(absl::StrContains(s.message(),
@@ -1756,7 +1750,7 @@ TEST_F(PlacerTest, TestUnsupportedDeviceNoAllowSoftPlacement) {
     TF_EXPECT_OK(BuildGraph(b, &g));
   }
 
-  absl::Status s = Place(&g, false, false);
+  Status s = Place(&g, false, false);
   EXPECT_EQ(error::INVALID_ARGUMENT, s.code()) << s.ToString();
   EXPECT_TRUE(absl::StrContains(s.message(), "/device:FakeCPU:0"))
       << s.ToString();
@@ -1776,7 +1770,7 @@ TEST_F(PlacerTest, TestNonExistentDevice) {
     TF_EXPECT_OK(BuildGraph(b, &g));
   }
 
-  absl::Status s = Place(&g, false, false);
+  Status s = Place(&g, false, false);
   EXPECT_EQ(error::INVALID_ARGUMENT, s.code());
   LOG(WARNING) << s.message();
   EXPECT_TRUE(absl::StrContains(
@@ -1796,7 +1790,7 @@ TEST_F(PlacerTest, TestUseGpuWithNoCuda) {
     TF_EXPECT_OK(BuildGraph(b, &g));
   }
 
-  absl::Status s = Place(&g, false, false);
+  Status s = Place(&g, false, false);
   EXPECT_EQ(error::INVALID_ARGUMENT, s.code());
   LOG(WARNING) << s.message();
   EXPECT_TRUE(absl::StrContains(
@@ -1862,7 +1856,7 @@ TEST_F(PlacerTest, TestUnsatisfiableConstraintWithReferenceConnections) {
     TF_EXPECT_OK(BuildGraph(b, &g));
   }
 
-  absl::Status s = Place(&g);
+  Status s = Place(&g);
   EXPECT_EQ(error::INVALID_ARGUMENT, s.code());
   EXPECT_TRUE(absl::StrContains(s.message(),
                                 "Cannot colocate nodes {{colocation_node "
@@ -1954,9 +1948,6 @@ REGISTER_KERNEL_BUILDER(Name("Add").Device("FakeCPU"), DummyOp);
 REGISTER_KERNEL_BUILDER(Name("Add").Device("FakeGPU"), DummyOp);
 REGISTER_KERNEL_BUILDER(Name("PartitionedCall").Device("FakeCPU"), DummyOp);
 REGISTER_KERNEL_BUILDER(Name("PartitionedCall").Device("FakeGPU"), DummyOp);
-REGISTER_KERNEL_BUILDER(Name("ConvertToListOfCooTensorsV2").Device("FakeCPU"),
-                        DummyOp);
-REGISTER_KERNEL_BUILDER(Name("Cast").Device("FakeCPU"), DummyOp);
 
 TEST_P(SoftPlacementPlacerTest,
        RequestedDeviceOnResourceGeneratorIsTreatedAsAssigned) {
@@ -1975,7 +1966,7 @@ TEST_P(SoftPlacementPlacerTest,
           NDef("b", "_Arg", {}, {{"T", DT_RESOURCE}}, kCPU),
           NDef("id1", "Identity", {"a"},
                {{"T", DT_RESOURCE},
-                {"_class", absl::Span<const string>({"loc:@id2"})}}),
+                {"_class", gtl::ArraySlice<string>({"loc:@id2"})}}),
           NDef("id2", "Identity", {"b"}, {{"T", DT_RESOURCE}}),
       },
       // FunctionLib
@@ -1985,7 +1976,7 @@ TEST_P(SoftPlacementPlacerTest,
   TF_ASSERT_OK(BuildGraph(graph, &g));
 
   bool allow_soft_placement = GetParam();
-  absl::Status s = Place(&g, allow_soft_placement, true);
+  Status s = Place(&g, allow_soft_placement, true);
   if (allow_soft_placement) {
     EXPECT_EQ(error::OK, s.code()) << s.ToString();
     EXPECT_DEVICE_TYPE(g, "a", "FakeGPU");
@@ -2022,7 +2013,7 @@ TEST_F(PlacerTest, RequestedDeviceCanBeOverridden) {
           NDef("id_b", "Identity", {"b"}, {{"T", DT_RESOURCE}}, kCPU),
           NDef("id1", "Identity", {"id_a"},
                {{"T", DT_RESOURCE},
-                {"_class", absl::Span<const string>({"loc:@id2"})}}),
+                {"_class", gtl::ArraySlice<string>({"loc:@id2"})}}),
           NDef("id2", "Identity", {"id_b"}, {{"T", DT_RESOURCE}}),
       },
       // FunctionLib
@@ -2055,7 +2046,7 @@ TEST_F(PlacerTest, AssignedDeviceOfColocatedNodeIsRespected) {
   Graph g(OpRegistry::Global());
   TF_ASSERT_OK(BuildGraph(graph, &g));
   GetNodeByName(g, "a")->set_assigned_device_name(kFullCPU);
-  absl::Status s = Place(&g);
+  Status s = Place(&g);
   EXPECT_EQ(error::INVALID_ARGUMENT, s.code()) << s.ToString();
   EXPECT_TRUE(
       absl::StrContains(s.message(),
@@ -2085,7 +2076,7 @@ TEST_P(SoftPlacementPlacerTest,
           NDef("id_b", "Identity", {"b"}, {{"T", DT_RESOURCE}}),
           NDef("id1", "Identity", {"id_a"},
                {{"T", DT_RESOURCE},
-                {"_class", absl::Span<const string>({"loc:@id2"})}}),
+                {"_class", gtl::ArraySlice<string>({"loc:@id2"})}}),
           NDef("id2", "Identity", {"id_b"}, {{"T", DT_RESOURCE}}),
       },
       // FunctionLib
@@ -2098,7 +2089,7 @@ TEST_P(SoftPlacementPlacerTest,
 
   bool allow_soft_placement = GetParam();
 
-  absl::Status s = Place(&g, allow_soft_placement, false);
+  Status s = Place(&g, allow_soft_placement, false);
   if (allow_soft_placement) {
     EXPECT_EQ(error::OK, s.code()) << s.ToString();
     EXPECT_DEVICE_TYPE(g, "a", "FakeGPU");
@@ -2692,7 +2683,7 @@ TEST_F(NestedPlacerTest, ResourceConflictInvolvingPCO) {
 
   Graph g(OpRegistry::Global());
   TF_EXPECT_OK(BuildGraph(graph, &g));
-  absl::Status s = CallOptPassesAndPlace(&g);
+  Status s = CallOptPassesAndPlace(&g);
   EXPECT_EQ(error::INVALID_ARGUMENT, s.code()) << s.ToString();
   EXPECT_TRUE(absl::StrContains(
       s.message(),
@@ -2740,7 +2731,7 @@ TEST_F(NestedPlacerTest, ResourceConflictInvolvingTwoPCOs) {
   Graph g(OpRegistry::Global());
   TF_EXPECT_OK(BuildGraph(graph, &g));
 
-  absl::Status s = CallOptPassesAndPlace(&g);
+  Status s = CallOptPassesAndPlace(&g);
   EXPECT_EQ(error::INVALID_ARGUMENT, s.code()) << s.ToString();
   EXPECT_TRUE(absl::StrContains(
       s.message(),
@@ -2801,7 +2792,7 @@ TEST_F(NestedPlacerTest, DeepDeviceConstraintsPropagated) {
   TF_EXPECT_OK(BuildGraph(graph, &g));
   GetNodeByName(g, "id")->set_assigned_device_name(kFullGPU);
 
-  absl::Status s = CallOptPassesAndPlace(&g);
+  Status s = CallOptPassesAndPlace(&g);
   EXPECT_EQ(error::INVALID_ARGUMENT, s.code()) << s.ToString();
   // TODO(b/129057603): When better error messages are implemented, this should
   // change.
@@ -2864,7 +2855,7 @@ TEST_F(NestedPlacerTest, NestedDeepDeviceConstraintsPropagated) {
   TF_EXPECT_OK(BuildGraph(graph, &g));
   GetNodeByName(g, "id")->set_assigned_device_name(kFullGPU);
 
-  absl::Status s = CallOptPassesAndPlace(&g);
+  Status s = CallOptPassesAndPlace(&g);
   EXPECT_EQ(error::INVALID_ARGUMENT, s.code()) << s.ToString();
   // TODO(b/129057603): When better error messages are implemented, this should
   // change.
@@ -2918,7 +2909,7 @@ TEST_F(NestedPlacerTest, TwoFunctionsBackToBack) {
   Graph g(OpRegistry::Global());
   TF_EXPECT_OK(BuildGraph(graph, &g));
 
-  absl::Status s = CallOptPassesAndPlace(&g);
+  Status s = CallOptPassesAndPlace(&g);
   EXPECT_EQ(error::INVALID_ARGUMENT, s.code()) << s.ToString();
   EXPECT_TRUE(absl::StrContains(
       s.message(),
@@ -2985,7 +2976,7 @@ TEST_F(NestedPlacerTest, NestedTwoFunctionsBackToBack) {
   Graph g(OpRegistry::Global());
   TF_EXPECT_OK(BuildGraph(graph, &g));
 
-  absl::Status s = CallOptPassesAndPlace(&g);
+  Status s = CallOptPassesAndPlace(&g);
   EXPECT_EQ(error::INVALID_ARGUMENT, s.code()) << s.ToString();
   EXPECT_TRUE(absl::StrContains(
       s.message(),
@@ -3034,7 +3025,7 @@ TEST_F(NestedPlacerTest, DirectRecursion) {
   Graph g(OpRegistry::Global());
   TF_EXPECT_OK(BuildGraph(graph, &g));
 
-  absl::Status s = CallOptPassesAndPlace(&g);
+  Status s = CallOptPassesAndPlace(&g);
   EXPECT_EQ(error::UNIMPLEMENTED, s.code()) << s.ToString();
   EXPECT_TRUE(absl::StrContains(
       s.message(),
@@ -3106,7 +3097,7 @@ TEST_F(NestedPlacerTest, IndirectRecursion) {
   Graph g(OpRegistry::Global());
   TF_EXPECT_OK(BuildGraph(graph, &g));
 
-  absl::Status s = CallOptPassesAndPlace(&g);
+  Status s = CallOptPassesAndPlace(&g);
   EXPECT_EQ(error::UNIMPLEMENTED, s.code()) << s.ToString();
   EXPECT_TRUE(absl::StrContains(
       s.message(),
@@ -3115,127 +3106,6 @@ TEST_F(NestedPlacerTest, IndirectRecursion) {
       "{{function_node RecursiveF1}} which is already present in the call "
       "stack"))
       << s.ToString();
-}
-
-TEST_F(PlacerTest, IdentityMatchesInputAndOutputPlacement) {
-  /*
-   *     Op Input (assigned to task:1)
-   *       |
-   *       v
-   *     // Tests that this gets reassigned to task:1
-   *     Identity (No Assignment)
-   *       |
-   *       v
-   *     Op Output (assigned to task:1)
-   */
-  const std::string task0_device = "/job:b/replica:0/task:0/device:FakeCPU:0";
-  const std::string task1_device = "/job:b/replica:0/task:1/device:FakeCPU:0";
-
-  GraphDef graph = GDef({
-      NDef("a", "_Arg", {}, {{"T", DT_FLOAT}}, task1_device),
-      NDef("identity1", "Identity", {"a"}, {{"T", DT_FLOAT}}, task1_device),
-      NDef("identity2", "Identity", {"identity1:0"}, {{"T", DT_FLOAT}}),
-      NDef("cast", "Cast", {"identity2:0"},
-           {{"SrcT", DT_FLOAT}, {"DstT", DT_INT32}}, task1_device),
-      NDef("COO", "ConvertToListOfCooTensorsV2", {"cast:0"}, {{"T", DT_INT32}},
-           task1_device),
-  });
-
-  Graph g(OpRegistry::Global());
-
-  DeviceSet multiple_tasks;
-  std::unique_ptr<Device> task0_cpu(FakeDevice::MakeCPU(task0_device));
-  multiple_tasks.AddDevice(task0_cpu.get());
-
-  std::unique_ptr<Device> task1_cpu(FakeDevice::MakeCPU(task1_device));
-  multiple_tasks.AddDevice(task1_cpu.get());
-
-  TF_ASSERT_OK(BuildGraph(graph, &g));
-
-  absl::Status s = Place(&g, &multiple_tasks);
-  TF_ASSERT_OK(s);
-
-  Node* identity2 = GetNodeByName(g, "identity2");
-  EXPECT_EQ(identity2->assigned_device_name().c_str(), task1_device);
-}
-
-TEST_F(PlacerTest, IdentityWithoutOutputDoesntCrash) {
-  /*
-   *     Op Input (assigned to task:1)
-   *       |
-   *       v
-   *     // Tests that this doesn't crash.
-   *     Identity (No output)
-   */
-  const std::string task0_device = "/job:b/replica:0/task:0/device:FakeCPU:0";
-  const std::string task1_device = "/job:b/replica:0/task:1/device:FakeCPU:0";
-
-  GraphDef graph = GDef({
-      NDef("a", "_Arg", {}, {{"T", DT_FLOAT}}, task1_device),
-      NDef("identity1", "Identity", {"a"}, {{"T", DT_FLOAT}}, task1_device),
-      NDef("identity2", "Identity", {"identity1:0"}, {{"T", DT_FLOAT}}),
-  });
-
-  Graph g(OpRegistry::Global());
-
-  DeviceSet multiple_tasks;
-  std::unique_ptr<Device> task0_cpu(FakeDevice::MakeCPU(task0_device));
-  multiple_tasks.AddDevice(task0_cpu.get());
-
-  std::unique_ptr<Device> task1_cpu(FakeDevice::MakeCPU(task1_device));
-  multiple_tasks.AddDevice(task1_cpu.get());
-
-  TF_ASSERT_OK(BuildGraph(graph, &g));
-  Node* identity2 = GetNodeByName(g, "identity2");
-  const Edge* out_edge = *identity2->out_edges().begin();
-
-  g.RemoveEdge(out_edge);
-
-  absl::Status s = Place(&g, &multiple_tasks);
-  TF_ASSERT_OK(s);
-}
-
-TEST_F(PlacerTest, IdentityDoesntMatchWithMultipleOutput) {
-  /*
-   *     Op Input (assigned to task:1)
-   *       |
-   *       v
-   *     // Tests that identity gets assigned to default task:0
-   *     Identity (No Assignment)
-   *       |
-   *       v
-   *     Multiple Op Output (assigned to task:1)
-   */
-  const std::string task0_device = "/job:b/replica:0/task:0/device:FakeCPU:0";
-  const std::string task1_device = "/job:b/replica:0/task:1/device:FakeCPU:0";
-
-  GraphDef graph = GDef({
-      NDef("a", "_Arg", {}, {{"T", DT_FLOAT}}, task1_device),
-      NDef("identity1", "Identity", {"a"}, {{"T", DT_FLOAT}}, task1_device),
-      NDef("identity2", "Identity", {"identity1:0"}, {{"T", DT_FLOAT}}),
-      NDef("cast", "Cast", {"identity2:0"},
-           {{"SrcT", DT_FLOAT}, {"DstT", DT_INT32}}, task1_device),
-      NDef("COO", "ConvertToListOfCooTensorsV2", {"cast:0"}, {{"T", DT_INT32}},
-           task1_device),
-      NDef("identity3", "Identity", {"identity2:0"}, {{"T", DT_FLOAT}}),
-  });
-
-  Graph g(OpRegistry::Global());
-
-  DeviceSet multiple_tasks;
-  std::unique_ptr<Device> task0_cpu(FakeDevice::MakeCPU(task0_device));
-  multiple_tasks.AddDevice(task0_cpu.get());
-
-  std::unique_ptr<Device> task1_cpu(FakeDevice::MakeCPU(task1_device));
-  multiple_tasks.AddDevice(task1_cpu.get());
-
-  TF_ASSERT_OK(BuildGraph(graph, &g));
-
-  absl::Status s = Place(&g, &multiple_tasks);
-  TF_ASSERT_OK(s);
-
-  Node* identity2 = GetNodeByName(g, "identity2");
-  EXPECT_EQ(identity2->assigned_device_name().c_str(), task0_device);
 }
 
 }  // namespace

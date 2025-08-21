@@ -17,8 +17,6 @@ limitations under the License.
 
 #include <cstdarg>
 
-#include "tensorflow/lite/logger.h"
-
 namespace tflite {
 namespace logging_internal {
 

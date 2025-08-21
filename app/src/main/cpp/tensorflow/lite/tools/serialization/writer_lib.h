@@ -16,8 +16,6 @@ limitations under the License.
 
 #ifndef TENSORFLOW_LITE_TOOLS_SERIALIZATION_WRITER_LIB_H_
 #define TENSORFLOW_LITE_TOOLS_SERIALIZATION_WRITER_LIB_H_
-#include <cstddef>
-#include <cstdint>
 #include <iostream>
 #include <memory>
 #include <set>
@@ -25,10 +23,6 @@ limitations under the License.
 #include <unordered_map>
 #include <utility>
 #include <vector>
-
-#include "flatbuffers/buffer.h"  // from @flatbuffers
-#include "flatbuffers/flatbuffer_builder.h"  // from @flatbuffers
-#include "flatbuffers/vector.h"  // from @flatbuffers
 
 // This #include needs to precede the inclusion of any other TF Lite header
 // file that might depend on the non-mutable schema_generated.h, directly,
@@ -45,7 +39,7 @@ limitations under the License.
 //
 //  The '#if' here prevents automatic reordering of this #include.
 #if 1
-#include "tensorflow/compiler/mlir/lite/schema/mutable/schema_generated.h"
+#include "tensorflow/lite/schema/mutable/schema_generated.h"
 #endif
 
 #include "absl/container/flat_hash_map.h"

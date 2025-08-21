@@ -32,10 +32,9 @@ class GrpcDispatcherImpl : public DispatcherService::Service {
   // with `server_builder`.
   explicit GrpcDispatcherImpl(const experimental::DispatcherConfig& config,
                               ::grpc::ServerBuilder& server_builder);
-  ~GrpcDispatcherImpl() override { Stop(); }
+  ~GrpcDispatcherImpl() override {}
 
-  absl::Status Start();
-  void Stop();
+  Status Start();
 
   size_t NumActiveIterations();
 
@@ -62,14 +61,12 @@ class GrpcDispatcherImpl : public DispatcherService::Service {
   HANDLER(Snapshot);
   HANDLER(GetSnapshotSplit);
   HANDLER(GetSnapshotStreams);
-  HANDLER(DisableCompressionAtRuntime);
 #undef HANDLER
 
  private:
   DataServiceDispatcherImpl impl_;
 
-  GrpcDispatcherImpl(const GrpcDispatcherImpl&) = delete;
-  void operator=(const GrpcDispatcherImpl&) = delete;
+  TF_DISALLOW_COPY_AND_ASSIGN(GrpcDispatcherImpl);
 };
 
 }  // namespace data

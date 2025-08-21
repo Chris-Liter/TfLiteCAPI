@@ -44,7 +44,7 @@ RecordYielder::~RecordYielder() {
   delete thread_;
 }
 
-absl::Status RecordYielder::YieldOne(tstring* value) {
+Status RecordYielder::YieldOne(tstring* value) {
   mutex_lock l(mu_);
   while (!BufEnough() && status_.ok()) {
     buf_enough_.wait(l);
@@ -72,17 +72,17 @@ struct RecordYielder::Shard {
   int index;                      // Shard index.
   std::vector<tstring> filenames;  // File names given to this shard.
   Notification done;              // Notified when this shard is done.
-  absl::Status status;            // Shard status.
+  Status status;                  // Shard status.
 };
 
-bool RecordYielder::ShouldFinish(const absl::Status& s) {
+bool RecordYielder::ShouldFinish(const Status& s) {
   mutex_lock l(mu_);
   status_.Update(s);
   return stop_ || !status_.ok();
 }
 
-static absl::Status MatchFiles(const string& patterns,
-                               std::vector<string>* filenames) {
+static Status MatchFiles(const string& patterns,
+                         std::vector<string>* filenames) {
   for (const auto& file_pattern : str_util::Split(patterns, ',')) {
     std::vector<string> tmp_filenames;
     TF_RETURN_IF_ERROR(
@@ -91,7 +91,7 @@ static absl::Status MatchFiles(const string& patterns,
                       std::make_move_iterator(tmp_filenames.begin()),
                       std::make_move_iterator(tmp_filenames.end()));
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 void RecordYielder::MainLoop() {
@@ -102,7 +102,7 @@ void RecordYielder::MainLoop() {
 
     // Finds all files.
     std::vector<string> filenames;
-    absl::Status s = MatchFiles(opts_.file_pattern, &filenames);
+    Status s = MatchFiles(opts_.file_pattern, &filenames);
 
     if (filenames.empty()) {
       s = errors::NotFound("Found no files at ", opts_.file_pattern);
@@ -200,8 +200,8 @@ void RecordYielder::ShardLoop(Shard* shard) {
   const int64_t kRecords = 16;
   for (const string& filename : shard->filenames) {
     std::unique_ptr<RandomAccessFile> file;
-    if (ShouldFinish(absl::OkStatus())) break;
-    absl::Status s = Env::Default()->NewRandomAccessFile(filename, &file);
+    if (ShouldFinish(OkStatus())) break;
+    Status s = Env::Default()->NewRandomAccessFile(filename, &file);
     if (!s.ok()) {
       shard->status = errors::InvalidArgument("Can't open ", filename);
       break;
@@ -213,7 +213,7 @@ void RecordYielder::ShardLoop(Shard* shard) {
     uint64 offset = 0;
     tstring record;
     while (true) {
-      absl::Status s = rdr.ReadRecord(&offset, &record);
+      Status s = rdr.ReadRecord(&offset, &record);
       if (s.ok()) {
         values.emplace_back(std::move(record));
         if (values.size() >= kRecords && Add(&values)) {

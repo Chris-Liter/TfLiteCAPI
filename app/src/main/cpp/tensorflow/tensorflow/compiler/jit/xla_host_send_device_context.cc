@@ -22,17 +22,9 @@ namespace tensorflow {
 void XlaHostSendDeviceContext::CopyCPUTensorToDevice(
     const Tensor* cpu_tensor, Device* device, Tensor* device_tensor,
     StatusCallback done, bool sync_dst_compute) const {
-  auto status = stream_->Memcpy(device_memory_base_, cpu_tensor->data(),
-                                device_memory_base_->size());
-  if (!status.ok()) {
-    done(status);
-    return;
-  }
-  status = stream_->RecordEvent(done_event_.get().get());
-  if (!status.ok()) {
-    done(status);
-    return;
-  }
+  stream_->ThenMemcpy(device_memory_base_, cpu_tensor->data(),
+                      device_memory_base_->size());
+  stream_->ThenRecordEvent(&done_event_.get());
   if (auto st = stream_->BlockHostUntilDone(); !st.ok()) {
     done_event_.SetError(absl::InternalError(absl::StrFormat(
         "failed to synchronize send operation with a stream: %s",
@@ -41,7 +33,7 @@ void XlaHostSendDeviceContext::CopyCPUTensorToDevice(
   }
 
   done_event_.SetStateConcrete();
-  done(absl::OkStatus());
+  done(OkStatus());
 }
 
 }  // namespace tensorflow

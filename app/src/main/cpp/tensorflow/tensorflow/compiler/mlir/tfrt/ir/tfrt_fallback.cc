@@ -18,7 +18,6 @@ limitations under the License.
 #include "mlir/IR/DialectImplementation.h"  // from @llvm-project
 #include "mlir/IR/OpDefinition.h"  // from @llvm-project
 #include "mlir/IR/TypeUtilities.h"  // from @llvm-project
-#include "mlir/Support/LLVM.h"  // from @llvm-project
 
 namespace tfrt {
 namespace fallback {
@@ -48,12 +47,12 @@ Type FallbackDialect::parseType(DialectAsmParser &parser) const {
 
 /// Print a type registered to this dialect.
 void FallbackDialect::printType(Type type, DialectAsmPrinter &os) const {
-  if (mlir::isa<TFTensorType>(type)) {
+  if (type.isa<TFTensorType>()) {
     os << "tf_tensor";
     return;
   }
 
-  if (mlir::isa<TFAllocatorType>(type)) {
+  if (type.isa<TFAllocatorType>()) {
     os << "tf_allocator";
     return;
   }

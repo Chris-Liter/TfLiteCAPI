@@ -14,38 +14,36 @@ limitations under the License.
 ==============================================================================*/
 #include "tensorflow/lite/delegates/utils/simple_opaque_delegate.h"
 
-#include <stddef.h>
-#include <stdint.h>
-
+#include <limits>
 #include <memory>
+#include <string>
 #include <vector>
 
-#include "tensorflow/lite/array.h"
 #include "tensorflow/lite/builtin_ops.h"
 #include "tensorflow/lite/c/c_api.h"
 #include "tensorflow/lite/c/c_api_opaque.h"
 #include "tensorflow/lite/c/c_api_types.h"
 #include "tensorflow/lite/c/common.h"
 #include "tensorflow/lite/kernels/internal/compatibility.h"
+#include "tensorflow/lite/util.h"
 
 namespace tflite {
 namespace {
-TfLiteOperator* CreateDelegateKernelRegistration(
+TfLiteRegistrationExternal* CreateDelegateKernelRegistration(
     SimpleOpaqueDelegateInterface* delegate) {
-  TfLiteOperator* kernel_registration =
-      TfLiteOperatorCreate(kTfLiteBuiltinDelegate, delegate->Name(),
-                           /*version=*/1, /*user_data=*/nullptr);
+  TfLiteRegistrationExternal* kernel_registration =
+      TfLiteRegistrationExternalCreate(kTfLiteBuiltinDelegate, delegate->Name(),
+                                       /*version=*/1);
 
-  TfLiteOperatorSetFreeWithData(
+  TfLiteRegistrationExternalSetFree(
       kernel_registration,
-      [](void* user_data, TfLiteOpaqueContext* context, void* buffer) -> void {
-        // The type used here must match the type returned from the init method
-        // that we set below.
-        delete reinterpret_cast<SimpleOpaqueDelegateKernelInterface*>(buffer);
+      [](TfLiteOpaqueContext* context, void* buffer) -> void {
+        delete reinterpret_cast<SimpleOpaqueDelegateInterface*>(buffer);
       });
-  TfLiteOperatorSetInitWithData(
+
+  TfLiteRegistrationExternalSetInit(
       kernel_registration,
-      [](void* user_data, TfLiteOpaqueContext* context, const char* buffer,
+      [](TfLiteOpaqueContext* context, const char* buffer,
          size_t length) -> void* {
         const TfLiteOpaqueDelegateParams* params =
             reinterpret_cast<const TfLiteOpaqueDelegateParams*>(buffer);
@@ -61,18 +59,18 @@ TfLiteOperator* CreateDelegateKernelRegistration(
         }
         return delegate_kernel.release();
       });
-  TfLiteOperatorSetPrepareWithData(
+  TfLiteRegistrationExternalSetPrepare(
       kernel_registration,
-      [](void* user_data, TfLiteOpaqueContext* context,
+      [](TfLiteOpaqueContext* context,
          TfLiteOpaqueNode* opaque_node) -> TfLiteStatus {
         SimpleOpaqueDelegateKernelInterface* delegate_kernel =
             reinterpret_cast<SimpleOpaqueDelegateKernelInterface*>(
                 TfLiteOpaqueNodeGetUserData(opaque_node));
         return delegate_kernel->Prepare(context, opaque_node);
       });
-  TfLiteOperatorSetInvokeWithData(
+  TfLiteRegistrationExternalSetInvoke(
       kernel_registration,
-      [](void* user_data, TfLiteOpaqueContext* context,
+      [](TfLiteOpaqueContext* context,
          TfLiteOpaqueNode* opaque_node) -> TfLiteStatus {
         SimpleOpaqueDelegateKernelInterface* delegate_kernel =
             reinterpret_cast<SimpleOpaqueDelegateKernelInterface*>(
@@ -101,7 +99,7 @@ TfLiteStatus DelegatePrepare(TfLiteOpaqueContext* opaque_context,
     const int node_id = plan->data[i];
 
     TfLiteOpaqueNode* opaque_node;
-    TfLiteOperator* registration_external;
+    TfLiteRegistrationExternal* registration_external;
     TfLiteOpaqueContextGetNodeAndRegistration(
         opaque_context, node_id, &opaque_node, &registration_external);
 
@@ -111,7 +109,7 @@ TfLiteStatus DelegatePrepare(TfLiteOpaqueContext* opaque_context,
     }
   }
 
-  TfLiteOperator* delegate_kernel_registration =
+  TfLiteRegistrationExternal* delegate_kernel_registration =
       CreateDelegateKernelRegistration(simple_opaque_delegate);
 
   // Transfers ownership of delegate_kernel_registration to the opaque_context.
@@ -132,31 +130,6 @@ TfLiteOpaqueDelegate* TfLiteOpaqueDelegateFactory::CreateSimpleDelegate(
   opaque_delegate_builder.Prepare = &DelegatePrepare;
   opaque_delegate_builder.flags = flags;
   opaque_delegate_builder.data = simple_delegate.release();
-  opaque_delegate_builder.CopyFromBufferHandle =
-      [](TfLiteOpaqueContext* context, TfLiteOpaqueDelegate* delegate,
-         void* data, TfLiteBufferHandle buffer_handle,
-         TfLiteOpaqueTensor* tensor) {
-        auto* simple_delegate =
-            reinterpret_cast<SimpleOpaqueDelegateInterface*>(data);
-        return simple_delegate->CopyFromBufferHandle(context, buffer_handle,
-                                                     tensor);
-      };
-  opaque_delegate_builder.CopyToBufferHandle =
-      [](TfLiteOpaqueContext* context, TfLiteOpaqueDelegate* delegate,
-         void* data, TfLiteBufferHandle buffer_handle,
-         TfLiteOpaqueTensor* tensor) {
-        auto* simple_delegate =
-            reinterpret_cast<SimpleOpaqueDelegateInterface*>(data);
-        return simple_delegate->CopyToBufferHandle(context, buffer_handle,
-                                                   tensor);
-      };
-  opaque_delegate_builder.FreeBufferHandle =
-      [](TfLiteOpaqueContext* context, TfLiteOpaqueDelegate* delegate,
-         void* data, TfLiteBufferHandle* buffer_handle) {
-        auto* simple_delegate =
-            reinterpret_cast<SimpleOpaqueDelegateInterface*>(data);
-        simple_delegate->FreeBufferHandle(context, buffer_handle);
-      };
 
   return TfLiteOpaqueDelegateCreate(&opaque_delegate_builder);
 }

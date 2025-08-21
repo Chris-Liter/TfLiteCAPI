@@ -15,19 +15,13 @@ limitations under the License.
 
 #include "tensorflow/core/tpu/graph_rewrite/incomplete_nodedef_builder.h"
 
-#include <string>
-
-#include "absl/status/status.h"
-#include "tensorflow/core/framework/node_def_util.h"
-#include "tensorflow/core/framework/types.pb.h"
-#include "tensorflow/core/graph/graph.h"
-#include "tensorflow/core/graph/graph_node_util.h"
-#include "tensorflow/core/platform/status.h"
+#include "tensorflow/compiler/xla/status_macros.h"
+#include "tensorflow/core/common_runtime/function.h"
 
 namespace tensorflow {
 
-IncompleteNodeDefBuilder::IncompleteNodeDefBuilder(const std::string& name,
-                                                   const std::string& op,
+IncompleteNodeDefBuilder::IncompleteNodeDefBuilder(const string& name,
+                                                   const string& op,
                                                    const NodeDebugInfo& debug) {
   nodedef_.set_name(name);
   nodedef_.set_op(op);
@@ -35,36 +29,36 @@ IncompleteNodeDefBuilder::IncompleteNodeDefBuilder(const std::string& name,
 }
 
 IncompleteNodeDefBuilder& IncompleteNodeDefBuilder::AddAttr(
-    const std::string& attr, const DataType& type) {
+    const string& attr, const DataType& type) {
   AddNodeAttr(attr, type, &nodedef_);
   return *this;
 }
 
-IncompleteNodeDefBuilder& IncompleteNodeDefBuilder::AddAttr(
-    const std::string& attr, int val) {
+IncompleteNodeDefBuilder& IncompleteNodeDefBuilder::AddAttr(const string& attr,
+                                                            int val) {
   AddNodeAttr(attr, val, &nodedef_);
   return *this;
 }
 
 IncompleteNodeDefBuilder& IncompleteNodeDefBuilder::Device(
-    const std::string& device) {
+    const string& device) {
   nodedef_.set_device(device);
   return *this;
 }
 
-absl::Status IncompleteNodeDefBuilder::Build(Graph* graph, Node** n) {
-  absl::Status status;
+Status IncompleteNodeDefBuilder::Build(Graph* graph, Node** n) {
+  Status status;
   *n = graph->AddNode(nodedef_, &status);
   return status;
 }
 
 IncompleteNodeDefBuilder IncompleteNodeDefBuilder::Identity(
-    const std::string& name, const DataType& type, const NodeDebugInfo& debug) {
+    const string& name, const DataType& type, const NodeDebugInfo& debug) {
   return IncompleteNodeDefBuilder(name, "Identity", debug).AddAttr("T", type);
 }
 
 IncompleteNodeDefBuilder IncompleteNodeDefBuilder::Merge(
-    const std::string& name, const DataType& type, const NodeDebugInfo& debug,
+    const string& name, const DataType& type, const NodeDebugInfo& debug,
     int n) {
   return IncompleteNodeDefBuilder(name, "Merge", debug)
       .AddAttr("T", type)
@@ -72,7 +66,7 @@ IncompleteNodeDefBuilder IncompleteNodeDefBuilder::Merge(
 }
 
 IncompleteNodeDefBuilder IncompleteNodeDefBuilder::Switch(
-    const std::string& name, const DataType& type, const NodeDebugInfo& debug) {
+    const string& name, const DataType& type, const NodeDebugInfo& debug) {
   return IncompleteNodeDefBuilder(name, "Switch", debug).AddAttr("T", type);
 }
 

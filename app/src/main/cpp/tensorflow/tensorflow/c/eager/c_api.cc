@@ -17,7 +17,6 @@ limitations under the License.
 
 #include <algorithm>
 #include <cstddef>
-#include <cstdint>
 #include <memory>
 #include <string>
 #include <utility>
@@ -38,7 +37,6 @@ limitations under the License.
 #include "tensorflow/c/tf_buffer_internal.h"
 #include "tensorflow/c/tf_status.h"
 #include "tensorflow/c/tf_tensor_internal.h"
-#include "xla/tsl/c/tsl_status_internal.h"
 #include "tensorflow/core/common_runtime/copy_tensor.h"
 #include "tensorflow/core/common_runtime/device.h"
 #include "tensorflow/core/common_runtime/device_factory.h"
@@ -168,31 +166,17 @@ TF_CAPI_EXPORT extern void TFE_ContextSetServerDef(TFE_Context* ctx,
                                                    const void* proto,
                                                    size_t proto_len,
                                                    TF_Status* status) {
-  TFE_ContextSetServerDefWithTimeoutAndRetries(
-      ctx, keep_alive_secs, proto, proto_len, /*init_timeout_in_ms=*/0,
-      /*retries=*/0, status, /*clear_existing_contexts=*/false);
-}
-
-// Set server def with timeout.
-TF_CAPI_EXPORT extern void TFE_ContextSetServerDefWithTimeout(
-    TFE_Context* ctx, int keep_alive_secs, const void* proto, size_t proto_len,
-    int64_t init_timeout_in_ms, TF_Status* status,
-    bool clear_existing_contexts) {
-  TFE_ContextSetServerDefWithTimeoutAndRetries(
-      ctx, keep_alive_secs, proto, proto_len, init_timeout_in_ms,
-      /*retries=*/0, status, clear_existing_contexts);
+  TFE_ContextSetServerDefWithTimeout(ctx, keep_alive_secs, proto, proto_len,
+                                     /*init_timeout_in_ms=*/0, status);
 }
 
 // Set server_def on the context, possibly updating it.
-// TODO(b/291142876) Simplify TFE_ContextSetServerDefWithTimeoutAndRetries and
+// TODO(b/291142876) Simplify TFE_ContextSetServerDefWithTimeout and
 // TFE_ContextUpdateServerDefWithTimeout to be simple wrappers around the same
 // C++ function.
-// Retries are used for CreateContext calls, which is used in
-// ParameterServerStrategy initialization to be robust to worker preemption.
-TF_CAPI_EXPORT extern void TFE_ContextSetServerDefWithTimeoutAndRetries(
+TF_CAPI_EXPORT extern void TFE_ContextSetServerDefWithTimeout(
     TFE_Context* ctx, int keep_alive_secs, const void* proto, size_t proto_len,
-    int64_t init_timeout_in_ms, int retries, TF_Status* status,
-    bool clear_existing_contexts) {
+    int64_t init_timeout_in_ms, TF_Status* status) {
 #if defined(IS_MOBILE_PLATFORM)
   status->status = tensorflow::errors::Unimplemented(
       "TFE_ContextSetServerDef not supported on mobile");
@@ -206,7 +190,7 @@ TF_CAPI_EXPORT extern void TFE_ContextSetServerDefWithTimeoutAndRetries(
   status->status =
       tensorflow::unwrap(ctx)->GetDistributedManager()->SetOrUpdateServerDef(
           server_def, /*reset_context=*/true, keep_alive_secs,
-          init_timeout_in_ms, retries, clear_existing_contexts);
+          init_timeout_in_ms);
 #endif  // !IS_MOBILE_PLATFORM
 }
 
@@ -241,7 +225,7 @@ TF_CAPI_EXPORT extern void TFE_ContextUpdateServerDefWithTimeout(
   status->status =
       tensorflow::unwrap(ctx)->GetDistributedManager()->SetOrUpdateServerDef(
           server_def, /*reset_context=*/false, keep_alive_secs,
-          init_timeout_in_ms, /*retries=*/0);
+          init_timeout_in_ms);
 #endif  // !IS_MOBILE_PLATFORM
 }
 
@@ -296,8 +280,8 @@ TFE_TensorHandle* TFE_NewTensorHandle(const TF_Tensor* t, TF_Status* status) {
 void TFE_DeleteTensorHandle(TFE_TensorHandle* h) {
   if (h == nullptr) return;
 
-  tsl::profiler::TraceMe activity("TFE_DeleteTensorHandle",
-                                  tsl::profiler::TraceMeLevel::kInfo);
+  tensorflow::profiler::TraceMe activity(
+      "TFE_DeleteTensorHandle", tensorflow::profiler::TraceMeLevel::kInfo);
   if (h) {
     tensorflow::unwrap(h)->Unref();
   }
@@ -439,7 +423,7 @@ class CustomDeviceAPI : public tensorflow::CustomDevice {
 
   const string& name() override { return name_; }
 
-  absl::Status CopyTensorToDevice(
+  tensorflow::Status CopyTensorToDevice(
       ImmediateExecutionTensorHandle* handle,
       ImmediateExecutionTensorHandle** result) override {
     handle->Ref();
@@ -454,7 +438,7 @@ class CustomDeviceAPI : public tensorflow::CustomDevice {
     return status.status;
   }
 
-  absl::Status CopyTensorFromDevice(
+  tensorflow::Status CopyTensorFromDevice(
       ImmediateExecutionTensorHandle* handle,
       const tensorflow::string& target_device_name,
       ImmediateExecutionTensorHandle** result) override {
@@ -471,9 +455,9 @@ class CustomDeviceAPI : public tensorflow::CustomDevice {
     return status.status;
   }
 
-  absl::Status Execute(const ImmediateExecutionOperation* op,
-                       ImmediateExecutionTensorHandle** retvals,
-                       int* num_retvals) override {
+  tensorflow::Status Execute(const ImmediateExecutionOperation* op,
+                             ImmediateExecutionTensorHandle** retvals,
+                             int* num_retvals) override {
     std::vector<TFE_TensorHandle*> outputs(*num_retvals);
     TF_Status status;
     device_.execute(tensorflow::wrap(op), num_retvals, outputs.data(), &status,
@@ -488,8 +472,8 @@ class CustomDeviceAPI : public tensorflow::CustomDevice {
     return status.status;
   }
 
-  absl::Status Pack(absl::Span<ImmediateExecutionTensorHandle*> handles,
-                    ImmediateExecutionTensorHandle** result) override {
+  tensorflow::Status Pack(absl::Span<ImmediateExecutionTensorHandle*> handles,
+                          ImmediateExecutionTensorHandle** result) override {
     TF_Status status;
     *result = tensorflow::unwrap(device_.pack(context_,
                                               tensorflow::wrap(handles.data()),
@@ -497,7 +481,7 @@ class CustomDeviceAPI : public tensorflow::CustomDevice {
     return status.status;
   }
 
-  absl::StatusOr<bool> ShallPinToThisDevice(
+  tensorflow::StatusOr<bool> ShallPinToThisDevice(
       const ImmediateExecutionOperation* op) override {
     TF_Status status;
     // Let this custom device choose the device to pin this op on if it
@@ -530,12 +514,12 @@ class CAPICustomDeviceTensorHandle
 
   ~CAPICustomDeviceTensorHandle() override { methods_.deallocator(data_); }
   void* DevicePointer() const override { return data_; }
-  absl::Status NumDims(int* num_dims) const override {
+  Status NumDims(int* num_dims) const override {
     TF_Status s;
     *num_dims = methods_.num_dims(data_, &s);
     return s.status;
   }
-  absl::Status Dim(int dim_index, int64_t* dim) const override {
+  Status Dim(int dim_index, int64_t* dim) const override {
     TF_Status s;
     *dim = methods_.dim(data_, dim_index, &s);
     return s.status;
@@ -545,7 +529,7 @@ class CAPICustomDeviceTensorHandle
     return methods_.summarize != nullptr;
   }
 
-  absl::Status SummarizeValue(std::string& summary) const override {
+  Status SummarizeValue(std::string& summary) const override {
     if (methods_.summarize == nullptr) {
       return tensorflow::CustomDeviceTensorHandle::SummarizeValue(summary);
     }
@@ -557,7 +541,7 @@ class CAPICustomDeviceTensorHandle
     }
     summary = std::string(reinterpret_cast<const char*>(summary_buffer->data),
                           summary_buffer->length);
-    return absl::OkStatus();
+    return OkStatus();
   }
 
  private:

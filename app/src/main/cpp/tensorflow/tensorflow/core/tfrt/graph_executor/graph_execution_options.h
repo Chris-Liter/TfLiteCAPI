@@ -52,16 +52,6 @@ struct GraphExecutionOptions {
   // Whether to enable TFRT GPU.
   bool enable_tfrt_gpu = false;
 
-  // The number of virtual GPUs to create on a physical GPU.
-  int tfrt_gpu_parallelism = 1;
-
-  // if not zero, override the reserved memory space for gpu system.
-  int gpu_system_memory_size_in_mb = 0;
-
-  // Whether to use gpurt.compile_and_execute for GPU.
-  // TODO(b/294895431): Remove the flag and default to the fused op.
-  bool tfrt_use_fused_gpu_op = false;
-
   // Runtime configuration. Refer to tensorflow::tfrt_stub::Runtime class for
   // more details. It must not be nullptr;
   const tensorflow::tfrt_stub::Runtime* runtime = nullptr;
@@ -104,10 +94,6 @@ struct GraphExecutionOptions {
   // This option is experimental.
   bool enable_mlrt = false;
 
-  // If true, the IFRT will be used instead of the TPU Runner.
-  // This option is experimental.
-  bool use_ifrt = false;
-
   tensorflow::TfrtCompileOptions compile_options;
 };
 
@@ -140,10 +126,6 @@ struct GraphExecutionRunOptions {
 
   std::function<void(absl::flat_hash_map<std::string, tensorflow::Tensor>)>
       streamed_output_callback;
-
-  // The optional name for debugging purposes. If empty, the runtime will pick a
-  // name e.g. the joined string of input names and output names.
-  std::string name;
 };
 
 // Creates the default `SessionOptions` from a `GraphExecutionOptions`.

@@ -17,14 +17,11 @@ limitations under the License.
 #include <unordered_map>
 #include <vector>
 
-#include "absl/status/status.h"
-#include "tensorflow/core/platform/logging.h"
-#include "tensorflow/core/platform/status.h"
-#include "tensorflow/lite/kernels/internal/quantization_util.h"
 #include "tensorflow/lite/toco/graph_transformations/graph_transformations.h"
 #include "tensorflow/lite/toco/graph_transformations/quantization_util.h"
 #include "tensorflow/lite/toco/model.h"
 #include "tensorflow/lite/toco/tooling_util.h"
+#include "tensorflow/core/platform/logging.h"
 
 namespace toco {
 
@@ -69,7 +66,7 @@ void GetBoundsForQuantizedDataType(ArrayDataType quantized_data_type,
   const auto fakequant_it = model->operators.begin() + op_index;
   const auto* fakequant_base_op = fakequant_it->get();
   if (fakequant_base_op->type != OperatorType::kFakeQuant) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   const auto* fakequant_op =
@@ -77,12 +74,12 @@ void GetBoundsForQuantizedDataType(ArrayDataType quantized_data_type,
 
   // Yield until the fakequant MinMax has been resolved.
   if (!fakequant_op->minmax) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   // This transformation only applies when the input array is constant.
   if (!IsConstantParameterArray(*model, fakequant_op->inputs[0])) {
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   const auto& input_array = model->GetArray(fakequant_op->inputs[0]);
@@ -93,7 +90,7 @@ void GetBoundsForQuantizedDataType(ArrayDataType quantized_data_type,
   if (!InferQuantizedDataTypeFromFakeQuant(*fakequant_op,
                                            &quantized_data_type)) {
     AddMessageF("Unsupported FakeQuant num_bits=%d", fakequant_op->num_bits);
-    return absl::OkStatus();
+    return ::tensorflow::OkStatus();
   }
 
   AddMessageF("Resolving constant %s", LogName(*fakequant_op));
@@ -137,7 +134,7 @@ void GetBoundsForQuantizedDataType(ArrayDataType quantized_data_type,
                             size);
   DeleteOpAndArrays(model, fakequant_op);
   *modified = true;
-  return absl::OkStatus();
+  return ::tensorflow::OkStatus();
 }
 
 }  // namespace toco

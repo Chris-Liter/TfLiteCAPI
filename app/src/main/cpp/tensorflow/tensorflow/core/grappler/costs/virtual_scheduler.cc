@@ -169,7 +169,7 @@ HeapReadyManager::HeapReadyManager() : ReadyNodeManager() {
   std::make_heap(nodes_.begin(), nodes_.end());
 }
 
-absl::Status HeapReadyManager::Init(
+Status HeapReadyManager::Init(
     const std::unordered_map<const NodeDef*, NodeState>* node_map) {
   // Resets the node state since different instances of the scheduler can reuse
   // the same node_manager.
@@ -180,7 +180,7 @@ absl::Status HeapReadyManager::Init(
   // Sets up the comparator for the heap.
   greater_ = Greater();
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 void HeapReadyManager::AddNode(const NodeDef* node) {
@@ -266,22 +266,22 @@ void PriorityReadyManager::AddNode(const NodeDef* node) {
   HeapReadyManager::AddNode(node);
 }
 
-absl::Status PriorityReadyManager::SetPriority(
+Status PriorityReadyManager::SetPriority(
     const std::unordered_map<string, int>& node_priority) {
   node_priority_ = node_priority;
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 CompositeNodeManager::CompositeNodeManager()
     : ReadyNodeManager(), send_manager_(), recv_manager_() {}
 
-absl::Status CompositeNodeManager::Init(
+Status CompositeNodeManager::Init(
     const std::unordered_map<const NodeDef*, NodeState>* node_map) {
   node_map_ = node_map;
   TF_RETURN_IF_ERROR(send_manager_.Init(node_map));
   TF_RETURN_IF_ERROR(recv_manager_.Init(node_map));
   curr_node_ = nullptr;
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 void CompositeNodeManager::AddNode(const NodeDef* node) {
@@ -403,9 +403,9 @@ SchedulerState::SchedulerState(const bool use_static_shapes,
   track_mem_usage_snapshot_ = VLOG_IS_ON(1);
 }
 
-absl::Status SchedulerState::Init(const GrapplerItem* item,
-                                  std::vector<const NodeDef*>* initial_nodes,
-                                  bool create_explicit_channel_device) {
+Status SchedulerState::Init(const GrapplerItem* item,
+                            std::vector<const NodeDef*>* initial_nodes,
+                            bool create_explicit_channel_device) {
   initialized_ = false;
 
   // Clear all internal states so that the SchedulerState is reusable for
@@ -593,7 +593,7 @@ absl::Status SchedulerState::Init(const GrapplerItem* item,
   }
 
   initialized_ = true;
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 void SchedulerState::MaybeUpdateInputOutput(const NodeDef* node) {
@@ -1398,7 +1398,7 @@ VirtualScheduler::VirtualScheduler(
     std::unique_ptr<SchedulerState> scheduler_state)
     : scheduler_state_(std::move(scheduler_state)), ready_nodes_(ready_nodes) {}
 
-absl::Status VirtualScheduler::Init(const GrapplerItem* item) {
+Status VirtualScheduler::Init(const GrapplerItem* item) {
   // SchedulerState::Init() preprocesses the input grappler_item and
   // graph_properties to extract necessary information for emulating tensorflow
   // op scheduling and construct internal data structures (NodeState and

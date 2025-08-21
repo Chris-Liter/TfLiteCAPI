@@ -39,7 +39,7 @@ XlaActivityListenerList* GetXlaActivityListenerList() {
 }
 
 template <typename FnTy>
-absl::Status ForEachListener(FnTy fn) {
+Status ForEachListener(FnTy fn) {
   XlaActivityListenerList* listener_list = GetXlaActivityListenerList();
   absl::ReaderMutexLock reader_lock(&listener_list->mutex);
 
@@ -48,41 +48,40 @@ absl::Status ForEachListener(FnTy fn) {
     TF_RETURN_IF_ERROR(fn(listener.get()));
   }
 
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 void FlushAllListeners() {
-  absl::Status s = ForEachListener([](XlaActivityListener* listener) {
+  Status s = ForEachListener([](XlaActivityListener* listener) {
     listener->Flush();
-    return absl::OkStatus();
+    return OkStatus();
   });
   CHECK(s.ok());
 }
 }  // namespace
 
-absl::Status BroadcastXlaActivity(
+Status BroadcastXlaActivity(
     XlaAutoClusteringActivity auto_clustering_activity) {
   return ForEachListener([&](XlaActivityListener* listener) {
     return listener->Listen(auto_clustering_activity);
   });
 }
 
-absl::Status BroadcastXlaActivity(
+Status BroadcastXlaActivity(
     XlaJitCompilationActivity jit_compilation_activity) {
   return ForEachListener([&](XlaActivityListener* listener) {
     return listener->Listen(jit_compilation_activity);
   });
 }
 
-absl::Status BroadcastOptimizationRemark(
-    XlaOptimizationRemark optimization_remark) {
+Status BroadcastOptimizationRemark(XlaOptimizationRemark optimization_remark) {
   VLOG(2) << "OptimizationRemark: " << optimization_remark.DebugString();
   return ForEachListener([&](XlaActivityListener* listener) {
     return listener->Listen(optimization_remark);
   });
 }
 
-absl::Status BroadcastOptimizationRemark(
+Status BroadcastOptimizationRemark(
     XlaOptimizationRemark::Warning optimization_warning,
     string debug_information) {
   XlaOptimizationRemark remark;

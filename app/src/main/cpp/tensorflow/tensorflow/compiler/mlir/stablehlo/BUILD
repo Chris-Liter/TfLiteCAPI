@@ -1,12 +1,11 @@
-load("@local_xla//xla/tsl:tsl.default.bzl", "tsl_pybind_extension")
-load("//tensorflow:pytype.default.bzl", "pytype_strict_library")
 load("//tensorflow:strict.default.bzl", "py_strict_test")
+load("//tensorflow:pytype.default.bzl", "pytype_strict_library")
+load("//tensorflow/tsl:tsl.default.bzl", "tsl_pybind_extension")
 
 package(
     # copybara:uncomment default_applicable_licenses = ["//tensorflow:license"],
     default_visibility = [
         ":friends",
-        "//tensorflow/tools/pip_package:__subpackages__",
     ],
     licenses = ["notice"],
 )
@@ -22,29 +21,19 @@ tsl_pybind_extension(
     name = "stablehlo_extension",
     srcs = [
         "stablehlo.cc",
-        "@stablehlo//:stablehlo/integrations/python/StablehloApi.cpp",
+        "@stablehlo//:stablehlo/integrations/python/PortableApi.cpp",
     ],
     hdrs = [
-        "@stablehlo//:stablehlo/integrations/python/StablehloApi.h",
+        "@stablehlo//:stablehlo/integrations/python/PortableApi.h",
     ],
     copts = [
         "-fexceptions",
         "-frtti",
     ],
     features = ["-use_header_modules"],
-    visibility = [
-        ":friends",
-        "//tensorflow/python:__pkg__",
-        "//tensorflow/tools/pip_package:__subpackages__",
-    ],
     deps = [
-        "//third_party/python_runtime:headers",
-        "@llvm-project//llvm:Support",
-        "@llvm-project//mlir:CAPIIR",
-        "@llvm-project//mlir:IR",
-        "@llvm-project//mlir:MLIRBindingsPythonHeadersAndDeps",
-        "@nanobind",
-        "@stablehlo//:stablehlo_capi",
+        "@pybind11",
+        "@stablehlo//:stablehlo_portable_api",
     ],
 )
 
@@ -64,6 +53,5 @@ py_strict_test(
     python_version = "PY3",
     deps = [
         ":stablehlo",
-        #internal proto upb dep
     ],
 )

@@ -19,7 +19,7 @@ limitations under the License.
 
 #include "absl/strings/match.h"
 #include "tensorflow/compiler/jit/xla_compilation_cache.pb.h"
-#include "xla/service/hlo.pb.h"
+#include "tensorflow/compiler/xla/service/hlo.pb.h"
 #include "tensorflow/core/platform/path.h"
 #include "tensorflow/core/public/session.h"
 
@@ -80,8 +80,8 @@ GraphDef DeviceCompilerSerializeTest::GetTestGraph(
   return graph;
 }
 
-absl::Status DeviceCompilerSerializeTest::ExecuteWithBatch(
-    const GraphDef& graph, int batch) {
+Status DeviceCompilerSerializeTest::ExecuteWithBatch(const GraphDef& graph,
+                                                     int batch) {
   const TensorShape shape({batch, 4});
 
   // Compute the golden output tensor
@@ -131,11 +131,10 @@ absl::Status DeviceCompilerSerializeTest::ExecuteWithBatch(
     EXPECT_NEAR(golden_output_tensors[0].flat<float>()(i),
                 output_tensors[0].flat<float>()(i), 1e-3);
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
-absl::Status
-DeviceCompilerSerializeTest::AlterPersistentCacheEntryHloModuleNames(
+Status DeviceCompilerSerializeTest::AlterPersistentCacheEntryHloModuleNames(
     absl::string_view persistent_cache_dir_path,
     absl::string_view file_prefix) {
   Env* env = Env::Default();
@@ -161,7 +160,7 @@ DeviceCompilerSerializeTest::AlterPersistentCacheEntryHloModuleNames(
     return errors::NotFound(
         "Did not find any persistent XLA compilation cache entries to alter.");
   }
-  return absl::OkStatus();
+  return OkStatus();
 }
 
 }  // namespace tensorflow
