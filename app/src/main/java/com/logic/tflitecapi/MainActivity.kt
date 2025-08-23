@@ -145,6 +145,12 @@ class MainActivity : AppCompatActivity() , DetectorListener{
 
         supportActionBar?.hide()
 
+        window.statusBarColor = android.graphics.Color.TRANSPARENT
+        window.decorView.systemUiVisibility = (
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                        or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                )
+
 
         // Example of a call to a native method
         fragmento.texto.text = stringFromJNI()
@@ -331,10 +337,10 @@ class MainActivity : AppCompatActivity() , DetectorListener{
                 cocoNamesPath = copyRawFileToInternalStorage(this, R.raw.coco2, "coco.names")
 
                 sesionIniciada = CreateSession(modelo, cocoNamesPath, true)
-                if(sesionIniciada == false) {
-                    cambio = sesionIniciada
-                    fragmento.cambio.isActivated = false
-                }
+//                if(sesionIniciada == false) {
+//                    cambio = sesionIniciada
+//                    fragmento.cambio.isActivated = false
+//                }
 
                 objectDetector =
                     ObjectDetector.createFromFileAndOptions(modelFile, optionsBuilder.build())
@@ -351,11 +357,11 @@ class MainActivity : AppCompatActivity() , DetectorListener{
                 cocoNamesPath = copyRawFileToInternalStorage(this, R.raw.coco2, "coco.names")
 
                 sesionIniciada = CreateSession(modelo, cocoNamesPath, false)
-                if(sesionIniciada == false) {
-                    cambio = sesionIniciada
-                    fragmento.cambio.isActivated = false
-                }
-
+//                if(sesionIniciada == false) {
+//                    cambio = sesionIniciada
+//                    fragmento.cambio.isActivated = false
+//                }
+//
                 objectDetector =
                     ObjectDetector.createFromFileAndOptions(modelFile, optionsBuilder.build())
 

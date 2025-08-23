@@ -331,13 +331,12 @@ JNICALL Java_com_logic_tflitecapi_MainActivity_detector(JNIEnv* env, jobject /**
                 }
                     return true;
                 }
+            if(interprete->AllocateTensors() != kTfLiteOk){
+                fprintf(stderr, "Fallo nuevamente :(");
+                return false;
+            }
 
-                if(interprete->AllocateTensors() != kTfLiteOk){
-                    fprintf(stderr, "Fallo nuevamente :(");
-                    return false;
-                }
-
-                    return true;
+            return true;
                 //}
         //return true;
     }
