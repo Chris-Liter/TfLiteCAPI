@@ -1,5 +1,6 @@
 package com.logic.tflitecapi
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
@@ -46,8 +47,10 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
     )
     private val randomColor = colors.random()
 
+    @SuppressLint("Range")
     private fun initPaints() {
-        textBackgroundPaint.color = Color.BLACK
+
+        textBackgroundPaint.color = Color.rgb(227, 51, 18)
         textBackgroundPaint.style = Paint.Style.FILL
         textBackgroundPaint.textSize = 50f
 
@@ -55,7 +58,7 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
         textPaint.style = Paint.Style.FILL
         textPaint.textSize = 50f
 
-        boxPaint.color = ContextCompat.getColor(context!!, R.color.teal_200)
+        boxPaint.color = Color.argb(235, 227, 18, 74)
         boxPaint.strokeWidth = 8F
         boxPaint.style = Paint.Style.STROKE
     }
@@ -81,7 +84,7 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
         val right = boundingBox.right * scaleFactorX
 
         val drawableRect = RectF(left, top, right, bottom)
-        canvas.drawRect(drawableRect, boxPaint)
+        canvas.drawRoundRect(drawableRect, 50f, 50f, boxPaint)
 
         val drawableText =
             detection.categories[0].label + " " +
@@ -110,8 +113,7 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
         val right = boundingBox.right * scaleFactorX
 
         val drawableRect = RectF(left, top, right, bottom)
-        canvas.drawRect(drawableRect, boxPaint)
-
+        canvas.drawRoundRect(drawableRect, 50f, 50f, boxPaint)
         val drawableText =
             result.categories[0].label + " " +
                     String.format("%.2f", result.categories[0].score)

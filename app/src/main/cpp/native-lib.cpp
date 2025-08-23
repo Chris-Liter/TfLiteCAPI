@@ -173,8 +173,8 @@ JNICALL Java_com_logic_tflitecapi_MainActivity_detector(JNIEnv* env, jobject /**
 
 
     for (int i = 0; i < num_detections; i++) {
-        if (scores[i] >= 0.5) {  // Umbral de confianza
-            if(maximo >= 5) break;
+        if (scores[i] >= 0.6) {  // Umbral de confianza
+            if(maximo >= 4) break;
             int ymin = static_cast<int>(boxes[i * 4] * 320 * scaleY );
             int xmin = static_cast<int>(boxes[i * 4 + 1] * 320 * scaleX);
             int ymax = static_cast<int>(boxes[i * 4 + 2] * 320 * scaleY);
@@ -303,7 +303,7 @@ JNICALL Java_com_logic_tflitecapi_MainActivity_detector(JNIEnv* env, jobject /**
                 options.inference_priority1 = TFLITE_GPU_INFERENCE_PRIORITY_MIN_LATENCY;
                 options.inference_priority2 = TFLITE_GPU_INFERENCE_PRIORITY_MAX_PRECISION;
                 options.inference_priority3 = TFLITE_GPU_INFERENCE_PRIORITY_AUTO;
-                options.inference_preference = TFLITE_GPU_INFERENCE_PREFERENCE_SUSTAINED_SPEED;
+                //options.inference_preference = TFLITE_GPU_INFERENCE_PREFERENCE_SUSTAINED_SPEED;
                 //                options.experimental_flags = TFLITE_GPU_EXPERIMENTAL_FLAGS_GL_ONLY;
 
                 //options.is_precision_loss_allowed = 1;
@@ -356,3 +356,4 @@ extern "C"{
 //        //std _model;
 //    }
 }
+

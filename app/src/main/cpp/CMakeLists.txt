@@ -11,21 +11,21 @@ endif() # Configura el nivel de API nativo de Android set(ANDROID_NATIVE_API_LEV
 
 # Configuraciones de OpenCV
 set(OpenCV_STATIC ON)
-set(OpenCV_DIR /home/jorge/Libs/OpenCV-android-sdk/sdk/native/jni)
+set(OpenCV_DIR /home/jorge/Documents/Tools/opencv-4.11.0-android-sdk/OpenCV-android-sdk/sdk/native/jni)
 find_package(OpenCV REQUIRED)
-include_directories(/home/jorge/Libs/OpenCV-android-sdk/sdk/native/jni/include)
+include_directories(/home/jorge/Documents/Tools/opencv-4.11.0-android-sdk/OpenCV-android-sdk/sdk/native/jni/include)
 
 # Configuración de TensorFlow Lite
 #set(TFLITE_INCLUDE_DIR "/home/jorgelituma/Librerias/intento90/tensorflow")
 #set(TFLITE_INCLUDE_DIR "/home/jorgelituma/AndroidStudioProjects/TfLiteCAPI/app/src/main/cpp/tensorflow")
-set(TFLITE_INCLUDE_DIR /home/jorge/Libs/tensorflow/tensorflow)
-set(TFLITE_INCLUDE_DIR /home/jorge/Libs/tensorflow)
+set(TFLITE_INCLUDE_DIR /home/jorge/Documents/Libs/tensorflow/tensorflow)
+set(TFLITE_INCLUDE_DIR /home/jorge/Documents/Libs/tensorflow)
 set(TFLITE_LIB_DIR "/home/jorge/StudioProjects/TfLiteCAPI/app/src/main/jniLibs/${ANDROID_ABI}")
 include_directories(${TFLITE_INCLUDE_DIR})
 
 #set(ENABLE_INTERNAL_FLATBUFFERS ON)
 #set(FLATBUFFERS_INCLUDE_DIR "/home/jorgelituma/AndroidStudioProjects/TfLiteCAPI/app/src/main/cpp/flatbuffers")
-set(FLATBUFFERS_INCLUDE_DIR /home/jorge/Libs/flatbuffers/include)
+set(FLATBUFFERS_INCLUDE_DIR /home/jorge/Documents/Libs/flatbuffers/include)
 include_directories(${FLATBUFFERS_INCLUDE_DIR})
 
 
