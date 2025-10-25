@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="350dp"
+    android:padding="25dp"
+    android:gravity="center"
+    android:background="@drawable/popup_background">
+
+
+
+    <!-- Línea divisoria -->
+    <View
+        android:layout_width="60dp"
+        android:layout_height="2dp"
+        android:background="#66FFFFFF"
+        android:layout_marginBottom="25dp" />
+
+    <!-- Botón de cerrar -->
+    <Button
+        android:id="@+id/btnOpenPopup"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="More"
+        android:textColor="@color/white"
+        android:backgroundTint="#4588A0"
+        android:fontFamily="sans-serif-medium"
+        android:paddingHorizontal="25dp"
+        android:paddingVertical="10dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="10dp"
+        android:elevation="6dp" />
+
+
+
+
+</LinearLayout>

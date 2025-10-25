@@ -1,64 +1,92 @@
-<?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/main"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".ClasificarNumeros">
+    xmlns:ads="http://schemas.android.com/apk/res-auto"
 
+    android:orientation="vertical"
+    android:padding="20dp"
+    android:gravity="center"
+    android:background="#121212">
 
-    <com.logic.tflitecapi.AreaDibujo
-        android:id="@+id/lienzo"
+    <TextView
+        android:id="@+id/textDescription"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:visibility="visible"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toTopOf="@+id/controls"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintVertical_weight="3" />
+        android:layout_height="wrap_content"
+        android:textColor="@android:color/white"
+        android:textSize="16sp"
+        android:lineSpacingExtra="6dp"
+        android:textAlignment="center"
+        android:text="This application is natively developed in Kotlin and Java, while the object recognition process is implemented in C++. Inferences are performed using TensorFlow Lite every millisecond for each frame processed by the camera in the native C++ library. Kotlin sends the frame in Bitmap format to the C++ layer, where it is converted into an OpenCV matrix. This matrix is then processed through the TensorFlow Lite C++ API for object detection. Once the detection is completed, the C++ code returns the coordinates of the detected objects, along with their class names and confidence scores. Finally, Kotlin uses this information to draw (or render) the detected objects on the screen." />
 
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/controls"
+<!--    <Button-->
+<!--        android:id="@+id/btnTranslate"-->
+<!--        android:layout_width="wrap_content"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:text="ES"-->
+<!--        android:layout_marginTop="20dp"-->
+<!--        android:backgroundTint="#0080FF"-->
+<!--        android:textColor="@android:color/white"-->
+<!--        android:paddingHorizontal="25dp"-->
+<!--        android:paddingVertical="10dp"/>-->
+
+    <View
+        android:layout_width="60dp"
+        android:layout_height="2dp"
+        android:background="#66000000"
+        android:layout_marginBottom="25dp" />
+
+    <!-- Título principal -->
+    <TextView
+        android:id="@+id/tituloPopup"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Created by Jorge Lituma"
+        android:textColor="#FFFFFF"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:fontFamily="sans-serif-medium"
+        android:layout_marginBottom="10dp"
+        android:shadowColor="#80000000"
+        android:shadowDx="1"
+        android:shadowDy="1"
+        android:shadowRadius="4" />
+
+    <!-- Subtítulo -->
+    <TextView
+        android:id="@+id/tituloPopup2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Computer Science Engineer"
+        android:textColor="#FFFFFF"
+        android:textSize="18sp"
+        android:fontFamily="sans-serif-light"
+        android:layout_marginBottom="25dp"
+        android:layout_gravity="center_horizontal" />
+
+    <Button
+        android:id="@+id/btnBack"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="BACK"
+        android:layout_marginTop="15dp"
+        android:backgroundTint="#B00020"
+        android:textColor="@android:color/white"
+        android:paddingHorizontal="25dp"
+        android:paddingVertical="10dp"/>
+
+
+    <View
+        android:layout_width="60dp"
+        android:layout_height="2dp"
+        android:background="#66000000"
+        android:layout_marginBottom="25dp" />
+
+    <com.google.android.gms.ads.AdView
+        android:id="@+id/adView"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        app:layout_constraintTop_toBottomOf="@+id/lienzo"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintVertical_weight="1">
+        android:layout_height="wrap_content"
+        ads:adSize="BANNER"
+        ads:adUnitId=""/>
 
 
-        <Button
-            android:id="@+id/limpiar"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_margin="20dp"
-            android:backgroundTint="#878787"
-            android:text="Limpiar Lienzo"
-            android:textColor="@color/white"
-            app:layout_constraintHorizontal_chainStyle="packed"
-            app:layout_constraintStart_toStartOf="parent"
-            tools:ignore="MissingConstraints" />
-
-
-        <Button
-            android:id="@+id/clasificar"
-            android:layout_margin="20dp"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Clasificar Forma"
-            app:layout_constraintStart_toEndOf="@+id/limpiar"
-            app:layout_constraintEnd_toEndOf="parent"
-            tools:ignore="MissingConstraints" />
-        <TextView
-            android:layout_width="match_parent"
-            app:layout_constraintTop_toBottomOf="@+id/limpiar"
-            app:layout_constraintStart_toStartOf="parent" android:layout_margin="20dp"
-            android:textSize="20dp" android:textColor="@color/white"
-            android:layout_height="wrap_content" android:id="@+id/clasificado"/>
-
-    </androidx.constraintlayout.widget.ConstraintLayout>
-
-</androidx.constraintlayout.widget.ConstraintLayout>
+</LinearLayout>

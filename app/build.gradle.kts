@@ -11,9 +11,9 @@ android {
     defaultConfig {
         applicationId = "com.logic.tflitecapi"
         minSdk = 29
-        targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        targetSdk = 35
+        versionCode = 2
+        versionName = "1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk{
@@ -76,4 +76,7 @@ dependencies {
     implementation("org.tensorflow:tensorflow-lite-task-vision:0.4.3")
     implementation("org.tensorflow:tensorflow-lite-gpu-delegate-plugin:0.4.3")
     implementation("org.tensorflow:tensorflow-lite-gpu:2.13.0")
+
+    ///publicidad
+    implementation("com.google.android.gms:play-services-ads:22.3.0")
 }

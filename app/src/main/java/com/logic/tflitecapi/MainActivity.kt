@@ -35,6 +35,10 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.AdView
+import com.google.android.gms.ads.MobileAds
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.logic.tflitecapi.databinding.ActivityMainBinding
@@ -140,6 +144,9 @@ class MainActivity : AppCompatActivity() , DetectorListener{
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+
+
+
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(fragmento.root)
 
@@ -210,6 +217,30 @@ class MainActivity : AppCompatActivity() , DetectorListener{
                 objectDetector = null
             }
         }
+        val btnPopup = findViewById<Button>(R.id.btnPopup)
+        btnPopup.setOnClickListener {
+            mostrarPopup()
+        }
+
+
+    }
+
+    private fun mostrarPopup() {
+        val dialog = BottomSheetDialog(this, R.style.TransparentBottomSheetDialog)
+        val view = layoutInflater.inflate(R.layout.popup_layout, null)
+
+
+        dialog.setContentView(view)
+        dialog.show()
+
+
+        val openW = view.findViewById<Button>(R.id.btnOpenPopup)
+        openW.setOnClickListener {
+            val intent = Intent(this, ClasificarNumeros::class.java)
+            startActivity(intent)
+            //dialog.dismiss()
+        }
+
 
 
     }
@@ -444,7 +475,7 @@ class MainActivity : AppCompatActivity() , DetectorListener{
             if (allPermissionsGranted()) {
                 startCamera()
             } else {
-                Toast.makeText(this, "Los permisos no se concedieron.", Toast.LENGTH_SHORT).show()
+                //Toast.makeText(this, "Los permisos no se concedieron.", Toast.LENGTH_SHORT).show()
 
                 finish()
             }
@@ -500,7 +531,7 @@ class MainActivity : AppCompatActivity() , DetectorListener{
 
     override fun onError(error: String) {
         runOnUiThread{
-            Toast.makeText(applicationContext, error, Toast.LENGTH_SHORT).show()
+            //Toast.makeText(applicationContext, error, Toast.LENGTH_SHORT).show()
         }
     }
 

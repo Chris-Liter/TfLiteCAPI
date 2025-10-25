@@ -1,5 +1,6 @@
 package com.logic.tflitecapi
 
+import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import android.os.Bundle
 import android.util.Log
@@ -9,6 +10,9 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.graphics.Insets
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.AdView
+import com.google.android.gms.ads.MobileAds
 import com.google.gson.Gson
 import com.logic.tflitecapi.AreaDibujo.area
 import kotlinx.coroutines.CoroutineScope
@@ -28,60 +32,61 @@ import java.io.ByteArrayOutputStream
 import kotlin.time.Duration.Companion.milliseconds
 
 class ClasificarNumeros : AppCompatActivity() {
+    private var showingEnglish = true
 
-    private lateinit var limpiar: Button
-    private lateinit var detectar: Button
-    private lateinit var numeroClas: TextView
 
-    val retro = Retrofit.Builder()
-        .baseUrl("http://192.168.0.117:5000/")
-        .addConverterFactory(GsonConverterFactory.create())
-        .build()
-    val api = retro.create(ApiService::class.java)
-
+    @SuppressLint("MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        //EdgeToEdge.enable(this)
+
         setContentView(R.layout.activity_clasificar_numeros)
 
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
-            val systemBars: Insets = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
-        }
+        MobileAds.initialize(this) {}
+//        val adView = findViewById<AdView>(R.id.adView)
+//        val adRequest = AdRequest.Builder().build()
+//        adView.loadAd(adRequest)
 
+        val textDescription = findViewById<TextView>(R.id.textDescription)
+       // val btnTranslate = findViewById<Button>(R.id.btnTranslate)
+        val btnBack = findViewById<Button>(R.id.btnBack)
 
-        limpiar = findViewById(R.id.limpiar)
-        limpiar.setOnClickListener { area.clean() }
+        val englishText = """
+            This application is natively developed in Kotlin and Java, while the object recognition process is implemented in C++. 
+            Inferences are performed using TensorFlow Lite every millisecond for each frame processed by the camera in the native C++ library. 
+            Kotlin sends the frame in Bitmap format to the C++ layer, where it is converted into an OpenCV matrix. 
+            This matrix is then processed through the TensorFlow Lite C++ API for object detection. 
+            Once the detection is completed, the C++ code returns the coordinates of the detected objects, 
+            along with their class names and confidence scores. 
+            Finally, Kotlin uses this information to draw the detected objects on the screen.
+        """.trimIndent()
 
-        numeroClas = findViewById(R.id.clasificado)
-        detectar = findViewById(R.id.clasificar)
-        detectar.setOnClickListener {
-            CoroutineScope(Dispatchers.IO).launch{
-                val numero: Bitmap = area.getBitmap()
+        val spanishText = """
+            Esta aplicación está desarrollada de forma nativa en Kotlin y Java, mientras que el proceso de reconocimiento de objetos está implementado en C++. 
+            Las inferencias se realizan con TensorFlow Lite cada milisegundo por cada fotograma procesado por la cámara en la biblioteca nativa C++. 
+            Kotlin envía el fotograma en formato Bitmap a la capa C++, donde se convierte en una matriz de OpenCV. 
+            Esta matriz se procesa luego mediante la API C++ de TensorFlow Lite para realizar la detección de objetos. 
+            Una vez completada la detección, el código C++ devuelve las coordenadas de los objetos detectados, 
+            junto con el nombre de la clase y el nivel de confianza. 
+            Finalmente, Kotlin utiliza esta información para dibujar los objetos detectados en la pantalla.
+        """.trimIndent()
 
-                val output = ByteArrayOutputStream()
-                numero.compress(Bitmap.CompressFormat.JPEG, 100, output)
-                val bytes = output.toByteArray()
+        // Texto inicial en inglés
+        textDescription.text = englishText
 
-                val res = bytes.toRequestBody("image/jpeg".toMediaTypeOrNull())
-                val multpart = MultipartBody.Part.createFormData("image", "image.jpeg", res)
-
-                val call = api.process_numero(multpart)
-
-                try {
-                    val result = call.execute()
-                    if (result.isSuccessful) {
-                        val body: String? = result.body()?.string()
-
-                        numeroClas.text = body
-                        Log.d("ClasificarNumeros", "Response: $body")
-                    }
-                } catch (e: Exception) {
-                    Log.e("ClasificarNumeros", "Error: ${e.message}")
-                }
-
-            }
+//        btnTranslate.setOnClickListener {
+//            if (showingEnglish) {
+//                textDescription.text = spanishText
+//                btnTranslate.text = "EN"
+//                btnBack.text = "BACK"
+//            } else {
+//                textDescription.text = englishText
+//                btnTranslate.text = "ES"
+//                btnBack.text = "REGRESAR"
+//            }
+//            showingEnglish = !showingEnglish
+//        }
+        btnBack.setOnClickListener {
+            finish()
         }
     }
 }

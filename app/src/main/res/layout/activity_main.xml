@@ -56,4 +56,19 @@
         android:layout_height="wrap_content" app:layout_constraintLeft_toRightOf="@+id/latencia"
         tools:ignore="MissingConstraints" />
 
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/btnPopup"
+        android:layout_width="55dp"
+        android:layout_height="55dp"
+        android:text="?"
+        android:textSize="22sp"
+        android:textColor="@android:color/white"
+        android:background="@drawable/btn_popup_round"
+        android:elevation="8dp"
+        android:layout_margin="20dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+
+
 </androidx.constraintlayout.widget.ConstraintLayout>
