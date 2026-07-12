@@ -292,7 +292,7 @@ class MainActivity : AppCompatActivity() , DetectorListener{
 
         imageAnalyzer =
             ImageAnalysis.Builder()
-                //.setTargetResolution(Size(640, 640))  // Resolución deseada para el análisis
+                //.setTargetResolution(Size(640, 640))  
                 .setTargetAspectRatio(AspectRatio.RATIO_4_3)
                 .setTargetRotation(fragmento.camara.display.rotation)
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
@@ -327,7 +327,7 @@ class MainActivity : AppCompatActivity() , DetectorListener{
 
 
     fun displayBitmap(image: ImageProxy) {
-        //val imageView: ImageView = findViewById(R.id.imageView)  // Asegúrate de tener un ImageView con el ID correspondiente
+        //val imageView: ImageView = findViewById(R.id.imageView)
         //val bOut: Bitmap = bitmap.copy(bitmap.config, true)
         image.use { bitmapBuffer.copyPixelsFromBuffer(image.planes[0].buffer) }
         val imageRotation = image.imageInfo.rotationDegrees
